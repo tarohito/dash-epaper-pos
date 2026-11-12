@@ -1,0 +1,8 @@
+{
+  "name": "e.paper - Kasir POS Perhiasan",
+  "description": "Aplikasi Kasir POS dan Manajemen Inventaris Perhiasan & Toko Emas e.paper.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
