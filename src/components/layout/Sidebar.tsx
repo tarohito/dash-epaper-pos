@@ -116,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex lg:hidden items-center justify-between p-4 border-b border-white/20 text-white">
           <div className="flex items-center gap-2">
             <span className="font-bold text-lg text-white">e.paper</span>
-            <span className="text-[10px] tracking-wider font-semibold uppercase bg-white/20 px-1.5 py-0.5 rounded">
+            <span className="text-xs tracking-wider font-semibold uppercase bg-white/20 px-2 py-0.5 rounded">
               MENU
             </span>
           </div>
@@ -151,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         handleItemSelect(menu.name);
                       }
                     }}
-                    className={`relative flex items-center px-3.5 py-3 lg:py-2.5 text-left text-[13.5px] lg:text-sm font-medium group w-full cursor-pointer min-h-[46px] ${
+                    className={`relative flex items-center px-3.5 py-3 lg:py-2.5 text-left text-sm font-medium group w-full cursor-pointer min-h-[46px] ${
                       isParentActive ? 'z-20' : 'z-10'
                     }`}
                   >
@@ -184,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }`}
                     />
                     <span
-                      className={`relative z-10 whitespace-nowrap text-[13.5px] lg:text-sm transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden flex-1 ${
+                      className={`relative z-10 whitespace-nowrap text-sm transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden flex-1 ${
                         isParentActive
                           ? 'text-orange-600 font-bold'
                           : isAnySubActive
@@ -222,7 +222,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <button
                             type="button"
                             onClick={() => handleItemSelect(sub.name)}
-                            className={`relative flex items-center text-left text-[13px] font-medium group w-full cursor-pointer transition-all duration-300 min-h-[44px] ${
+                            className={`relative flex items-center text-left text-sm font-medium group w-full cursor-pointer transition-all duration-300 min-h-[44px] ${
                               isSidebarCollapsed ? 'px-3.5 py-3 lg:py-2.5' : 'pl-10 pr-3.5 py-2.5'
                             }`}
                           >
@@ -250,7 +250,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               }`}
                             />
                             <span
-                              className={`relative z-10 whitespace-nowrap text-[13px] transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
+                              className={`relative z-10 whitespace-nowrap text-sm transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
                                 isSubActive
                                   ? 'text-orange-600 font-bold'
                                   : 'text-white/90 group-hover:text-white font-medium'
@@ -285,7 +285,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={() => setIsStoreMenuOpen(!isStoreMenuOpen)}
-                className={`w-10 h-10 mx-auto rounded-lg bg-white hover:bg-gray-100 text-orange-600 flex items-center justify-center font-bold text-xs cursor-pointer transition-all shadow-sm ${
+                className={`w-10 h-10 mx-auto rounded-lg bg-white hover:bg-gray-100 text-orange-600 flex items-center justify-center font-bold text-xs sm:text-sm cursor-pointer transition-all shadow-sm ${
                   isStoreMenuOpen ? 'ring-2 ring-orange-300' : ''
                 }`}
                 aria-label="Atur Toko"
@@ -306,10 +306,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <Store size={19} className="text-orange-600 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-bold text-orange-600 truncate leading-tight">
+                <p className="text-sm font-bold text-orange-600 truncate leading-tight">
                   {activeTenant?.name || 'Toko Mas Sejahtera'}
                 </p>
-                <p className="text-[11px] text-gray-500 truncate mt-0.5 font-medium">
+                <p className="text-xs text-gray-500 truncate mt-0.5 font-medium">
                   {activeTenant?.branchName || 'Cabang Utama'}
                 </p>
               </div>
@@ -332,8 +332,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               <div className="px-2.5 py-1.5 border-b border-gray-100 flex items-center justify-between">
-                <p className="text-[11px] font-bold text-gray-800">Pilih Toko / Outlet</p>
-                <span className="text-[10px] text-gray-400 font-medium">
+                <p className="text-xs font-bold text-gray-800">Pilih Toko / Outlet</p>
+                <span className="text-xs text-gray-400 font-medium">
                   {tenants.length} Toko
                 </span>
               </div>
@@ -349,15 +349,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onSelectTenant?.(t.id);
                         setIsStoreMenuOpen(false);
                       }}
-                      className={`w-full text-left p-2 rounded-md flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                      className={`w-full text-left p-2 rounded-md flex items-center justify-between text-xs sm:text-sm transition-colors cursor-pointer ${
                         isSelected
                           ? 'bg-orange-50 text-orange-600 font-bold'
                           : 'hover:bg-gray-50 text-gray-700 font-medium'
                       }`}
                     >
                       <div className="min-w-0 flex-1 pr-2">
-                        <p className="truncate font-bold leading-tight">{t.name}</p>
-                        <p className="text-[10px] text-gray-400 truncate mt-0.5">{t.branchName}</p>
+                        <p className="truncate font-bold leading-tight text-xs sm:text-sm">{t.name}</p>
+                        <p className="text-xs text-gray-400 truncate mt-0.5">{t.branchName}</p>
                       </div>
                       {isSelected && <Check size={14} className="text-orange-600 shrink-0" />}
                     </button>
@@ -372,7 +372,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     setIsStoreMenuOpen(false);
                     onOpenRegisterModal?.();
                   }}
-                  className="w-full py-1.5 px-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-[11px] rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-none"
+                  className="w-full py-2 px-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-none"
                 >
                   <Plus size={13} />
                   Tambah Toko / Outlet Baru
@@ -384,7 +384,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     setIsStoreMenuOpen(false);
                     onSelectMenu('Multi-Outlet');
                   }}
-                  className="w-full py-1.5 px-2 text-gray-700 hover:bg-gray-100 font-semibold text-[11px] rounded-md transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  className="w-full py-1.5 px-2 text-gray-700 hover:bg-gray-100 font-semibold text-xs rounded-md transition-colors flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <span>Kelola Multi-Outlet</span>
                   <ArrowRight size={12} />

@@ -72,12 +72,31 @@ export interface Transaction {
   paymentDetails: PaymentDetails;
 }
 
+export interface BuybackGoldItem {
+  id: string;
+  category: 'Logam Mulia Batangan' | 'Perhiasan';
+  brandType: string;
+  kadar: string;
+  berat: number;
+  serialNumber?: string;
+  certYear?: string;
+  kondisi: 'Baik / Utuh' | 'Kemasan Rusak' | 'Tanpa Sertifikat / Nota' | 'Patah / Cacat';
+  hargaPerGram: number;
+  subtotal: number;
+}
+
 export interface BuybackItem {
   id: string;
   invoiceNo: string;
   date: string;
+  timeStr?: string;
+  branchName?: string;
+  cashierName?: string;
   customerName: string;
   customerPhone: string;
+  customerNik?: string;
+  customerNpwp?: string;
+  customerAddress?: string;
   sourceNote: string;
   itemType: string;
   kadar: string;
@@ -87,11 +106,21 @@ export interface BuybackItem {
   hargaPerGram: number;
   biayaLebur: number;
   kondisi: string;
+  totalKotor?: number;
+  potonganBiaya?: number;
+  pph22?: number;
   totalBayar: number;
   paymentMethod: 'cash' | 'transfer';
   bankName?: string;
   accountNo?: string;
+  accountHolder?: string;
   catatan?: string;
+  fotoKtp?: string;
+  fotoEmas?: string;
+  ttdNasabah?: string;
+  ttdPetugas?: string;
+  isAgreedLegal?: boolean;
+  items?: BuybackGoldItem[];
 }
 
 export interface Tenant {

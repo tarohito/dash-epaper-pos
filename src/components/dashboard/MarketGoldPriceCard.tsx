@@ -129,37 +129,37 @@ export const MarketGoldPriceCard: React.FC<MarketGoldPriceCardProps> = ({
         {/* Header Bersih & Indikator Naik / Turun */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
           <div>
-            <h3 className="text-sm font-bold text-gray-900 leading-tight">
+            <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
               Harga Emas Antam
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
               Acuan Resmi Logam Mulia Indonesia
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {/* Badge Tanggal di Samping Badge Kenaikan / Penurunan */}
-            <span className="inline-flex items-center text-[11px] font-medium text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded">
+            <span className="inline-flex items-center text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded">
               {data.updatedDate}
             </span>
 
             {/* Indikator Naik / Turun */}
             {isUp && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
                 <TrendingUp size={13} />
                 <span>+Rp {Math.abs(priceDiff).toLocaleString('id-ID')}</span>
                 <span>(+{percentDiff.toFixed(2)}%)</span>
               </span>
             )}
             {isDown && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-mono">
                 <TrendingDown size={13} />
                 <span>-Rp {Math.abs(priceDiff).toLocaleString('id-ID')}</span>
                 <span>({percentDiff.toFixed(2)}%)</span>
               </span>
             )}
             {!isUp && !isDown && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200">
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 font-mono">
                 <Minus size={13} />
                 <span>Tetap</span>
               </span>
@@ -187,26 +187,26 @@ export const MarketGoldPriceCard: React.FC<MarketGoldPriceCardProps> = ({
           {/* Sisi Kiri: 2 Box Utama (Harga Emas & Buyback) */}
           <div className="md:col-span-5 flex flex-col justify-between gap-2.5">
             <div className="grid grid-cols-2 md:grid-cols-1 gap-2.5 flex-1">
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-col justify-center">
-                <span className="text-xs font-semibold text-gray-600 block">
+              <div className="p-3.5 bg-gray-50 rounded-lg border border-gray-200 flex flex-col justify-center">
+                <span className="text-xs sm:text-sm font-medium text-gray-600 block">
                   Harga Emas (1 gr)
                 </span>
-                <span className="text-lg sm:text-xl font-bold text-gray-900 block mt-1 tracking-tight">
+                <span className="text-xl sm:text-2xl font-bold font-mono text-gray-900 block mt-1 tracking-tight">
                   {formatIDR(data.sellPrice)}
                 </span>
-                <span className="text-xs text-gray-400 block mt-0.5">
+                <span className="text-xs text-gray-500 block mt-0.5">
                   per gram murni
                 </span>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-col justify-center">
-                <span className="text-xs font-semibold text-gray-600 block">
+              <div className="p-3.5 bg-gray-50 rounded-lg border border-gray-200 flex flex-col justify-center">
+                <span className="text-xs sm:text-sm font-medium text-gray-600 block">
                   Harga Buyback
                 </span>
-                <span className="text-lg sm:text-xl font-bold text-gray-900 block mt-1 tracking-tight">
+                <span className="text-xl sm:text-2xl font-bold font-mono text-gray-900 block mt-1 tracking-tight">
                   {formatIDR(data.buybackPrice)}
                 </span>
-                <span className="text-xs text-gray-400 block mt-0.5">
+                <span className="text-xs text-gray-500 block mt-0.5">
                   jual kembali
                 </span>
               </div>
@@ -216,18 +216,18 @@ export const MarketGoldPriceCard: React.FC<MarketGoldPriceCardProps> = ({
           {/* Sisi Kanan: Tabel Pecahan Resmi Antam */}
           <div className="md:col-span-7">
             <div className="border border-gray-200 rounded-lg overflow-hidden h-full flex flex-col">
-              <div className="bg-gray-50 px-3.5 py-2 text-xs font-bold text-gray-600 flex justify-between border-b border-gray-200">
+              <div className="bg-gray-50 px-3.5 py-2 text-xs sm:text-sm font-semibold text-gray-700 flex justify-between border-b border-gray-200">
                 <span>Pecahan Emas Batangan</span>
                 <span>Harga Resmi</span>
               </div>
-              <div className="divide-y divide-gray-100 text-xs overflow-y-auto flex-1">
+              <div className="divide-y divide-gray-100 text-xs sm:text-sm overflow-y-auto flex-1">
                 {pecahanList.map(item => (
                   <div
                     key={item.gram}
                     className="px-3.5 py-1.5 flex items-center justify-between hover:bg-gray-50 transition-colors"
                   >
                     <span className="text-gray-700 font-medium">{item.gram}</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold font-mono tabular-nums text-gray-900">
                       {formatIDR(item.harga)}
                     </span>
                   </div>

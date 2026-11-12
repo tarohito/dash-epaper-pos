@@ -35,11 +35,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           />
           {/* Category & Promo Badge */}
           <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 flex flex-col gap-1 items-start">
-            <span className="text-[11px] sm:text-xs font-semibold px-2 py-0.5 bg-white/95 backdrop-blur-sm text-orange-600 rounded-md border border-orange-100 inline-block shadow-xs">
+            <span className="text-xs font-semibold px-2 py-0.5 bg-white/95 backdrop-blur-sm text-orange-600 rounded-md border border-orange-100 inline-block shadow-xs">
               {product.category}
             </span>
             {product.isPromo && (
-              <span className="text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 bg-yellow-400 text-gray-950 rounded-md inline-block">
+              <span className="text-xs font-bold px-2 py-0.5 bg-yellow-400 text-gray-950 rounded-md inline-block">
                 {product.promoLabel || 'PROMO'}
               </span>
             )}
@@ -47,7 +47,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           {/* Stock Badge */}
           <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5">
             <span
-              className={`text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-md inline-block backdrop-blur-sm ${
+              className={`text-xs font-semibold px-2 py-0.5 rounded-md inline-block backdrop-blur-sm ${
                 isOutOfStock
                   ? 'bg-red-500 text-white'
                   : product.stok <= 3
@@ -75,12 +75,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       {/* Bottom Info: Weight & Price */}
       <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 pt-1.5 sm:pt-2 border-t border-gray-100 flex items-end justify-between mt-auto">
         <div>
-          <div className="text-xs text-gray-400 font-medium leading-none mb-1">Berat</div>
-          <div className="text-xs sm:text-sm font-bold text-gray-800 leading-none">{product.berat.toFixed(2)}g</div>
+          <div className="text-xs text-gray-500 font-medium leading-none mb-1">Berat</div>
+          <div className="text-xs sm:text-sm font-bold font-mono text-gray-800 leading-none">{product.berat.toFixed(2)}g</div>
         </div>
         <div className="text-right">
-          <div className="text-xs text-gray-400 font-medium leading-none mb-1">Harga</div>
-          <div className={`text-xs sm:text-sm font-bold leading-none ${isOutOfStock ? 'text-gray-400' : 'text-orange-600'}`}>
+          <div className="text-xs text-gray-500 font-medium leading-none mb-1">Harga</div>
+          <div className={`text-xs sm:text-sm font-bold font-mono leading-none ${isOutOfStock ? 'text-gray-400' : 'text-orange-600'}`}>
             {formatIDR(product.harga)}
           </div>
         </div>

@@ -19,13 +19,13 @@ export const ScanFeedbackToast: React.FC<ScanFeedbackToastProps> = ({ feedback }
       </div>
       <div>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-white">Auto-Scan Sukses!</span>
-          <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded">
+          <span className="text-xs sm:text-sm font-semibold text-white">Auto-Scan Sukses!</span>
+          <span className="text-xs font-mono bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded">
             {feedback.product.sku}
           </span>
-          <span className="text-[10px] text-gray-400">{feedback.time}</span>
+          <span className="text-xs text-gray-400 font-mono">{feedback.time}</span>
         </div>
-        <p className="text-xs text-gray-300 font-medium">
+        <p className="text-xs sm:text-sm text-gray-300 font-medium mt-0.5">
           {feedback.product.name} ({feedback.product.berat.toFixed(2)}g) ditambahkan ke pesanan
         </p>
       </div>

@@ -22,21 +22,22 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-lg border border-gray-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[94vh]">
         {/* Header Modal */}
-        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-white">
+        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
           <div>
-            <h3 className="font-extrabold text-gray-900 text-sm">
+            <h3 className="font-bold text-gray-900 text-base sm:text-lg leading-tight">
               Nota Pembelian Emas (Buyback)
             </h3>
-            <p className="text-[11px] text-gray-500 font-mono mt-0.5">
+            <p className="text-xs text-gray-500 font-mono mt-0.5">
               {receipt.invoiceNo} &bull; {receipt.customerName}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
+            aria-label="Tutup"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
@@ -52,16 +53,16 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-md transition-colors cursor-pointer text-center min-h-[40px]"
+            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs text-center"
           >
             Tutup
           </button>
           <button
             type="button"
             onClick={onPrint}
-            className="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-md transition-colors flex items-center justify-center gap-2 cursor-pointer min-h-[40px] shadow-none"
+            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
           >
-            <Printer size={15} />
+            <Printer size={16} />
             Cetak Nota Buyback
           </button>
         </div>

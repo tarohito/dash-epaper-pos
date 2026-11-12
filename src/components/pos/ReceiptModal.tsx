@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, X, Printer } from 'lucide-react';
+import { X, Printer } from 'lucide-react';
 import { Transaction } from '../../types';
 import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
 
@@ -24,24 +24,20 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-lg border border-gray-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[94vh]">
         {/* Modal Top Bar */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-emerald-50/50">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 bg-emerald-500 text-white rounded-md">
-              <CheckCircle2 size={18} />
-            </span>
-            <div>
-              <h3 className="font-extrabold text-gray-900 text-sm">Nota Resmi Perhiasan & Logam Mulia</h3>
-              <p className="text-[11px] text-gray-500">
-                Surat bukti kepemilikan emas resmi dengan watermark pengaman
-              </p>
-            </div>
+        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
+          <div>
+            <h3 className="font-bold text-gray-900 text-base sm:text-lg leading-tight">Nota Resmi Penjualan Emas</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Surat bukti transaksi perhiasan dan logam mulia resmi
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
+            aria-label="Tutup"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
@@ -53,14 +49,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <div className="p-3.5 sm:p-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
           <button
             type="button"
             onClick={() => {
               onClose();
               onViewDailyTransactions();
             }}
-            className="px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer text-center min-h-[40px]"
+            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs text-center"
           >
             Lihat Transaksi Harian
           </button>
@@ -68,14 +64,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-md transition-colors cursor-pointer text-center min-h-[40px]"
+              className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs text-center"
             >
               Transaksi Baru
             </button>
             <button
               type="button"
               onClick={onPrint}
-              className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-extrabold text-xs rounded-md transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+              className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
             >
               <Printer size={16} />
               Cetak Nota Emas (Print)

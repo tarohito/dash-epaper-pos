@@ -44,11 +44,11 @@ export const CartPanel: React.FC<CartPanelProps> = ({
               </svg>
             </button>
           )}
-          <h2 className="font-bold text-gray-800 text-sm">
+          <h2 className="font-bold text-gray-900 text-sm sm:text-base">
             Keranjang Pesanan
           </h2>
         </div>
-        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[11px] font-bold rounded">
+        <span className="px-2.5 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded">
           {totalQty} Item
         </span>
       </div>
@@ -71,11 +71,11 @@ export const CartPanel: React.FC<CartPanelProps> = ({
                   <Gem size={20} className="text-gray-400" />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <div className="text-[10px] font-bold text-gray-400 truncate mb-0.5">
+                  <div className="text-xs font-mono font-medium text-gray-500 truncate mb-0.5">
                     {item.sku} &bull; {item.berat.toFixed(2)}g
                   </div>
-                  <div className="text-xs font-semibold text-gray-800 truncate mb-1">{item.name}</div>
-                  <div className="text-sm font-extrabold text-orange-600">{formatIDR(item.harga)}</div>
+                  <div className="text-sm font-semibold text-gray-900 truncate mb-1">{item.name}</div>
+                  <div className="text-sm font-bold font-mono text-orange-600">{formatIDR(item.harga)}</div>
                 </div>
                 <div className="flex flex-col items-end justify-between">
                   <Tooltip content="Hapus" side="left" sideOffset={6}>
@@ -105,7 +105,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
                         <Minus size={13} />
                       </button>
                     </Tooltip>
-                    <span className="text-xs font-bold w-6 text-center tabular-nums">{item.qty}</span>
+                    <span className="text-sm font-bold font-mono w-6 text-center tabular-nums">{item.qty}</span>
                     <Tooltip content="Tambah" side="top" sideOffset={4}>
                       <button
                         type="button"
@@ -130,24 +130,24 @@ export const CartPanel: React.FC<CartPanelProps> = ({
       {/* Cart Totals */}
       <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-100 shrink-0">
         <div className="space-y-1 sm:space-y-1.5 mb-2.5 sm:mb-3">
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-500 font-medium">Subtotal</span>
-            <span className="text-gray-800 font-bold tabular-nums">{formatIDR(subtotal)}</span>
+          <div className="flex justify-between text-xs sm:text-sm">
+            <span className="text-gray-600 font-medium">Subtotal</span>
+            <span className="text-gray-900 font-semibold font-mono tabular-nums">{formatIDR(subtotal)}</span>
           </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-500 font-medium">PPN (11%)</span>
-            <span className="text-gray-800 font-bold tabular-nums">{formatIDR(tax)}</span>
+          <div className="flex justify-between text-xs sm:text-sm">
+            <span className="text-gray-600 font-medium">PPN (11%)</span>
+            <span className="text-gray-900 font-semibold font-mono tabular-nums">{formatIDR(tax)}</span>
           </div>
           <div className="pt-1.5 sm:pt-2 border-t border-gray-200 flex justify-between items-center">
-            <span className="text-gray-800 font-bold text-xs sm:text-sm">Total Tagihan</span>
-            <span className="text-base sm:text-lg font-black text-orange-600 tabular-nums">{formatIDR(grandTotal)}</span>
+            <span className="text-gray-900 font-bold text-sm sm:text-base">Total Tagihan</span>
+            <span className="text-lg sm:text-xl font-bold font-mono text-orange-600 tabular-nums">{formatIDR(grandTotal)}</span>
           </div>
         </div>
         <button
           type="button"
           onClick={onOpenPaymentModal}
           disabled={cart.length === 0}
-          className="w-full py-3 sm:py-3.5 min-h-[44px] sm:min-h-[48px] bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-md transition-all flex justify-center items-center cursor-pointer disabled:cursor-not-allowed text-xs sm:text-sm active:scale-[0.99] -600/10"
+          className="w-full h-11 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-lg transition-all inline-flex justify-center items-center cursor-pointer disabled:cursor-not-allowed text-sm active:scale-[0.99] shadow-xs"
         >
           Proses Pembayaran ({totalQty} Item)
         </button>

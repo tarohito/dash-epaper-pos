@@ -122,25 +122,20 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="bg-white rounded-lg border border-gray-200 w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header: Clean & Informative */}
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/70">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-md bg-orange-500 text-white flex items-center justify-center shrink-0">
-              <Barcode size={20} strokeWidth={2.2} />
+        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-none">
+                Scan Barcode Produk
+              </h3>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Scanner Siap
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-none">
-                  Scan Barcode Produk
-                </h3>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Scanner Siap
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-500 mt-1">
-                Arahkan barcode scanner fisik atau ketik SKU perhiasan
-              </p>
-            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Arahkan scanner fisik atau ketik kode barcode perhiasan
+            </p>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -230,7 +225,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-48 h-24 border-2 border-orange-500 rounded-md bg-orange-500/10 flex items-center justify-center">
-                  <p className="text-[10px] text-white font-semibold bg-black/60 px-2 py-0.5 rounded">
+                  <p className="text-xs text-white font-medium bg-black/60 px-2.5 py-1 rounded">
                     Posisikan barcode di sini
                   </p>
                 </div>
@@ -246,22 +241,22 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   <CheckCircle2 size={16} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-emerald-900 truncate">
+                  <p className="text-xs sm:text-sm font-semibold text-emerald-900 truncate">
                     {lastScannedProduct.name}
                   </p>
-                  <p className="text-[10px] text-emerald-700">
+                  <p className="text-xs text-emerald-700 font-mono">
                     SKU: {lastScannedProduct.sku} • {formatIDR(lastScannedProduct.harga)}
                   </p>
                 </div>
               </div>
-              <span className="text-[11px] font-black text-emerald-700 bg-white px-2 py-1 rounded border border-emerald-200 shrink-0">
+              <span className="text-xs font-semibold text-emerald-700 bg-white px-2.5 py-1 rounded border border-emerald-200 shrink-0">
                 +1 Masuk Keranjang
               </span>
             </div>
           )}
 
           {scanStatus === 'not-found' && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2.5 text-red-800 text-xs animate-in fade-in duration-150">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2.5 text-red-800 text-xs sm:text-sm animate-in fade-in duration-150">
               <AlertCircle size={16} className="text-red-600 shrink-0" />
               <span>SKU barcode tidak ditemukan dalam katalog perhiasan.</span>
             </div>
@@ -277,13 +272,13 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   className="w-8 h-8 rounded object-cover border border-gray-200 shrink-0"
                 />
                 <div className="min-w-0">
-                  <p className="text-[10px] text-gray-400 font-semibold uppercase">Scan Terakhir</p>
-                  <p className="text-xs font-bold text-gray-800 truncate">
+                  <p className="text-xs text-gray-400 font-medium uppercase">Scan Terakhir</p>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-800 truncate">
                     {lastScannedProduct.name}
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-extrabold text-orange-600 shrink-0">
+              <span className="text-xs sm:text-sm font-bold font-mono text-orange-600 shrink-0">
                 {formatIDR(lastScannedProduct.harga)}
               </span>
             </div>
@@ -292,11 +287,11 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           {/* Quick SKU Test Chips (Simpel & Rapi) */}
           <div className="pt-2 border-t border-gray-100">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles size={12} className="text-amber-500" />
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles size={13} className="text-amber-500" />
                 Klik Cepat untuk Simulasi Scan:
               </span>
-              <span className="text-[10px] text-gray-400 font-medium">
+              <span className="text-xs text-gray-400 font-medium font-mono">
                 {products.length} SKU tersedia
               </span>
             </div>
@@ -310,14 +305,14 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   className="p-2 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-300 rounded text-left transition-colors flex items-center justify-between gap-2 cursor-pointer group"
                 >
                   <div className="min-w-0 flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold text-orange-600 bg-orange-100/70 px-1 py-0.5 rounded">
+                    <span className="text-xs font-mono font-semibold text-orange-600 bg-orange-100/70 px-1.5 py-0.5 rounded">
                       {p.sku}
                     </span>
                     <span className="text-xs font-semibold text-gray-800 truncate group-hover:text-orange-600">
                       {p.name}
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold text-gray-500 shrink-0">
+                  <span className="text-xs font-semibold font-mono text-gray-500 shrink-0">
                     {p.berat.toFixed(2)}g
                   </span>
                 </button>
@@ -328,17 +323,17 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
         {/* Modal Footer: Summary & Done */}
         <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
-          <div className="text-xs text-gray-600">
+          <div className="text-xs sm:text-sm text-gray-600">
             Keranjang saat ini:{' '}
-            <span className="font-extrabold text-orange-600">{totalCartQty} item</span>
+            <span className="font-bold text-orange-600 font-mono">{totalCartQty} item</span>
             {scanCount > 0 && (
-              <span className="text-gray-400 text-[11px] ml-1.5">({scanCount}x di-scan sesi ini)</span>
+              <span className="text-gray-400 text-xs ml-1.5 font-mono">({scanCount}x di-scan sesi ini)</span>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white font-bold text-xs rounded-md transition-colors cursor-pointer"
+            className="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer"
           >
             Selesai Scan
           </button>

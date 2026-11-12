@@ -1,17 +1,5 @@
 import React, { useState } from 'react';
-import {
-  ReceiptText,
-  ShoppingCart,
-  DollarSign,
-  Gem,
-  Wallet,
-  Search,
-  Banknote,
-  CreditCard,
-  Building2,
-  QrCode,
-  Printer,
-} from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Transaction } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import Tooltip from '../Tooltip';
@@ -30,10 +18,6 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
   const [txFilterMethod, setTxFilterMethod] = useState<string>('semua');
   const [txSearchQuery, setTxSearchQuery] = useState<string>('');
 
-  const totalOmzet = transactions.reduce((acc, tx) => acc + tx.grandTotal, 0);
-  const totalBerat = transactions.reduce((acc, tx) => acc + tx.totalBerat, 0);
-  const totalQty = transactions.reduce((acc, tx) => acc + tx.totalQty, 0);
-
   const filtered = transactions.filter(tx => {
     const matchesSearch =
       tx.invoiceNo.toLowerCase().includes(txSearchQuery.toLowerCase()) ||
@@ -47,277 +31,274 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
     return matchesSearch && matchesMethod;
   });
 
+  const currentDateStr = new Date().toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
   return (
-    <div className="space-y-6">
-      {/* Top Bar Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-lg border border-gray-200">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-2 bg-orange-100 text-orange-600 rounded-lg">
-              <ReceiptText size={20} />
-            </span>
-            <h1 className="text-xl font-bold text-gray-900">Rekap Transaksi</h1>
-          </div>
-          <p className="text-xs text-gray-500">
-            Histori seluruh transaksi kasir, rincian pembayaran, dan cetak ulang bukti nota struk perhiasan
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onNavigateToPos}
-            className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-2 cursor-pointer"
-          >
-            <ShoppingCart size={15} />
-            Buka Kasir POS (Penjualan)
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Metric Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white p-5 rounded-lg border border-gray-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-            <DollarSign size={24} />
-          </div>
+    <div className="space-y-5 pb-6">
+      {/* 1. KESATUAN 1 CARD BESAR: Persis Beranda (Tampilan Judul dan Tabel Saja) */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+        {/* Header Bersih Beranda: Judul + Tanggal + Subtitle + CTA Ke Kasir POS */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
           <div>
-            <p className="text-xs text-gray-400 font-medium">Total Omzet Penjualan</p>
-            <p className="text-xl font-extrabold text-gray-900 mt-0.5">{formatIDR(totalOmzet)}</p>
-            <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">
-              {transactions.length} transaksi sukses tercatat
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-lg border border-gray-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 border border-orange-100">
-            <Gem size={24} />
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 font-medium">Total Gramasi Emas Terjual</p>
-            <p className="text-xl font-extrabold text-gray-900 mt-0.5">{totalBerat.toFixed(2)} gram</p>
-            <p className="text-[11px] text-orange-600 font-semibold mt-0.5">
-              {totalQty} perhiasan berpindah tangan
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-lg border border-gray-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-            <Wallet size={24} />
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 font-medium">Metode Pembayaran</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-bold text-gray-800">Multi-Channel:</span>
-              <span className="text-[11px] bg-gray-100 px-2 py-0.5 rounded-md font-medium text-gray-600">
-                Cash, EDC, Trf, QRIS
+            <div className="flex items-center gap-2.5">
+              <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
+                Rekap Transaksi Penjualan
+              </h3>
+              <span className="inline-flex items-center text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded">
+                {currentDateStr}
               </span>
             </div>
-            <p className="text-[11px] text-gray-400 mt-1">Real-time settlement</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+              Histori seluruh transaksi kasir, rincian pembayaran, dan cetak ulang bukti nota struk perhiasan.
+            </p>
           </div>
-        </div>
-      </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
-        <div className="flex-1 w-full relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
-          <input
-            type="text"
-            placeholder="Cari transaksi berdasarkan No. Faktur, nama pelanggan, atau SKU..."
-            value={txSearchQuery}
-            onChange={e => setTxSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white transition-all font-medium"
-          />
-        </div>
-        {/* Method Filter Buttons */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto shrink-0 pb-1 md:pb-0">
-          {[
-            { id: 'semua', label: 'Semua Metode' },
-            { id: 'cash', label: 'Tunai' },
-            { id: 'debit', label: 'Debit EDC' },
-            { id: 'transfer', label: 'Transfer' },
-            { id: 'qris', label: 'QRIS' },
-          ].map(tab => (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <button
-              key={tab.id}
               type="button"
-              onClick={() => setTxFilterMethod(tab.id)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer whitespace-nowrap min-h-[36px] ${
-                txFilterMethod === tab.id ? 'bg-orange-500 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              onClick={onNavigateToPos}
+              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
             >
-              {tab.label}
+              Buka Kasir POS
             </button>
-          ))}
+          </div>
         </div>
-      </div>
 
-      {/* MOBILE LIST CARDS VIEW (md:hidden) */}
-      <div className="md:hidden space-y-3">
-        {filtered.map(tx => (
-          <div key={tx.id} className="bg-white p-4 rounded-lg border border-gray-200 space-y-3 shadow-xs">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
-              <div>
-                <span className="font-mono font-bold text-gray-900 text-xs">{tx.invoiceNo}</span>
-                <p className="text-[10px] text-gray-400 mt-0.5">{tx.dateStr} &bull; {tx.timeStr}</p>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-extrabold text-orange-600 tabular-nums">{formatIDR(tx.grandTotal)}</span>
-                <p className="text-[10px] text-gray-400">Termasuk PPN</p>
-              </div>
+        {/* Toolbar Pencarian & Filter Metode Pembayaran */}
+        <div className="pt-3.5 pb-2">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+            {/* Input Pencarian */}
+            <div className="relative flex-1 w-full">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cari no. faktur, nama pelanggan, atau perhiasan/SKU..."
+                value={txSearchQuery}
+                onChange={e => setTxSearchQuery(e.target.value)}
+                className="w-full h-9 pl-9 pr-3 text-xs sm:text-sm bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none leading-normal"
+              />
             </div>
 
-            <div className="text-xs space-y-1">
-              <div className="flex justify-between text-gray-600">
-                <span className="font-medium text-gray-400">Pelanggan:</span>
-                <span className="font-semibold text-gray-800">{tx.customerName}</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span className="font-medium text-gray-400">Kasir:</span>
-                <span className="font-medium text-gray-700">{tx.cashier}</span>
-              </div>
-              <div className="pt-1 text-gray-800 font-medium">
-                <span className="text-[11px] text-gray-400 block font-normal">Item:</span>
-                <span className="text-xs">{tx.items.map(it => `${it.name} (${it.qty}x)`).join(', ')}</span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-              <div>
-                {tx.paymentMethod === 'cash' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                    <Banknote size={12} />
-                    Tunai
-                  </span>
-                )}
-                {tx.paymentMethod === 'debit' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
-                    <CreditCard size={12} />
-                    Debit {tx.paymentDetails.debitBank}
-                  </span>
-                )}
-                {tx.paymentMethod === 'transfer' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
-                    <Building2 size={12} />
-                    Trf {tx.paymentDetails.transferBank}
-                  </span>
-                )}
-                {tx.paymentMethod === 'qris' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
-                    <QrCode size={12} />
-                    QRIS
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => onSelectReceipt(tx)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 font-bold rounded-md text-xs transition-colors cursor-pointer min-h-[36px]"
-              >
-                <Printer size={13} />
-                Cetak Struk
-              </button>
+            {/* Segmented Filter Metode Pembayaran */}
+            <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center overflow-x-auto max-w-full">
+              {[
+                { id: 'semua', label: 'Semua' },
+                { id: 'cash', label: 'Tunai' },
+                { id: 'debit', label: 'Debit EDC' },
+                { id: 'transfer', label: 'Transfer Bank' },
+                { id: 'qris', label: 'QRIS' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setTxFilterMethod(tab.id)}
+                  className={`h-full px-3 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center whitespace-nowrap ${
+                    txFilterMethod === tab.id
+                      ? 'bg-orange-500 text-white shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
-        ))}
+        </div>
 
-        {filtered.length === 0 && (
-          <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-400 text-xs">
-            Tidak ada riwayat transaksi yang cocok dengan filter.
-          </div>
-        )}
-      </div>
+        {/* ========================================================= */}
+        {/* TABEL TRANSAKSI                                           */}
+        {/* ========================================================= */}
+        <div className="mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-2xs">
+          {/* MOBILE LIST CARDS VIEW (md:hidden) */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {filtered.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 text-xs sm:text-sm">
+                Tidak ada riwayat transaksi yang cocok dengan filter pencarian.
+              </div>
+            ) : (
+              filtered.map(tx => (
+                <div key={tx.id} className="p-4 space-y-3 hover:bg-orange-50/20 transition-colors">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <div>
+                      <span className="font-mono font-bold text-gray-900 text-xs sm:text-sm">{tx.invoiceNo}</span>
+                      <p className="text-xs text-gray-500 font-mono mt-0.5">
+                        {tx.dateStr} &bull; {tx.timeStr}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-gray-900 font-mono tabular-nums">
+                        {formatIDR(tx.grandTotal)}
+                      </span>
+                      <p className="text-xs text-gray-400">Termasuk PPN</p>
+                    </div>
+                  </div>
 
-      {/* DESKTOP & TABLET TRANSACTIONS TABLE (hidden md:block) */}
-      <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase font-semibold tracking-wider text-[11px]">
-              <tr>
-                <th className="py-3.5 px-5">No. Faktur / Waktu</th>
-                <th className="py-3.5 px-4">Pelanggan & Kasir</th>
-                <th className="py-3.5 px-4">Item & Rincian Gramasi</th>
-                <th className="py-3.5 px-4">Metode Bayar</th>
-                <th className="py-3.5 px-4 text-right">Total Transaksi</th>
-                <th className="py-3.5 px-5 text-center">Aksi Nota</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 font-medium">
-              {filtered.map(tx => (
-                <tr key={tx.id} className="hover:bg-orange-50/30 transition-colors">
-                  <td className="py-4 px-5">
-                    <div className="font-mono font-bold text-gray-900">{tx.invoiceNo}</div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">
-                      {tx.dateStr} &bull; {tx.timeStr}
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between text-gray-600">
+                      <span className="text-gray-400">Pelanggan:</span>
+                      <span className="font-semibold text-gray-800">{tx.customerName}</span>
                     </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="font-semibold text-gray-800">{tx.customerName}</div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">{tx.cashier}</div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="text-gray-800 font-medium">
-                      {tx.items.map(it => `${it.name} (${it.qty}x)`).join(', ')}
+                    <div className="flex justify-between text-gray-600">
+                      <span className="text-gray-400">Kasir:</span>
+                      <span className="font-medium text-gray-700">{tx.cashier}</span>
                     </div>
-                    <div className="text-[11px] text-orange-600 font-bold mt-0.5">
+                    <div className="pt-1 text-gray-800">
+                      <span className="text-gray-400 block text-xs">Item:</span>
+                      <span className="font-medium">
+                        {tx.items.map(it => `${it.name} (${it.qty}x)`).join(', ')}
+                      </span>
+                    </div>
+                    <div className="text-xs text-orange-600 font-bold font-mono">
                       Total Berat: {tx.totalBerat.toFixed(2)}g ({tx.totalQty} pcs)
                     </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    {tx.paymentMethod === 'cash' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                        <Banknote size={13} />
-                        Tunai
-                      </span>
-                    )}
-                    {tx.paymentMethod === 'debit' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
-                        <CreditCard size={13} />
-                        Debit {tx.paymentDetails.debitBank}
-                      </span>
-                    )}
-                    {tx.paymentMethod === 'transfer' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
-                        <Building2 size={13} />
-                        Trf {tx.paymentDetails.transferBank}
-                      </span>
-                    )}
-                    {tx.paymentMethod === 'qris' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
-                        <QrCode size={13} />
-                        QRIS GPN
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="font-extrabold text-sm text-gray-900 tabular-nums">{formatIDR(tx.grandTotal)}</div>
-                    <div className="text-[10px] text-gray-400">Termasuk PPN 11%</div>
-                  </td>
-                  <td className="py-4 px-5 text-center">
-                    <Tooltip content="Cetak Ulang Struk Nota" side="left" sideOffset={6}>
-                      <button
-                        type="button"
-                        onClick={() => onSelectReceipt(tx)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-orange-500 hover:text-white text-gray-700 font-semibold rounded-md text-xs transition-colors cursor-pointer min-h-[36px]"
-                      >
-                        <Printer size={13} />
-                        Cetak Struk
-                      </button>
-                    </Tooltip>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <div>
+                      {tx.paymentMethod === 'cash' && (
+                        <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded capitalize bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Tunai
+                        </span>
+                      )}
+                      {tx.paymentMethod === 'debit' && (
+                        <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded capitalize bg-blue-50 text-blue-700 border border-blue-200">
+                          Debit {tx.paymentDetails.debitBank || 'EDC'}
+                        </span>
+                      )}
+                      {tx.paymentMethod === 'transfer' && (
+                        <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded capitalize bg-purple-50 text-purple-700 border border-purple-200">
+                          Trf {tx.paymentDetails.transferBank || 'Bank'}
+                        </span>
+                      )}
+                      {tx.paymentMethod === 'qris' && (
+                        <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded capitalize bg-teal-50 text-teal-700 border border-teal-200">
+                          QRIS GPN
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onSelectReceipt(tx)}
+                      className="inline-flex items-center justify-center h-8 px-2.5 text-xs font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-orange-500 border border-orange-200 hover:border-orange-500 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      Cetak Nota
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* DESKTOP TABLE VIEW (hidden md:block) */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm">
+              <thead className="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase font-semibold tracking-wider text-xs">
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-400">
-                    Tidak ada riwayat transaksi yang cocok dengan filter pencarian.
-                  </td>
+                  <th className="py-3 px-4">No. Faktur & Waktu</th>
+                  <th className="py-3 px-4">Pelanggan & Kasir</th>
+                  <th className="py-3 px-4">Item & Rincian Gramasi</th>
+                  <th className="py-3 px-3 text-center">Metode Bayar</th>
+                  <th className="py-3 px-4 text-right">Total Transaksi</th>
+                  <th className="py-3 px-3.5 text-center">Aksi</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100 font-medium">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-gray-500 text-xs sm:text-sm">
+                      Tidak ada riwayat transaksi yang cocok dengan filter pencarian.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map(tx => (
+                    <tr key={tx.id} className="hover:bg-orange-50/30 transition-colors">
+                      {/* No. Faktur & Waktu */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="font-mono font-bold text-gray-900 text-xs sm:text-sm">{tx.invoiceNo}</div>
+                        <div className="text-xs text-gray-500 font-mono mt-0.5">
+                          {tx.dateStr} &bull; {tx.timeStr}
+                        </div>
+                      </td>
+
+                      {/* Pelanggan & Kasir */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="font-semibold text-gray-800 text-xs sm:text-sm">{tx.customerName}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">Kasir: {tx.cashier}</div>
+                      </td>
+
+                      {/* Item & Gramasi */}
+                      <td className="py-3 px-4">
+                        <div className="text-gray-800 font-medium text-xs sm:text-sm line-clamp-1 max-w-[280px]">
+                          {tx.items.map(it => `${it.name} (${it.qty}x)`).join(', ')}
+                        </div>
+                        <div className="text-xs text-orange-600 font-bold font-mono mt-0.5">
+                          {tx.totalBerat.toFixed(2)}g ({tx.totalQty} pcs)
+                        </div>
+                      </td>
+
+                      {/* Metode Bayar (Badge Tanpa Icon) */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        {tx.paymentMethod === 'cash' && (
+                          <span className="inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded capitalize bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Tunai
+                          </span>
+                        )}
+                        {tx.paymentMethod === 'debit' && (
+                          <span className="inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded capitalize bg-blue-50 text-blue-700 border border-blue-200">
+                            Debit {tx.paymentDetails.debitBank || 'EDC'}
+                          </span>
+                        )}
+                        {tx.paymentMethod === 'transfer' && (
+                          <span className="inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded capitalize bg-purple-50 text-purple-700 border border-purple-200">
+                            Trf {tx.paymentDetails.transferBank || 'Bank'}
+                          </span>
+                        )}
+                        {tx.paymentMethod === 'qris' && (
+                          <span className="inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded capitalize bg-teal-50 text-teal-700 border border-teal-200">
+                            QRIS GPN
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Total Tagihan */}
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="font-bold text-sm sm:text-base text-gray-900 font-mono tabular-nums">
+                          {formatIDR(tx.grandTotal)}
+                        </div>
+                        <div className="text-xs text-gray-400">Termasuk PPN 11%</div>
+                      </td>
+
+                      {/* Aksi Print Nota (Icon Saja dengan Tooltip) */}
+                      <td className="py-3 px-3.5 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => onSelectReceipt(tx)}
+                          className="inline-flex items-center justify-center h-8 px-2.5 text-xs font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-orange-500 border border-orange-200 hover:border-orange-500 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
+                        >
+                          Cetak Nota
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer Info Count & Total */}
+          <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <span>
+              Menampilkan <strong>{filtered.length}</strong> dari total{' '}
+              <strong>{transactions.length}</strong> transaksi penjualan
+            </span>
+            <span className="hidden sm:inline text-gray-400">
+              Arsip transaksi terenkripsi &amp; terintegrasi POS
+            </span>
+          </div>
         </div>
       </div>
     </div>

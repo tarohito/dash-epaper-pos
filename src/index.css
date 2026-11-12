@@ -1,9 +1,14 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
 @layer base {
   :root {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    letter-spacing: -0.011em;
+    font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: normal;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -17,11 +22,14 @@
   }
 
   body {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.875rem; /* 14px enterprise default */
+    line-height: 1.5;
   }
 
   code, kbd, samp, pre, .font-mono {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: 'Roboto Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
   }
 
   button:focus:not(:focus-visible) {
@@ -33,6 +41,17 @@
   *, *::before, *::after {
     box-shadow: none !important;
     text-shadow: none !important;
+  }
+
+  /* Remove default number input spin arrows (up/down) across all browsers */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
   }
 }
 
@@ -46,12 +65,12 @@
 }
 
 .tippy-box {
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.4;
   font-weight: 500;
   border-radius: 6px;
   background-color: #1f2937;
   color: #f9fafb;
-  
 }
 
 .tippy-box[data-placement^='top'] > .tippy-arrow::before {

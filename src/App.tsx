@@ -641,6 +641,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Bottom Navigation for Tablet & Mobile (lg:hidden) - menus moved from top to bottom */}
+        {/* Bottom Navigation for Tablet & Mobile (lg:hidden) - menus moved from top to bottom */}
         <nav className="lg:hidden shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1.5 sm:px-3 py-1 flex items-center justify-around z-30 min-h-[56px]">
           <button
             type="button"
@@ -648,18 +649,18 @@ const App: React.FC = () => {
             className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
               activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS'
                 ? 'text-orange-600 font-bold bg-orange-50/80'
-                : 'text-gray-500 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             <div className="relative">
               <ShoppingCart size={19} className={activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS' ? 'text-orange-600' : 'text-gray-500'} />
               {cart.reduce((a, b) => a + b.qty, 0) > 0 && (
-                <span className="absolute -top-1 -right-2.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-2.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center font-mono">
                   {cart.reduce((a, b) => a + b.qty, 0)}
                 </span>
               )}
             </div>
-            <span className="text-[10px] mt-0.5 leading-none">Kasir</span>
+            <span className="text-xs font-semibold mt-1 leading-none">Kasir</span>
           </button>
 
           <button
@@ -668,11 +669,11 @@ const App: React.FC = () => {
             className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
               activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)'
                 ? 'text-orange-600 font-bold bg-orange-50/80'
-                : 'text-gray-500 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             <Scale size={19} className={activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? 'text-orange-600' : 'text-gray-500'} />
-            <span className="text-[10px] mt-0.5 leading-none">Buyback</span>
+            <span className="text-xs font-semibold mt-1 leading-none">Buyback</span>
           </button>
 
           <button
@@ -681,11 +682,11 @@ const App: React.FC = () => {
             className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
               activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian'
                 ? 'text-orange-600 font-bold bg-orange-50/80'
-                : 'text-gray-500 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             <ReceiptText size={19} className={activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian' ? 'text-orange-600' : 'text-gray-500'} />
-            <span className="text-[10px] mt-0.5 leading-none">Transaksi</span>
+            <span className="text-xs font-semibold mt-1 leading-none">Transaksi</span>
           </button>
 
           <button
@@ -694,20 +695,20 @@ const App: React.FC = () => {
             className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
               activeMenu === 'Daftar Barang'
                 ? 'text-orange-600 font-bold bg-orange-50/80'
-                : 'text-gray-500 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             <Gem size={19} className={activeMenu === 'Daftar Barang' ? 'text-orange-600' : 'text-gray-500'} />
-            <span className="text-[10px] mt-0.5 leading-none">Barang</span>
+            <span className="text-xs font-semibold mt-1 leading-none">Barang</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsSidebarCollapsed(false)}
-            className="flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all text-gray-500 hover:text-gray-900 min-w-[56px] min-h-[46px] cursor-pointer active:scale-95"
+            className="flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all text-gray-600 hover:text-gray-900 min-w-[56px] min-h-[46px] cursor-pointer active:scale-95"
           >
             <Menu size={19} />
-            <span className="text-[10px] mt-0.5 leading-none">Menu</span>
+            <span className="text-xs font-semibold mt-1 leading-none">Menu</span>
           </button>
         </nav>
 

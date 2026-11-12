@@ -96,10 +96,10 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* 2. ACTIVE PAGE INDICATOR (Center - Horizontally Centered across header) */}
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center text-center pointer-events-none z-10">
-        <div className="pointer-events-auto flex items-center justify-center gap-1.5 sm:gap-2 text-xs">
+        <div className="pointer-events-auto flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
           <span className="text-gray-400 font-medium hidden md:inline">Menu</span>
           <span className="text-gray-300 hidden md:inline">/</span>
-          <span className="text-orange-600 font-bold bg-orange-50/90 px-2.5 py-1 rounded-md border border-orange-200/60 text-xs whitespace-nowrap shadow-none">
+          <span className="text-orange-600 font-bold bg-orange-50/90 px-2.5 py-1 rounded-md border border-orange-200/60 text-xs sm:text-sm whitespace-nowrap shadow-none">
             {activeMenu}
           </span>
         </div>
@@ -127,10 +127,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onToggleAdminMenu}
-            className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs font-semibold text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-md transition-colors cursor-pointer p-1.5 sm:p-2 min-h-[40px] outline-none focus:outline-none"
+            className="flex items-center justify-center gap-1.5 sm:gap-2 text-sm font-semibold text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-md transition-colors cursor-pointer p-1.5 sm:p-2 min-h-[40px] outline-none focus:outline-none"
             aria-expanded={isAdminMenuOpen}
           >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white flex items-center justify-center font-bold text-xs">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white flex items-center justify-center font-bold text-xs sm:text-sm">
               AD
             </div>
             <span className="hidden sm:inline font-bold">Admin</span>
@@ -151,11 +151,11 @@ export const Header: React.FC<HeaderProps> = ({
                     AD
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-gray-800 truncate">Administrator Kasir</p>
-                    <p className="text-[11px] text-gray-400 truncate">Shift 1 (08:00 - 16:00)</p>
+                    <p className="text-sm font-bold text-gray-800 truncate">Administrator Kasir</p>
+                    <p className="text-xs text-gray-500 truncate">Shift 1 (08:00 - 16:00)</p>
                   </div>
                 </div>
-                <div className="mt-2.5 flex items-center justify-between text-[11px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md font-medium">
+                <div className="mt-2.5 flex items-center justify-between text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md font-medium">
                   <span>Status Shift:</span>
                   <span className="font-bold flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -172,7 +172,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onSelectMenu('Pengaturan');
                     onCloseAdminMenu();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
                 >
                   Pengaturan Toko
                 </button>
@@ -182,7 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onSelectMenu('Rekap Shift');
                     onCloseAdminMenu();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
                 >
                   Laporan Tutup Kasir
                 </button>

@@ -48,7 +48,7 @@ export const PromoCard: React.FC<PromoCardProps> = ({
         </div>
 
         {isActiveFilter && (
-          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-black/85 text-yellow-300 rounded uppercase tracking-wider">
+          <span className="text-xs font-semibold px-2 py-0.5 bg-black/85 text-yellow-300 rounded uppercase tracking-wider">
             Filter Aktif
           </span>
         )}
@@ -56,10 +56,10 @@ export const PromoCard: React.FC<PromoCardProps> = ({
 
       {/* Bottom Left: Title & Subtext exactly as in reference */}
       <div className="relative z-10 mt-auto text-left pt-6">
-        <h3 className="text-base sm:text-lg font-black text-[#222222] tracking-tight leading-none mb-1.5">
+        <h3 className="text-base sm:text-lg font-bold text-[#222222] tracking-tight leading-none mb-1.5">
           Promo
         </h3>
-        <p className="text-xs sm:text-[13px] font-bold text-[#444444] leading-snug">
+        <p className="text-xs sm:text-sm font-semibold text-[#444444] leading-snug">
           {promoCount} promo tersedia
           <br />
           untuk pelanggan

@@ -75,30 +75,30 @@ export const PosView: React.FC<PosViewProps> = ({
         <button
           type="button"
           onClick={() => setMobileTab('catalog')}
-          className={`flex-1 py-1.5 sm:py-2 text-xs font-bold rounded transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px] ${
+          className={`flex-1 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px] ${
             mobileTab ==='catalog'
-              ?'bg-white text-gray-900'
+              ?'bg-white text-gray-900 shadow-xs'
               :'text-gray-600 hover:text-gray-900'
           }`}
         >
           <span>Katalog Produk</span>
-          <span className="text-[10px] px-1.5 py-0.2 bg-gray-100 rounded-full font-semibold">
+          <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full font-semibold">
             {filteredProducts.length}
           </span>
         </button>
         <button
           type="button"
           onClick={() => setMobileTab('cart')}
-          className={`flex-1 py-1.5 sm:py-2 text-xs font-bold rounded transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px] ${
+          className={`flex-1 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px] ${
             mobileTab ==='cart'
-              ?'bg-white text-gray-900'
+              ?'bg-white text-gray-900 shadow-xs'
               :'text-gray-600 hover:text-gray-900'
           }`}
         >
-          <ShoppingCart size={14} className={mobileTab ==='cart' ?'text-orange-500' :''} />
+          <ShoppingCart size={15} className={mobileTab ==='cart' ?'text-orange-500' :''} />
           <span>Keranjang</span>
           {totalCartQty > 0 && (
-            <span className="text-[10px] px-1.5 py-0.2 bg-orange-500 text-white rounded-full font-bold">
+            <span className="text-xs px-2 py-0.5 bg-orange-500 text-white rounded-full font-bold font-mono">
               {totalCartQty}
             </span>
           )}
@@ -118,32 +118,22 @@ export const PosView: React.FC<PosViewProps> = ({
             <button
               type="button"
               onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-              className={`px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-md border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 min-h-[38px] ${
+              className={`h-9 px-3 rounded-lg border text-xs sm:text-sm font-semibold inline-flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                 selectedCategory !== 'Semua'
                   ? 'bg-orange-50 border-orange-300 text-orange-600'
                   : 'bg-white border-gray-200 text-gray-700 hover:border-orange-400 hover:text-orange-600'
               }`}
               title="Filter Kategori Perhiasan"
             >
-              <Filter
-                size={15}
-                className={selectedCategory !== 'Semua' ? 'text-orange-600' : 'text-gray-500'}
-              />
               <span className="max-w-[70px] sm:max-w-[110px] truncate">
                 {selectedCategory === 'Semua' ? 'Kategori' : selectedCategory}
               </span>
-              <ChevronDown
-                size={13}
-                className={`text-gray-400 transition-transform duration-200 ${
-                  isCategoryDropdownOpen ? 'rotate-180 text-orange-600' : ''
-                }`}
-              />
             </button>
 
             {/* Dropdown Menu Kategori */}
             {isCategoryDropdownOpen && (
               <div className="absolute left-0 mt-1.5 w-48 bg-white rounded-lg border border-gray-200 py-1 z-40 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 flex items-center justify-between">
+                <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 flex items-center justify-between">
                   <span>Pilih Kategori</span>
                   {selectedCategory !== 'Semua' && (
                     <button
@@ -152,7 +142,7 @@ export const PosView: React.FC<PosViewProps> = ({
                         setSelectedCategory('Semua');
                         setIsCategoryDropdownOpen(false);
                       }}
-                      className="text-[10px] font-bold text-orange-600 hover:underline cursor-pointer"
+                      className="text-xs font-bold text-orange-600 hover:underline cursor-pointer"
                     >
                       Reset
                     </button>
@@ -174,7 +164,7 @@ export const PosView: React.FC<PosViewProps> = ({
                           setSelectedCategory(cat);
                           setIsCategoryDropdownOpen(false);
                         }}
-                        className={`w-full px-3 py-2 text-xs flex items-center justify-between text-left transition-colors cursor-pointer ${
+                        className={`w-full px-3 py-2 text-xs sm:text-sm flex items-center justify-between text-left transition-colors cursor-pointer ${
                           isSelected
                             ? 'bg-orange-50 text-orange-600 font-bold'
                             : 'text-gray-700 hover:bg-gray-50'
@@ -182,10 +172,10 @@ export const PosView: React.FC<PosViewProps> = ({
                       >
                         <span className="truncate">{cat === 'Semua' ? 'Semua Kategori' : cat}</span>
                         <span
-                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                          className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
                             isSelected
                               ? 'bg-orange-200/80 text-orange-800'
-                              : 'bg-gray-100 text-gray-500'
+                              : 'bg-gray-100 text-gray-600'
                           }`}
                         >
                           {count}
@@ -212,7 +202,7 @@ export const PosView: React.FC<PosViewProps> = ({
                   onAutoScanCode(searchQuery);
                 }
               }}
-              className="w-full pl-9 sm:pl-10 pr-8 py-2 sm:py-2.5 rounded-md border border-gray-200 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-xs font-medium bg-white"
+              className="h-9 w-full pl-9 sm:pl-10 pr-8 rounded-lg border border-gray-200 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-xs sm:text-sm font-medium bg-white"
             />
             {searchQuery && (
               <button
@@ -230,22 +220,21 @@ export const PosView: React.FC<PosViewProps> = ({
           <button
             type="button"
             onClick={onOpenScanModal}
-            className="px-2.5 sm:px-3.5 py-2 sm:py-2.5 bg-white border border-gray-200 hover:border-orange-500 hover:text-orange-600 rounded-md text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 min-h-[38px]"
+            className="h-9 px-3.5 bg-white border border-gray-200 hover:border-orange-500 hover:text-orange-600 rounded-lg text-gray-700 text-xs sm:text-sm font-semibold inline-flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs"
             title="Buka Scanner Barcode"
           >
-            <Barcode size={16} className="text-orange-500" />
             <span className="hidden sm:inline">Scan Barcode</span>
-            <span className="sm:hidden text-[11px]">Scan</span>
+            <span className="sm:hidden text-xs">Scan</span>
           </button>
         </div>
 
         {/* Active Filters Banner (Category & Promo) */}
         {(selectedCategory !== 'Semua' || isPromoOnlyFilter) && (
-          <div className="bg-orange-50/70 border-b border-orange-100 px-3 py-2 flex items-center justify-between text-xs text-orange-950 shrink-0 flex-wrap gap-2">
+          <div className="bg-orange-50/70 border-b border-orange-100 px-3 py-2 flex items-center justify-between text-xs sm:text-sm text-orange-950 shrink-0 flex-wrap gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-gray-500 font-medium">Filter Aktif:</span>
               {selectedCategory !== 'Semua' && (
-                <span className="inline-flex items-center gap-1 bg-white border border-orange-200 text-orange-700 px-2 py-0.5 rounded text-[11px] font-bold">
+                <span className="inline-flex items-center gap-1 bg-white border border-orange-200 text-orange-700 px-2 py-0.5 rounded text-xs font-semibold">
                   Kategori: {selectedCategory}
                   <button
                     type="button"
@@ -253,12 +242,12 @@ export const PosView: React.FC<PosViewProps> = ({
                     className="hover:text-red-500 ml-0.5 cursor-pointer"
                     title="Hapus filter kategori"
                   >
-                    <X size={11} />
+                    <X size={12} />
                   </button>
                 </span>
               )}
               {isPromoOnlyFilter && (
-                <span className="inline-flex items-center gap-1 bg-yellow-400 text-gray-950 px-2 py-0.5 rounded text-[11px] font-bold">
+                <span className="inline-flex items-center gap-1 bg-yellow-400 text-gray-950 px-2 py-0.5 rounded text-xs font-bold">
                   Khusus Promo ({promoCount} item)
                   <button
                     type="button"
@@ -266,11 +255,11 @@ export const PosView: React.FC<PosViewProps> = ({
                     className="hover:text-red-600 ml-0.5 cursor-pointer"
                     title="Hapus filter promo"
                   >
-                    <X size={11} />
+                    <X size={12} />
                   </button>
                 </span>
               )}
-              <span className="text-[11px] text-gray-400">
+              <span className="text-xs text-gray-500">
                 ({displayProducts.length} produk ditemukan)
               </span>
             </div>
@@ -281,7 +270,7 @@ export const PosView: React.FC<PosViewProps> = ({
                 setSelectedCategory('Semua');
                 setIsPromoOnlyFilter(false);
               }}
-              className="text-[11px] font-bold text-orange-600 hover:text-orange-800 hover:underline cursor-pointer"
+              className="text-xs font-semibold text-orange-600 hover:text-orange-800 hover:underline cursor-pointer"
             >
               Reset Semua Filter
             </button>
@@ -335,15 +324,15 @@ export const PosView: React.FC<PosViewProps> = ({
             className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white p-3 rounded-lg flex items-center justify-between active:scale-[0.99] transition-transform cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center font-bold text-xs">
+              <div className="w-8 h-8 rounded-md bg-white/20 flex items-center justify-center font-bold text-xs sm:text-sm font-mono">
                 {totalCartQty}
               </div>
               <div className="text-left">
-                <p className="text-[10px] text-orange-100 font-semibold leading-none">Total Tagihan ({totalCartQty} item)</p>
-                <p className="text-sm font-black tracking-tight">{formatIDR(grandTotal)}</p>
+                <p className="text-xs text-orange-100 font-semibold leading-none">Total Tagihan ({totalCartQty} item)</p>
+                <p className="text-base font-bold font-mono tracking-tight mt-0.5">{formatIDR(grandTotal)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-bold bg-white text-orange-600 px-3 py-1.5 rounded-md">
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-white text-orange-600 px-3 py-1.5 rounded-md">
               <span>Buka Keranjang</span>
               <ArrowRight size={14} />
             </div>

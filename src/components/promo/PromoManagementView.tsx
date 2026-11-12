@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
 import {
   BadgePercent,
-  Plus,
   Search,
   Calendar,
   CheckCircle2,
   XCircle,
-  Copy,
-  Check,
-  Edit2,
-  Trash2,
-  ArrowRight,
   Sparkles,
   Tag,
   Package,
@@ -87,20 +81,20 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
   return (
     <div className="space-y-5 pb-8">
       {/* Top Header */}
-      <div className="bg-white p-5 sm:p-6 rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="p-1.5 bg-yellow-100 text-yellow-800 rounded-md">
               <BadgePercent size={18} strokeWidth={2.4} />
             </span>
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Manajemen Promosi & Diskon
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
             Kelola & Atur Promo Toko
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Buat, aktifkan, dan atur besaran diskon perhiasan yang berlaku untuk kasir dan pelanggan
           </p>
         </div>
@@ -108,9 +102,8 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
         <button
           type="button"
           onClick={handleOpenAddModal}
-          className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shrink-0"
+          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer shrink-0 shadow-xs active:scale-[0.98]"
         >
-          <Plus size={16} />
           Buat Promo Baru
         </button>
       </div>
@@ -118,46 +111,46 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
       {/* KPI & Live Preview Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* Left: 3 Metric Cards */}
-        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+          <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between shadow-xs">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Promo Aktif
             </span>
             <div className="my-2">
-              <span className="text-lg sm:text-xl font-bold text-gray-900">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tracking-tight">
                 {activePromos.length}
               </span>
-              <span className="text-xs text-gray-500 ml-1.5">dari {promos.length} promo</span>
+              <span className="text-xs sm:text-sm text-gray-500 ml-1.5">dari {promos.length} promo</span>
             </div>
             <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
               <CheckCircle2 size={13} /> Sedang berlangsung
             </p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between shadow-xs">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Produk Terdampak
             </span>
             <div className="my-2">
-              <span className="text-lg sm:text-xl font-bold text-gray-900">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tracking-tight">
                 {totalPromoProducts}
               </span>
-              <span className="text-xs text-gray-500 ml-1.5">perhiasan</span>
+              <span className="text-xs sm:text-sm text-gray-500 ml-1.5">perhiasan</span>
             </div>
             <p className="text-xs text-gray-500">
               Mendapatkan potongan harga di kasir
             </p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between shadow-xs">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Rata-Rata Diskon
             </span>
             <div className="my-2">
-              <span className="text-lg sm:text-xl font-bold text-orange-600">
+              <span className="text-xl sm:text-2xl font-bold text-orange-600 font-mono tracking-tight">
                 {avgDiscount}%
               </span>
-              <span className="text-xs text-gray-500 ml-1.5">potongan</span>
+              <span className="text-xs sm:text-sm text-gray-500 ml-1.5">potongan</span>
             </div>
             <p className="text-xs text-gray-500">
               Hemat maksimal bagi pelanggan
@@ -166,23 +159,23 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
         </div>
 
         {/* Right: Live Preview of the Yellow Promo Card */}
-        <div className="lg:col-span-4 bg-white p-4 rounded-lg border border-gray-200 flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-white p-4 rounded-lg border border-gray-200 flex flex-col justify-between shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Tampilan Live di Kasir
             </span>
-            <span className="text-[10px] bg-yellow-100 text-yellow-800 font-bold px-1.5 py-0.5 rounded">
+            <span className="text-xs bg-yellow-100 text-yellow-800 font-semibold px-2 py-0.5 rounded">
               Card Promo Kuning
             </span>
           </div>
-          <div className="flex-1 max-w-xs mx-auto w-full">
+          <div className="flex-1 max-w-xs mx-auto w-full flex items-center justify-center">
             <PromoCard promoCount={totalPromoProducts} />
           </div>
         </div>
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xs">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -191,18 +184,18 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
             placeholder="Cari promo berdasarkan nama atau kode..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-md border border-gray-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none font-medium"
           />
         </div>
 
         {/* Status Filters */}
-        <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-md shrink-0">
+        <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center shrink-0">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 text-xs font-bold rounded transition-colors cursor-pointer ${
+            className={`h-full px-3 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
               statusFilter === 'all'
-                ? 'bg-white text-gray-900'
+                ? 'bg-white text-gray-900 shadow-xs'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
@@ -211,9 +204,9 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           <button
             type="button"
             onClick={() => setStatusFilter('active')}
-            className={`px-3 py-1.5 text-xs font-bold rounded transition-colors cursor-pointer ${
+            className={`h-full px-3 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
               statusFilter === 'active'
-                ? 'bg-white text-emerald-700'
+                ? 'bg-white text-emerald-700 shadow-xs'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
@@ -222,9 +215,9 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           <button
             type="button"
             onClick={() => setStatusFilter('inactive')}
-            className={`px-3 py-1.5 text-xs font-bold rounded transition-colors cursor-pointer ${
+            className={`h-full px-3 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
               statusFilter === 'inactive'
-                ? 'bg-white text-gray-900'
+                ? 'bg-white text-gray-900 shadow-xs'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
@@ -241,7 +234,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           return (
             <div
               key={promo.id}
-              className={`bg-white rounded-lg border transition-all p-5 flex flex-col justify-between ${
+              className={`bg-white rounded-lg border transition-all p-5 flex flex-col justify-between shadow-xs ${
                 promo.isActive
                   ? 'border-gray-200 hover:border-yellow-500'
                   : 'border-gray-200 opacity-70 bg-gray-50/50'
@@ -251,25 +244,20 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                 {/* Header Card: Name, Code & Switch */}
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="px-2 py-0.5 text-[10px] font-black rounded bg-yellow-400 text-gray-950 uppercase tracking-wide">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 text-xs font-bold rounded bg-yellow-400 text-gray-950 uppercase tracking-wide">
                         {promo.label || `Diskon ${promo.discountPercent}%`}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleCopyCode(promo.code)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                        className="inline-flex items-center px-2.5 py-0.5 text-xs font-mono font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer"
                         title="Klik untuk salin kode"
                       >
-                        <span>{promo.code}</span>
-                        {copiedCode === promo.code ? (
-                          <Check size={11} className="text-emerald-600" />
-                        ) : (
-                          <Copy size={11} className="text-gray-400" />
-                        )}
+                        {promo.code} {copiedCode === promo.code ? '(Tersalin)' : ''}
                       </button>
                     </div>
-                    <h3 className="text-base font-extrabold text-gray-900 leading-tight">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
                       {promo.name}
                     </h3>
                   </div>
@@ -296,25 +284,25 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
 
                 {/* Description */}
                 {promo.description && (
-                  <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-gray-600 mb-3 leading-relaxed">
                     {promo.description}
                   </p>
                 )}
 
                 {/* Period */}
-                <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-3.5 bg-gray-50 p-2 rounded-md border border-gray-100">
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-3.5 bg-gray-50 p-2.5 rounded-md border border-gray-100">
                   <Calendar size={14} className="text-gray-400 shrink-0" />
                   <span>
-                    Berlaku: <span className="font-semibold text-gray-700">{promo.startDate}</span> s/d{' '}
-                    <span className="font-semibold text-gray-700">{promo.endDate}</span>
+                    Berlaku: <span className="font-semibold text-gray-700 font-mono">{promo.startDate}</span> s/d{' '}
+                    <span className="font-semibold text-gray-700 font-mono">{promo.endDate}</span>
                   </span>
                 </div>
 
                 {/* Associated Products Preview */}
                 <div className="mb-4">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 mb-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-gray-500 mb-2">
                     <span className="flex items-center gap-1.5">
-                      <Package size={13} className="text-orange-500" />
+                      <Package size={14} className="text-orange-500" />
                       Produk Promo ({promoProductsList.length} item)
                     </span>
                   </div>
@@ -322,11 +310,11 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                     {promoProductsList.map(p => (
                       <span
                         key={p.id}
-                        className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] bg-gray-100 text-gray-800 rounded font-medium border border-gray-200"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-gray-100 text-gray-800 rounded font-medium border border-gray-200"
                       >
                         <img src={p.image} alt={p.name} className="w-3.5 h-3.5 rounded object-cover" />
                         <span className="truncate max-w-[140px]">{p.name}</span>
-                        <span className="text-[10px] font-bold text-orange-600">
+                        <span className="text-xs font-bold font-mono text-orange-600">
                           -{promo.discountPercent}%
                         </span>
                       </span>
@@ -337,22 +325,20 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
 
               {/* Card Footer Actions */}
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2 mt-2">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => handleOpenEditModal(promo)}
-                    className="p-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors cursor-pointer"
-                    title="Edit Promo"
+                    className="px-2.5 py-1 text-xs font-semibold text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded border border-gray-200 transition-colors cursor-pointer"
                   >
-                    <Edit2 size={15} />
+                    Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => onDeletePromo(promo.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                    title="Hapus Promo"
+                    className="px-2.5 py-1 text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded border border-gray-200 transition-colors cursor-pointer"
                   >
-                    <Trash2 size={15} />
+                    Hapus
                   </button>
                 </div>
 
@@ -360,10 +346,9 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigateToPosWithPromo(promo)}
-                    className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold text-xs rounded transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-3.5 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-semibold text-xs sm:text-sm rounded transition-colors inline-flex items-center justify-center cursor-pointer"
                   >
-                    <span>Buka di Kasir</span>
-                    <ArrowRight size={13} />
+                    Buka di Kasir
                   </button>
                 )}
               </div>
