@@ -44,23 +44,25 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
         </div>
 
         {/* Invoice Body Screen Preview */}
-        <div className="p-4 sm:p-6 overflow-y-auto bg-gray-100/90 flex justify-center">
-          <GoldInvoiceDocument receipt={receipt} type="buyback" />
+        <div className="p-2 sm:p-6 overflow-y-auto overflow-x-auto bg-gray-100/90 flex justify-center">
+          <div className="min-w-0 w-full overflow-x-auto flex justify-center">
+            <GoldInvoiceDocument receipt={receipt} type="buyback" />
+          </div>
         </div>
 
         {/* Footer Modal */}
-        <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2.5">
+        <div className="p-3.5 sm:p-4 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            className="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer text-center min-h-[40px]"
           >
             Tutup
           </button>
           <button
             type="button"
             onClick={onPrint}
-            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
           >
             <Printer size={15} />
             Cetak Nota Buyback

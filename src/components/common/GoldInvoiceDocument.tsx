@@ -33,8 +33,8 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
   return (
     <div
       id={id}
-      className="relative bg-white text-gray-900 font-sans p-7 md:p-8 rounded-2xl border border-gray-200 w-full max-w-3xl mx-auto overflow-hidden leading-normal select-none"
-      style={{ minHeight: '620px' }}
+      className="relative bg-white text-gray-900 font-sans p-4 sm:p-7 md:p-8 rounded-2xl border border-gray-200 w-full max-w-3xl mx-auto overflow-hidden leading-normal select-none"
+      style={{ minHeight: '560px' }}
     >
       {/* ========================================================= */}
       {/* CENTER WATERMARK (Identik seperti di foto nota emas resmi) */}

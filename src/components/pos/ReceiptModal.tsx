@@ -46,34 +46,36 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         </div>
 
         {/* Invoice Document Screen Preview */}
-        <div className="p-4 sm:p-6 overflow-y-auto bg-gray-100/90 flex justify-center">
-          <GoldInvoiceDocument receipt={receipt} type="sale" />
+        <div className="p-2 sm:p-6 overflow-y-auto overflow-x-auto bg-gray-100/90 flex justify-center">
+          <div className="min-w-0 w-full overflow-x-auto flex justify-center">
+            <GoldInvoiceDocument receipt={receipt} type="sale" />
+          </div>
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+        <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
           <button
             type="button"
             onClick={() => {
               onClose();
               onViewDailyTransactions();
             }}
-            className="px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            className="px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer text-center min-h-[40px]"
           >
             Lihat Transaksi Harian
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer text-center min-h-[40px]"
             >
               Transaksi Baru
             </button>
             <button
               type="button"
               onClick={onPrint}
-              className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-extrabold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
             >
               <Printer size={16} />
               Cetak Nota Emas (Print)

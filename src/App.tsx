@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ShoppingCart, Scale, ReceiptText, Gem, Menu } from 'lucide-react';
 import { TooltipProvider } from './components/Tooltip';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
@@ -88,13 +89,11 @@ const App: React.FC = () => {
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
 
-  // Responsive sidebar collapsing on small screen
+  // Responsive sidebar collapsing on tablet & mobile (< 1024px)
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1180) {
+      if (window.innerWidth < 1024) {
         setIsSidebarCollapsed(true);
-      } else {
-        setIsSidebarCollapsed(false);
       }
     };
     handleResize();
@@ -364,7 +363,7 @@ const App: React.FC = () => {
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div className="flex flex-col h-screen font-sans text-gray-800 overflow-hidden bg-gray-100">
+      <div className="flex flex-col h-full h-[100dvh] font-sans text-gray-800 overflow-hidden bg-gray-100">
         {/* Header */}
         <Header
           activeMenu={activeMenu}
@@ -379,7 +378,7 @@ const App: React.FC = () => {
         />
 
         {/* Body */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Sidebar */}
           <Sidebar
             activeMenu={activeMenu}
@@ -398,8 +397,14 @@ const App: React.FC = () => {
           />
 
           {/* Main Content Area */}
-          <div className="flex-1 flex flex-col min-w-0 relative bg-gray-100">
-            <main className="flex-1 overflow-hidden p-4">
+          <div className="flex-1 min-h-0 flex flex-col min-w-0 relative bg-gray-100 overflow-hidden">
+            <main
+              className={`flex-1 min-h-0 flex flex-col ${
+                activeMenu === 'Kasir POS'
+                  ? 'p-2 sm:p-3 overflow-hidden'
+                  : 'p-2 sm:p-4 pb-20 md:pb-4 overflow-y-auto'
+              }`}
+            >
               {activeMenu === 'Kasir POS' ? (
                 <PosView
                   products={products}
@@ -455,8 +460,80 @@ const App: React.FC = () => {
                 <FallbackView title={activeMenu} onBackToPos={() => setActiveMenu('Kasir POS')} />
               )}
             </main>
+
           </div>
         </div>
+
+        {/* Bottom Navigation for Tablet & Mobile (lg:hidden) - menus moved from top to bottom */}
+        <nav className="lg:hidden shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1.5 sm:px-3 py-1 flex items-center justify-around shadow-lg z-30 min-h-[56px]">
+          <button
+            type="button"
+            onClick={() => setActiveMenu('Kasir POS')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+              activeMenu === 'Kasir POS'
+                ? 'text-orange-600 font-bold bg-orange-50/80 shadow-2xs'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <div className="relative">
+              <ShoppingCart size={19} className={activeMenu === 'Kasir POS' ? 'text-orange-600' : 'text-gray-500'} />
+              {cart.reduce((a, b) => a + b.qty, 0) > 0 && (
+                <span className="absolute -top-1 -right-2.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
+                  {cart.reduce((a, b) => a + b.qty, 0)}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] mt-0.5 leading-none">Kasir</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMenu('Pembelian (buyback)')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+              activeMenu === 'Pembelian (buyback)'
+                ? 'text-orange-600 font-bold bg-orange-50/80 shadow-2xs'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <Scale size={19} className={activeMenu === 'Pembelian (buyback)' ? 'text-orange-600' : 'text-gray-500'} />
+            <span className="text-[10px] mt-0.5 leading-none">Buyback</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMenu('Transaksi Harian')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+              activeMenu === 'Transaksi Harian'
+                ? 'text-orange-600 font-bold bg-orange-50/80 shadow-2xs'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <ReceiptText size={19} className={activeMenu === 'Transaksi Harian' ? 'text-orange-600' : 'text-gray-500'} />
+            <span className="text-[10px] mt-0.5 leading-none">Transaksi</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMenu('Daftar Barang')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+              activeMenu === 'Daftar Barang'
+                ? 'text-orange-600 font-bold bg-orange-50/80 shadow-2xs'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <Gem size={19} className={activeMenu === 'Daftar Barang' ? 'text-orange-600' : 'text-gray-500'} />
+            <span className="text-[10px] mt-0.5 leading-none">Barang</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(false)}
+            className="flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all text-gray-500 hover:text-gray-900 min-w-[56px] min-h-[46px] cursor-pointer active:scale-95"
+          >
+            <Menu size={19} />
+            <span className="text-[10px] mt-0.5 leading-none">Menu</span>
+          </button>
+        </nav>
 
         {/* Global Modals & Print Elements */}
         <BarcodeScannerModal

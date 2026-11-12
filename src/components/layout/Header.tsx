@@ -53,25 +53,16 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header className="h-16 flex items-center justify-center px-6 bg-white border-b border-gray-200 z-30 shrink-0 relative">
-      {/* 1. LOGO & MINIMIZE AREA (Fixed to Left) */}
-      <div className="absolute left-6 flex items-center gap-3 shrink-0">
-        <div className="flex items-baseline gap-2 cursor-pointer" onClick={() => onSelectMenu('Kasir POS')}>
-          <span className="text-xl font-bold tracking-tight text-gradient-brand select-none whitespace-nowrap">
-            e.paper
-          </span>
-          <span className="text-[10px] font-light tracking-widest text-gray-400 uppercase select-none whitespace-nowrap">
-            POS JEWELLERY
-          </span>
-        </div>
-
-        {/* MINIMIZE SIDEBAR TOGGLE BUTTON (Simpel, ramping 3-baris / clean menu toggle) */}
+    <header className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 bg-white border-b border-gray-200 z-30 shrink-0 relative">
+      {/* 1. LOGO & SIDEBAR TOGGLE (Left) */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* SIDEBAR TOGGLE BUTTON */}
         <Tooltip content={isSidebarCollapsed ? 'Buka Menu' : 'Sembunyikan Menu'} side="bottom" sideOffset={8}>
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="p-1.5 text-gray-400 hover:text-orange-500 transition-colors flex items-center justify-center cursor-pointer shrink-0"
-            aria-label="Toggle Minimize Sidebar"
+            className="p-2 -ml-1 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-colors flex items-center justify-center cursor-pointer shrink-0 min-w-[40px] min-h-[40px]"
+            aria-label="Toggle Sidebar"
           >
             <svg
               className="w-5 h-5 transition-transform duration-200"
@@ -98,10 +89,22 @@ export const Header: React.FC<HeaderProps> = ({
             </svg>
           </button>
         </Tooltip>
+
+        <div
+          className="flex items-baseline gap-1.5 sm:gap-2 cursor-pointer select-none"
+          onClick={() => onSelectMenu('Kasir POS')}
+        >
+          <span className="text-lg sm:text-xl font-bold tracking-tight text-gradient-brand whitespace-nowrap">
+            e.paper
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider sm:tracking-widest text-gray-400 uppercase whitespace-nowrap hidden xs:inline">
+            POS JEWELLERY
+          </span>
+        </div>
       </div>
 
-      {/* 2. HORIZONTAL MENU (Presisi Center Horizontal di Header) */}
-      <div className="flex items-center h-full gap-8 mx-auto">
+      {/* 2. HORIZONTAL MENU (Visible only on desktop lg+, moves to bottom navigation on tablet & phone) */}
+      <div className="hidden lg:flex items-center h-full gap-4 lg:gap-8 mx-2 sm:mx-4 overflow-x-auto">
         {headerMenus.map(menu => {
           const Icon = menu.icon;
           const isActive = activeMenu === menu.name;
@@ -110,10 +113,12 @@ export const Header: React.FC<HeaderProps> = ({
               key={menu.name}
               type="button"
               onClick={() => onSelectMenu(menu.name)}
-              className={`h-full flex items-center gap-2 text-xs font-semibold transition-colors cursor-pointer relative px-2 ${ isActive ? 'text-orange-600 font-bold' : 'text-gray-500 hover:text-gray-900' }`}
+              className={`h-full flex items-center gap-1.5 lg:gap-2 text-xs font-semibold transition-colors cursor-pointer relative px-2 shrink-0 ${
+                isActive ? 'text-orange-600 font-bold' : 'text-gray-500 hover:text-gray-900'
+              }`}
             >
               <Icon size={15} className={isActive ? 'text-orange-500' : 'text-gray-400'} />
-              <span>{menu.name}</span>
+              <span className="whitespace-nowrap">{menu.name}</span>
               {isActive && (
                 <span className="absolute -bottom-px left-0 right-0 h-[2.5px] bg-orange-500 rounded-t-xs" />
               )}
@@ -122,18 +127,19 @@ export const Header: React.FC<HeaderProps> = ({
         })}
       </div>
 
-      {/* 3. RIGHT ICONS (Fixed to Right) */}
-      <div className="absolute right-6 flex items-center gap-2">
+      {/* 3. RIGHT ICONS (Notification & User Profile) */}
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+
         <Tooltip content={hasNotification ? 'Ada notifikasi baru' : 'Tidak ada notifikasi'} side="bottom" sideOffset={6}>
           <button
             type="button"
             onClick={onToggleNotification}
-            className="relative p-2 text-orange-500 hover:text-orange-600 transition-colors flex items-center justify-center cursor-pointer"
+            className="relative p-2 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-colors flex items-center justify-center cursor-pointer min-w-[40px] min-h-[40px]"
             aria-label="Notifikasi"
           >
-            <Bell size={20} />
+            <Bell size={19} />
             {hasNotification && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
             )}
           </button>
         </Tooltip>
@@ -143,23 +149,27 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onToggleAdminMenu}
-            className="flex items-center gap-2 text-xs font-semibold text-gray-700 hover:text-orange-600 transition-colors cursor-pointer p-2"
+            className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-colors cursor-pointer p-1.5 sm:p-2 min-h-[40px]"
             aria-expanded={isAdminMenuOpen}
           >
-            <User size={18} className="text-orange-500" />
-            <span>Admin</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              AD
+            </div>
+            <span className="hidden sm:inline font-bold">Admin</span>
             <ChevronDown
               size={14}
-              className={`text-gray-400 transition-transform duration-200 ${ isAdminMenuOpen ? 'rotate-180 text-orange-500' : '' }`}
+              className={`text-gray-400 transition-transform duration-200 hidden sm:inline ${
+                isAdminMenuOpen ? 'rotate-180 text-orange-500' : ''
+              }`}
             />
           </button>
 
           {isAdminMenuOpen && (
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-gray-100 py-1.5 z-50 shadow-xl animate-in fade-in zoom-in-95 duration-100">
               {/* User Profile Header */}
               <div className="px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-sm">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white flex items-center justify-center font-bold text-sm">
                     AD
                   </div>
                   <div className="min-w-0 flex-1">

@@ -14,10 +14,10 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
   onOpenAddCategoryModal,
 }) => {
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Daftar Kategori Perhiasan</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-0.5 sm:mb-1">Daftar Kategori Perhiasan</h1>
           <p className="text-xs text-gray-500">
             Pengelompokan etalase perhiasan emas berdasarkan jenis produk
           </p>
@@ -25,14 +25,14 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
         <button
           type="button"
           onClick={onOpenAddCategoryModal}
-          className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+          className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer self-stretch sm:self-auto min-h-[40px]"
         >
           <Plus size={16} />
           Tambah Daftar Kategori
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
         {categories.map(cat => {
           const itemsInCat = products.filter(p => p.category === cat);
           const totalStok = itemsInCat.reduce((acc, it) => acc + it.stok, 0);

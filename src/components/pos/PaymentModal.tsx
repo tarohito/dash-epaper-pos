@@ -110,17 +110,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         {/* Body Modal */}
         <div className="p-5 overflow-y-auto space-y-4">
           {/* Total Tagihan Banner */}
-          <div className="bg-gradient-to-br from-orange-400 to-red-500 p-4 rounded-xl text-white flex items-center justify-between gap-4">
+          <div className="bg-gradient-to-br from-orange-400 to-red-500 p-3.5 sm:p-4 rounded-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 shadow-xs">
             <div>
               <span className="text-[10px] text-orange-100 font-semibold uppercase tracking-wider block">
                 Total Pembayaran
               </span>
-              <div className="text-2xl font-black text-white mt-0.5 tracking-tight font-mono">{formatIDR(grandTotal)}</div>
-              <div className="text-[11px] text-white/80 mt-0.5 font-medium">
+              <div className="text-xl sm:text-2xl font-black text-white mt-0.5 tracking-tight font-mono">{formatIDR(grandTotal)}</div>
+              <div className="text-[10px] sm:text-[11px] text-white/80 mt-0.5 font-medium">
                 {cart.reduce((a, b) => a + b.qty, 0)} Item &bull; Total Berat: {cart.reduce((a, b) => a + b.berat * b.qty, 0).toFixed(2)} g
               </div>
             </div>
-            <div className="text-right text-white/90 text-xs shrink-0 font-medium space-y-0.5">
+            <div className="text-left sm:text-right text-white/90 text-xs shrink-0 font-medium space-y-0.5 border-t sm:border-t-0 pt-2 sm:pt-0 border-white/20">
               <div>Subtotal: {formatIDR(subtotal)}</div>
               <div className="text-[11px] text-orange-100">PPN (11%): {formatIDR(tax)}</div>
             </div>
@@ -506,18 +506,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-5 py-3.5 bg-gray-50/80 border-t border-gray-100 flex items-center justify-between shrink-0">
+        <div className="p-3.5 sm:px-5 sm:py-3.5 bg-gray-50/80 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-200/60 rounded-xl transition-colors cursor-pointer"
+            className="px-4 py-2.5 text-xs font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-200/60 rounded-xl transition-colors cursor-pointer min-h-[40px] flex items-center justify-center"
           >
             Batal
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] shadow-sm"
           >
             <CheckCircle2 size={16} />
             Konfirmasi Pembayaran ({formatIDR(grandTotal)})

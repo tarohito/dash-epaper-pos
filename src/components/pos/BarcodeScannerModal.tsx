@@ -140,35 +140,36 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             </div>
           </div>
 
-          {/* Instant Barcode Input */}
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <Barcode className="absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-500" size={18} />
-              <input
-                ref={scanInputRef}
-                type="text"
-                placeholder="Scan atau ketik SKU barcode disini (cth: 16-164)..."
-                value={manualScanInput}
-                onChange={e => {
-                  const val = e.target.value;
-                  setManualScanInput(val);
-                  const matched = products.find(p => p.sku.toLowerCase() === val.trim().toLowerCase());
-                  if (matched) {
-                    onScanCode(val);
+        {/* Instant Barcode Input */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex-1 relative">
+            <Barcode className="absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-500" size={18} />
+            <input
+              ref={scanInputRef}
+              type="text"
+              placeholder="Scan atau ketik SKU barcode disini..."
+              value={manualScanInput}
+              onChange={e => {
+                const val = e.target.value;
+                setManualScanInput(val);
+                const matched = products.find(p => p.sku.toLowerCase() === val.trim().toLowerCase());
+                if (matched) {
+                  onScanCode(val);
+                  setManualScanInput('');
+                }
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (onScanCode(manualScanInput)) {
                     setManualScanInput('');
                   }
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (onScanCode(manualScanInput)) {
-                      setManualScanInput('');
-                    }
-                  }
-                }}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-xs font-medium"
-              />
-            </div>
+                }
+              }}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-xs font-medium"
+            />
+          </div>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -176,19 +177,20 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   setManualScanInput('');
                 }
               }}
-              className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer min-h-[40px] flex items-center justify-center"
             >
               Scan SKU
             </button>
             <button
               type="button"
               onClick={() => setIsCameraActive(!isCameraActive)}
-              className={`px-3 py-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${ isCameraActive ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100' }`}
+              className={`flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[40px] ${ isCameraActive ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100' }`}
             >
               <Camera size={15} />
               {isCameraActive ? 'Tutup Kamera' : 'Buka Kamera'}
             </button>
           </div>
+        </div>
 
           {/* Quick Barcode Test Tags */}
           <div>
