@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="epaper-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FB923C" />
+      <stop offset="100%" stop-color="#EF4444" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded App Icon Background -->
+  <rect width="64" height="64" rx="16" fill="url(#epaper-grad)" />
+
+  <!-- Stylized Diamond & Crown Motif (Gold Jewellery POS) -->
+  <!-- Top facets of jewel / crown -->
+  <path
+    d="M20 22 L32 15 L44 22 L51 31 L32 50 L13 31 Z"
+    fill="white"
+    fill-opacity="0.95"
+  />
+
+  <!-- Diamond inner facet lines -->
+  <path
+    d="M20 22 L32 32 L44 22 M32 32 L32 50 M13 31 L32 32 L51 31"
+    stroke="#EA580C"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Sparkling star accent -->
+  <circle cx="48" cy="16" r="2.5" fill="#FEF08A" />
+</svg>
