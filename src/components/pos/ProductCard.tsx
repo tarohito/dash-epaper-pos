@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Product } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 
@@ -7,7 +7,7 @@ interface ProductCardProps {
   onAddToCart: (product: Product) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
+export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToCart }) => {
   const isOutOfStock = product.stok <= 0;
 
   return (
@@ -29,6 +29,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           <img
             src={product.image}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             className={`w-full h-full object-cover transition-transform duration-300 ${
               !isOutOfStock ? 'group-hover:scale-105' : 'grayscale-40'
             }`}
@@ -87,4 +89,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       </div>
     </div>
   );
-};
+});
+
+ProductCard.displayName = 'ProductCard';

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, Barcode, ShoppingCart, ArrowRight, X, Filter, ChevronDown } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { Search, Barcode, ShoppingCart, ArrowRight, X, Filter, ChevronDown, Loader2 } from 'lucide-react';
 import { Product, CartItem } from '../../types';
 import { ProductCard } from './ProductCard';
 import { PromoCard } from './PromoCard';
@@ -58,15 +58,54 @@ export const PosView: React.FC<PosViewProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCategoryDropdownOpen]);
 
-  const totalCartQty = cart.reduce((acc, it) => acc + it.qty, 0);
-  const promoCount = products.filter(p => p.isPromo).length;
-  const availableCategories = ['Semua', ...Array.from(new Set(products.map(p => p.category)))];
+  const totalCartQty = useMemo(() => cart.reduce((acc, it) => acc + it.qty, 0), [cart]);
+  const promoCount = useMemo(() => products.filter(p => p.isPromo).length, [products]);
+  const availableCategories = useMemo(() => ['Semua', ...Array.from(new Set(products.map(p => p.category)))], [products]);
 
-  const displayProducts = filteredProducts.filter(p => {
-    const matchesCategory = selectedCategory === 'Semua' || p.category === selectedCategory;
-    const matchesPromo = !isPromoOnlyFilter || p.isPromo;
-    return matchesCategory && matchesPromo;
-  });
+  // Filter dinamis dengan useMemo agar tidak dihitung ulang saat render yang tidak terkait
+  const displayProducts = useMemo(() => {
+    return filteredProducts.filter(p => {
+      const matchesCategory = selectedCategory === 'Semua' || p.category === selectedCategory;
+      const matchesPromo = !isPromoOnlyFilter || p.isPromo;
+      return matchesCategory && matchesPromo;
+    });
+  }, [filteredProducts, selectedCategory, isPromoOnlyFilter]);
+
+  // Infinite Scroll / Chunked Lazy Loading: Hanya render batch pertama (30 item),
+  // lalu tambah 30 item saat kasir scroll ke bawah. DOM tetap super ringan meski ada 10.000 produk!
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  // Reset visibleCount saat filter atau pencarian berubah
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [searchQuery, selectedCategory, isPromoOnlyFilter]);
+
+  const visibleProducts = useMemo(() => {
+    return displayProducts.slice(0, visibleCount);
+  }, [displayProducts, visibleCount]);
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // IntersectionObserver untuk trigger infinite scroll otomatis tanpa lag
+  useEffect(() => {
+    if (visibleCount >= displayProducts.length) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => Math.min(prev + 30, displayProducts.length));
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    const el = loadMoreRef.current;
+    if (el) observer.observe(el);
+
+    return () => {
+      if (el) observer.unobserve(el);
+    };
+  }, [visibleCount, displayProducts.length]);
 
   return (
     <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full gap-2 sm:gap-3 relative overflow-hidden">
@@ -293,9 +332,18 @@ export const PosView: React.FC<PosViewProps> = ({
             onToggleFilter={() => setIsPromoOnlyFilter(!isPromoOnlyFilter)}
           />
 
-          {displayProducts.map(product => (
+          {visibleProducts.map(product => (
             <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} />
           ))}
+
+          {/* Sentinel Element untuk auto-trigger load batch berikutnya saat scrolling */}
+          {visibleCount < displayProducts.length && (
+            <div ref={loadMoreRef} className="col-span-full py-6 flex items-center justify-center text-xs text-gray-400 gap-2">
+              <Loader2 size={16} className="animate-spin text-orange-500" />
+              <span>Memuat produk lainnya ({visibleProducts.length} dari {displayProducts.length})...</span>
+            </div>
+          )}
+
           {displayProducts.length === 0 && (
             <div className="col-span-full py-16 text-center text-gray-400">
               <p className="text-sm font-medium">Tidak ada produk yang cocok dengan pencarian.</p>

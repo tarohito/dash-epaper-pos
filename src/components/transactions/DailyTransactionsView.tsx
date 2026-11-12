@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, ShoppingCart, Printer } from 'lucide-react';
 import { Transaction } from '../../types';
 import { formatIDR } from '../../utils/formatters';
+import { usePagination } from '../../hooks/usePagination';
+import { PaginationControls } from '../common/PaginationControls';
 import Tooltip from '../Tooltip';
 
 interface DailyTransactionsViewProps {
@@ -18,18 +20,32 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
   const [txFilterMethod, setTxFilterMethod] = useState<string>('semua');
   const [txSearchQuery, setTxSearchQuery] = useState<string>('');
 
-  const filtered = transactions.filter(tx => {
-    const matchesSearch =
-      tx.invoiceNo.toLowerCase().includes(txSearchQuery.toLowerCase()) ||
-      tx.customerName.toLowerCase().includes(txSearchQuery.toLowerCase()) ||
-      tx.items.some(
-        it =>
-          it.name.toLowerCase().includes(txSearchQuery.toLowerCase()) ||
-          it.sku.toLowerCase().includes(txSearchQuery.toLowerCase())
-      );
-    const matchesMethod = txFilterMethod === 'semua' || tx.paymentMethod === txFilterMethod;
-    return matchesSearch && matchesMethod;
-  });
+  const filtered = useMemo(() => {
+    const q = txSearchQuery.trim().toLowerCase();
+    return transactions.filter(tx => {
+      const matchesSearch =
+        !q ||
+        tx.invoiceNo.toLowerCase().includes(q) ||
+        tx.customerName.toLowerCase().includes(q) ||
+        tx.items.some(
+          it =>
+            it.name.toLowerCase().includes(q) ||
+            it.sku.toLowerCase().includes(q)
+        );
+      const matchesMethod = txFilterMethod === 'semua' || tx.paymentMethod === txFilterMethod;
+      return matchesSearch && matchesMethod;
+    });
+  }, [transactions, txSearchQuery, txFilterMethod]);
+
+  const {
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    paginatedItems,
+    goToPage,
+    setPageSize,
+  } = usePagination(filtered, { initialPageSize: 20 });
 
   const currentDateStr = new Date().toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -121,7 +137,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                 Tidak ada riwayat transaksi yang cocok dengan filter pencarian.
               </div>
             ) : (
-              filtered.map(tx => (
+              paginatedItems.map(tx => (
                 <div key={tx.id} className="p-4 space-y-3 hover:bg-orange-50/20 transition-colors">
                   <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                     <div>
@@ -215,7 +231,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  filtered.map(tx => (
+                  paginatedItems.map(tx => (
                     <tr key={tx.id} className="hover:bg-orange-50/30 transition-colors">
                       {/* No. Faktur & Waktu */}
                       <td className="py-3 px-4 whitespace-nowrap">
@@ -291,16 +307,15 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
             </table>
           </div>
 
-          {/* Footer Info Count & Total */}
-          <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>
-              Menampilkan <strong>{filtered.length}</strong> dari total{' '}
-              <strong>{transactions.length}</strong> transaksi penjualan
-            </span>
-            <span className="hidden sm:inline text-gray-400">
-              Arsip transaksi terenkripsi &amp; terintegrasi POS
-            </span>
-          </div>
+          {/* Pagination Controls */}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={goToPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </div>
     </div>

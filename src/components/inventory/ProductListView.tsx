@@ -1,7 +1,9 @@
-import React from 'react';
-import { Plus, ShoppingCart } from 'lucide-react';
-import { Product } from'../../types';
-import { formatIDR } from'../../utils/formatters';
+import React, { useState, useMemo } from 'react';
+import { Plus, ShoppingCart, Search } from 'lucide-react';
+import { Product } from '../../types';
+import { formatIDR } from '../../utils/formatters';
+import { usePagination } from '../../hooks/usePagination';
+import { PaginationControls } from '../common/PaginationControls';
 
 interface ProductListViewProps {
   products: Product[];
@@ -14,33 +16,69 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
   onOpenAddModal,
   onAddToCartAndOpenPos,
 }) => {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(
+      p =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+    );
+  }, [products, search]);
+
+  const {
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    paginatedItems,
+    goToPage,
+    setPageSize,
+  } = usePagination(filtered, { initialPageSize: 25 });
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-5 sm:p-6 rounded-lg border border-gray-200 shadow-xs">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-lg border border-gray-200 shadow-xs">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Daftar Barang & Inventaris Perhiasan</h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Manajemen stok fisik perhiasan emas, gramasi, kadar karat, dan penyesuaian harga jual
+            Total {products.length} barang terdaftar &bull; Pengelolaan stok, gramasi, kadar, dan harga
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onOpenAddModal}
-          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer self-stretch sm:self-auto shadow-xs active:scale-[0.98]"
-        >
-          <Plus size={16} />
-          <span>Tambah Barang</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Cari SKU, nama, kategori..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-orange-500"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={onOpenAddModal}
+            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-[0.98]"
+          >
+            <Plus size={16} />
+            <span>Tambah Barang</span>
+          </button>
+        </div>
       </div>
 
       {/* MOBILE LIST CARDS (md:hidden) */}
       <div className="md:hidden space-y-3">
-        {products.map(p => (
+        {paginatedItems.map(p => (
           <div key={p.id} className="bg-white p-4 rounded-lg border border-gray-200 flex flex-col gap-3 shadow-xs">
             <div className="flex items-center gap-3">
               <img
                 src={p.image}
                 alt={p.name}
+                loading="lazy"
                 className="w-14 h-14 rounded-md object-cover border border-gray-200 shrink-0"
               />
               <div className="flex-1 min-w-0">
@@ -75,6 +113,15 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
             </div>
           </div>
         ))}
+
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={goToPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* TABLET & DESKTOP TABLE (hidden md:block) */}
@@ -93,34 +140,35 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 font-medium">
-              {products.map(p => (
+              {paginatedItems.map(p => (
                 <tr key={p.id} className="hover:bg-orange-50/30 transition-colors">
-                  <td className="py-3.5 px-5">
+                  <td className="py-3 px-5">
                     <div className="flex items-center gap-3">
                       <img
                         src={p.image}
                         alt={p.name}
+                        loading="lazy"
                         className="w-10 h-10 rounded-md object-cover border border-gray-200 shrink-0"
                       />
                       <span className="font-semibold text-gray-900 text-xs sm:text-sm">{p.name}</span>
                     </div>
                   </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-orange-600 text-xs sm:text-sm">{p.sku}</td>
-                  <td className="py-3.5 px-4">
+                  <td className="py-3 px-4 font-mono font-bold text-orange-600 text-xs sm:text-sm">{p.sku}</td>
+                  <td className="py-3 px-4">
                     <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md font-semibold text-xs">
                       {p.category}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 font-bold text-gray-800 font-mono text-xs sm:text-sm">{p.berat.toFixed(2)} gram</td>
-                  <td className="py-3.5 px-4">
+                  <td className="py-3 px-4 font-bold text-gray-800 font-mono text-xs sm:text-sm">{p.berat.toFixed(2)} gram</td>
+                  <td className="py-3 px-4">
                     <span
                       className={`px-2.5 py-1 rounded-full text-xs font-semibold font-mono ${p.stok > 5 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : p.stok > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200/60' : 'bg-red-50 text-red-700 border border-red-200/60'}`}
                     >
                       {p.stok} pcs {p.stok <= 3 && '(Menipis)'}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-right font-bold text-sm sm:text-base text-gray-900 font-mono tabular-nums">{formatIDR(p.harga)}</td>
-                  <td className="py-3.5 px-5 text-center">
+                  <td className="py-3 px-4 text-right font-bold text-sm sm:text-base text-gray-900 font-mono tabular-nums">{formatIDR(p.harga)}</td>
+                  <td className="py-3 px-5 text-center">
                     <button
                       type="button"
                       onClick={() => onAddToCartAndOpenPos(p)}
@@ -132,9 +180,25 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                   </td>
                 </tr>
               ))}
+              {paginatedItems.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-gray-400">
+                    Tidak ada barang yang cocok dengan kata kunci "{search}".
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={goToPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

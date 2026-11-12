@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, Scale, ReceiptText, Gem, Menu } from'lucide-react';
 import { TooltipProvider } from'./components/Tooltip';
 import { Header } from'./components/layout/Header';
@@ -231,15 +231,30 @@ const App: React.FC = () => {
   }, []);
 
   // Cart Totals Calculation
-  const subtotal = cart.reduce((sum, item) => sum + item.harga * item.qty, 0);
-  const tax = Math.round(subtotal * 0.11);
-  const grandTotal = subtotal + tax;
+  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.harga * item.qty, 0), [cart]);
+  const tax = useMemo(() => Math.round(subtotal * 0.11), [subtotal]);
+  const grandTotal = useMemo(() => subtotal + tax, [subtotal, tax]);
 
-  const filteredProducts = productsWithPromo.filter(
-    p =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  // Debounce search query 200ms agar UI tidak freeze saat mengetik di dataset ribuan produk
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 200);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const filteredProducts = useMemo(() => {
+    const q = debouncedSearchQuery.trim().toLowerCase();
+    if (!q) return productsWithPromo;
+    return productsWithPromo.filter(
+      p =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+    );
+  }, [productsWithPromo, debouncedSearchQuery]);
 
   // Cart Handlers
   const handleAddToCart = (product: Product) => {

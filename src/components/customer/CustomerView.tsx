@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users,
   UserPlus,
@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { Customer, Transaction, BuybackItem } from '../../types';
 import { formatIDR } from '../../utils/formatters';
+import { usePagination } from '../../hooks/usePagination';
+import { PaginationControls } from '../common/PaginationControls';
 import { AddCustomerModal } from './AddCustomerModal';
 
 interface CustomerViewProps {
@@ -45,50 +47,73 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
-  // Perhitungan dinamis akumulasi transaksi per pelanggan
-  const customersWithStats = customers.map(cust => {
-    // Cari transaksi penjualan yang cocok dengan nama pelanggan
-    const matchingTx = transactions.filter(
-      tx => tx.customerName.toLowerCase() === cust.name.toLowerCase()
-    );
-    const txSpent = matchingTx.reduce((sum, tx) => sum + tx.grandTotal, 0);
-    const totalTx = matchingTx.length;
+  // Perhitungan dinamis akumulasi transaksi per pelanggan di-memoize dengan map lookup O(1)
+  // Menghindari O(N*M) yang lambat saat data transaksi & pelanggan ribuan
+  const customersWithStats = useMemo(() => {
+    const txMap: Record<string, { spent: number; count: number }> = {};
+    for (let i = 0; i < transactions.length; i++) {
+      const tx = transactions[i];
+      const key = tx.customerName.toLowerCase();
+      if (!txMap[key]) txMap[key] = { spent: 0, count: 0 };
+      txMap[key].spent += tx.grandTotal;
+      txMap[key].count += 1;
+    }
 
-    // Cari transaksi buyback
-    const matchingBb = buybacks.filter(
-      bb => bb.customerName.toLowerCase() === cust.name.toLowerCase()
-    );
+    const bbMap: Record<string, number> = {};
+    for (let i = 0; i < buybacks.length; i++) {
+      const bb = buybacks[i];
+      const key = bb.customerName.toLowerCase();
+      bbMap[key] = (bbMap[key] || 0) + 1;
+    }
 
-    const totalSpent = (cust.totalSpent || 0) + txSpent;
-    const totalTransactions = (cust.totalTransactions || 0) + totalTx + matchingBb.length;
+    return customers.map(cust => {
+      const key = cust.name.toLowerCase();
+      const txData = txMap[key] || { spent: 0, count: 0 };
+      const bbCount = bbMap[key] || 0;
 
-    return {
-      ...cust,
-      computedSpent: totalSpent,
-      computedTx: totalTransactions,
-      buybackCount: matchingBb.length,
-    };
-  });
+      const totalSpent = (cust.totalSpent || 0) + txData.spent;
+      const totalTransactions = (cust.totalTransactions || 0) + txData.count + bbCount;
 
-  // Filter pelanggan
-  const filteredCustomers = customersWithStats.filter(c => {
+      return {
+        ...cust,
+        computedSpent: totalSpent,
+        computedTx: totalTransactions,
+        buybackCount: bbCount,
+      };
+    });
+  }, [customers, transactions, buybacks]);
+
+  // Filter pelanggan dengan useMemo
+  const filteredCustomers = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    const matchesSearch =
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      c.phone.toLowerCase().includes(q) ||
-      c.memberCode.toLowerCase().includes(q) ||
-      (c.nik && c.nik.includes(q)) ||
-      (c.address && c.address.toLowerCase().includes(q));
+    return customersWithStats.filter(c => {
+      const matchesSearch =
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        c.phone.toLowerCase().includes(q) ||
+        c.memberCode.toLowerCase().includes(q) ||
+        (c.nik && c.nik.includes(q)) ||
+        (c.address && c.address.toLowerCase().includes(q));
 
-    const matchesType =
-      filterType === 'semua' ||
-      (filterType === 'VIP' && c.type === 'VIP') ||
-      (filterType === 'Reguler' && c.type === 'Reguler') ||
-      (filterType === 'Mitra' && c.type === 'Mitra / Toko');
+      const matchesType =
+        filterType === 'semua' ||
+        (filterType === 'VIP' && c.type === 'VIP') ||
+        (filterType === 'Reguler' && c.type === 'Reguler') ||
+        (filterType === 'Mitra' && c.type === 'Mitra / Toko');
 
-    return matchesSearch && matchesType;
-  });
+      return matchesSearch && matchesType;
+    });
+  }, [customersWithStats, searchQuery, filterType]);
+
+  const {
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    paginatedItems,
+    goToPage,
+    setPageSize,
+  } = usePagination(filteredCustomers, { initialPageSize: 20 });
 
   // KPI Ringkasan
   const totalPelanggan = customers.length;
@@ -252,7 +277,7 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredCustomers.map(c => {
+                  {paginatedItems.map(c => {
                     const cleanPhone = c.phone.replace(/[^0-9]/g, '');
                     const waPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
 
@@ -421,7 +446,7 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
 
             {/* Mobile / Tablet Card View (lg:hidden) */}
             <div className="lg:hidden divide-y divide-gray-100">
-              {filteredCustomers.map(c => {
+              {paginatedItems.map(c => {
                 const cleanPhone = c.phone.replace(/[^0-9]/g, '');
                 const waPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
 
@@ -538,6 +563,16 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                 );
               })}
             </div>
+
+            {/* Pagination Controls */}
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={goToPage}
+              onPageSizeChange={setPageSize}
+            />
           </>
         )}
       </div>
