@@ -451,7 +451,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   </span>
                 </div>
 
-                <p className="text-xs font-bold text-gray-800">e.paper POS JEWELLERY</p>
+                <p className="text-xs font-bold text-gray-800">e.paper</p>
                 <p className="text-[10px] text-gray-400">Toko Perhiasan & Logam Mulia</p>
 
                 {/* Simulated QR Code SVG */}

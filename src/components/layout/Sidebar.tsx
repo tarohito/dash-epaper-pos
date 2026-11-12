@@ -64,6 +64,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
   }, [isStoreMenuOpen]);
 
+  useEffect(() => {
+    setIsStoreMenuOpen(false);
+  }, [isSidebarCollapsed]);
+
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard },
     { name: 'Kasir POS (Penjualan)', icon: ShoppingCart },
@@ -105,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`flex flex-col bg-gradient-to-br from-orange-400 to-red-500 flex-shrink-0 z-40 transition-all duration-300 fixed inset-y-0 left-0 lg:static lg:h-auto ${
           isSidebarCollapsed
             ? '-translate-x-full lg:translate-x-0 lg:w-16'
-            : 'translate-x-0 w-64 lg:w-52'
+            : 'translate-x-0 w-72 lg:w-60'
         }`}
       >
         {/* Mobile Drawer Top Header (only visible on mobile drawer) */}
@@ -127,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* SIDEBAR MENUS */}
-        <div className="flex-1 pl-3 py-4 lg:py-6 flex flex-col gap-0 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex-1 pl-3 py-4 lg:py-6 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {menuItems.map((menu, i) => {
             const Icon = menu.icon;
             const hasSubmenus = !!menu.submenus && menu.submenus.length > 0;
@@ -147,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         handleItemSelect(menu.name);
                       }
                     }}
-                    className={`relative flex items-center px-3.5 py-3 lg:py-2.5 text-left text-xs font-medium group w-full cursor-pointer min-h-[44px] ${
+                    className={`relative flex items-center px-3.5 py-3 lg:py-2.5 text-left text-[13.5px] lg:text-sm font-medium group w-full cursor-pointer min-h-[46px] ${
                       isParentActive ? 'z-20' : 'z-10'
                     }`}
                   >
@@ -170,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     />
 
                     <Icon
-                      size={16}
+                      size={18}
                       className={`relative z-10 shrink-0 transition-colors duration-500 ${
                         isParentActive
                           ? 'text-orange-600'
@@ -180,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }`}
                     />
                     <span
-                      className={`relative z-10 whitespace-nowrap text-xs transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden flex-1 ${
+                      className={`relative z-10 whitespace-nowrap text-[13.5px] lg:text-sm transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden flex-1 ${
                         isParentActive
                           ? 'text-orange-600 font-bold'
                           : isAnySubActive
@@ -189,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       } ${
                         isSidebarCollapsed
                           ? 'max-w-0 opacity-0 translate-x-4 ml-0'
-                          : 'max-w-[200px] opacity-100 translate-x-0 ml-3'
+                          : 'max-w-[220px] opacity-100 translate-x-0 ml-3'
                       }`}
                     >
                       {menu.name}
@@ -197,7 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     {hasSubmenus && !isSidebarCollapsed && (
                       <ChevronDown
-                        size={13}
+                        size={14}
                         className={`relative z-10 mr-1 text-white/70 transition-transform duration-300 ${
                           isProdukExpanded ? 'rotate-180 text-white' : ''
                         }`}
@@ -208,7 +212,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {/* Submenu List */}
                 {hasSubmenus && isProdukExpanded && (
-                  <div className="flex flex-col gap-0 my-0">
+                  <div className="flex flex-col gap-0.5 my-0.5">
                     {menu.submenus.map((sub, j) => {
                       const SubIcon = sub.icon;
                       const isSubActive = activeMenu === sub.name;
@@ -218,8 +222,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <button
                             type="button"
                             onClick={() => handleItemSelect(sub.name)}
-                            className={`relative flex items-center text-left text-xs font-medium group w-full cursor-pointer transition-all duration-300 min-h-[44px] ${
-                              isSidebarCollapsed ? 'px-3.5 py-3 lg:py-2.5' : 'pl-9 pr-3.5 py-3 lg:py-2.5'
+                            className={`relative flex items-center text-left text-[13px] font-medium group w-full cursor-pointer transition-all duration-300 min-h-[44px] ${
+                              isSidebarCollapsed ? 'px-3.5 py-3 lg:py-2.5' : 'pl-10 pr-3.5 py-2.5'
                             }`}
                           >
                             {/* Submenu Hover Background */}
@@ -240,20 +244,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             />
 
                             <SubIcon
-                              size={16}
+                              size={17}
                               className={`relative z-10 shrink-0 transition-colors duration-500 ${
                                 isSubActive ? 'text-orange-600' : 'text-orange-100 group-hover:text-white'
                               }`}
                             />
                             <span
-                              className={`relative z-10 whitespace-nowrap text-xs transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
+                              className={`relative z-10 whitespace-nowrap text-[13px] transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden ${
                                 isSubActive
                                   ? 'text-orange-600 font-bold'
                                   : 'text-white/90 group-hover:text-white font-medium'
                               } ${
                                 isSidebarCollapsed
                                   ? 'max-w-0 opacity-0 translate-x-4 ml-0'
-                                  : 'max-w-[200px] opacity-100 translate-x-0 ml-3'
+                                  : 'max-w-[220px] opacity-100 translate-x-0 ml-3'
                               }`}
                             >
                               {sub.name}
@@ -269,122 +273,123 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </div>
 
-        {/* BOTTOM SECTION: MENGATUR TOKO / MULTI-OUTLET (Placed at bottom of sidebar as requested) */}
-        <div className="p-2 sm:p-2.5 border-t border-white/20 shrink-0" ref={storeMenuRef}>
+        {/* BOTTOM SECTION: MENGATUR TOKO / MULTI-OUTLET (Dapat diklik baik saat minimize maupun expanded) */}
+        <div className="p-2 sm:p-2.5 border-t border-white/20 shrink-0 relative" ref={storeMenuRef}>
           {isSidebarCollapsed ? (
             <Tooltip
-              content={`Mengatur Toko: ${activeTenant?.name || 'Toko Mas'} (${activeTenant?.branchName || 'Cabang'})`}
+              content={`Toko: ${activeTenant?.name || 'Toko Mas'} (${activeTenant?.branchName || 'Cabang'})`}
               side="right"
               sideOffset={14}
+              disabled={isStoreMenuOpen}
             >
               <button
                 type="button"
                 onClick={() => setIsStoreMenuOpen(!isStoreMenuOpen)}
-                className="w-10 h-10 mx-auto rounded-md bg-white/15 hover:bg-white/25 text-white flex items-center justify-center font-bold text-xs cursor-pointer transition-colors relative"
-                aria-label="Mengatur Toko"
+                className={`w-10 h-10 mx-auto rounded-lg bg-white hover:bg-gray-100 text-orange-600 flex items-center justify-center font-bold text-xs cursor-pointer transition-all shadow-sm ${
+                  isStoreMenuOpen ? 'ring-2 ring-orange-300' : ''
+                }`}
+                aria-label="Atur Toko"
+                aria-expanded={isStoreMenuOpen}
               >
-                <Store size={18} />
-                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-orange-500" />
+                <Store size={18} className="text-orange-600" />
               </button>
             </Tooltip>
           ) : (
-            <div className="relative">
-              {/* Store Card / Button */}
-              <div className="bg-black/15 hover:bg-black/20 rounded-md p-2 border border-white/20 transition-all text-white">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-orange-100 flex items-center gap-1">
-                    <Store size={12} />
-                    Mengatur Toko
-                  </span>
-                  <span className="text-[9px] bg-white/20 text-white font-mono font-bold px-1.5 py-0.2 rounded">
-                    {activeTenant?.code || 'TMS-01'}
-                  </span>
-                </div>
+            <button
+              type="button"
+              onClick={() => setIsStoreMenuOpen(!isStoreMenuOpen)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white hover:bg-gray-50 text-left transition-all cursor-pointer group outline-none shadow-sm ${
+                isStoreMenuOpen ? 'ring-2 ring-orange-300' : ''
+              }`}
+              aria-label="Pengaturan Toko"
+              aria-expanded={isStoreMenuOpen}
+            >
+              <Store size={19} className="text-orange-600 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-bold text-orange-600 truncate leading-tight">
+                  {activeTenant?.name || 'Toko Mas Sejahtera'}
+                </p>
+                <p className="text-[11px] text-gray-500 truncate mt-0.5 font-medium">
+                  {activeTenant?.branchName || 'Cabang Utama'}
+                </p>
+              </div>
+              <ChevronDown
+                size={14}
+                className={`text-orange-600 transition-transform shrink-0 ${
+                  isStoreMenuOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+          )}
+
+          {/* Store Selector Popover (Tampil baik saat minimize maupun expanded) */}
+          {isStoreMenuOpen && (
+            <div
+              className={`absolute bg-white text-gray-900 rounded-lg border border-gray-200 shadow-2xl p-2 z-50 duration-150 ${
+                isSidebarCollapsed
+                  ? 'bottom-2 left-full ml-3 w-64 animate-in fade-in slide-in-from-left-2'
+                  : 'bottom-full left-2 sm:left-2.5 mb-2 w-64 animate-in fade-in slide-in-from-bottom-2'
+              }`}
+            >
+              <div className="px-2.5 py-1.5 border-b border-gray-100 flex items-center justify-between">
+                <p className="text-[11px] font-bold text-gray-800">Pilih Toko / Outlet</p>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  {tenants.length} Toko
+                </span>
+              </div>
+
+              <div className="max-h-48 overflow-y-auto space-y-1 my-1.5">
+                {tenants.map(t => {
+                  const isSelected = t.id === activeTenant?.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectTenant?.(t.id);
+                        setIsStoreMenuOpen(false);
+                      }}
+                      className={`w-full text-left p-2 rounded-md flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-orange-50 text-orange-600 font-bold'
+                          : 'hover:bg-gray-50 text-gray-700 font-medium'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1 pr-2">
+                        <p className="truncate font-bold leading-tight">{t.name}</p>
+                        <p className="text-[10px] text-gray-400 truncate mt-0.5">{t.branchName}</p>
+                      </div>
+                      {isSelected && <Check size={14} className="text-orange-600 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsStoreMenuOpen(false);
+                    onOpenRegisterModal?.();
+                  }}
+                  className="w-full py-1.5 px-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-[11px] rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-none"
+                >
+                  <Plus size={13} />
+                  Tambah Toko / Outlet Baru
+                </button>
 
                 <button
                   type="button"
-                  onClick={() => setIsStoreMenuOpen(!isStoreMenuOpen)}
-                  className="w-full text-left flex items-center justify-between gap-1.5 cursor-pointer outline-none group"
+                  onClick={() => {
+                    setIsStoreMenuOpen(false);
+                    onSelectMenu('Multi-Outlet');
+                  }}
+                  className="w-full py-1.5 px-2 text-gray-700 hover:bg-gray-100 font-semibold text-[11px] rounded-md transition-colors flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-black truncate leading-tight group-hover:text-yellow-200 transition-colors">
-                      {activeTenant?.name || 'Toko Mas Sejahtera'}
-                    </p>
-                    <p className="text-[10px] text-white/75 truncate mt-0.5">
-                      {activeTenant?.branchName || 'Cabang Utama'}
-                    </p>
-                  </div>
-                  <ChevronDown
-                    size={14}
-                    className={`text-white/80 transition-transform shrink-0 ${isStoreMenuOpen ? 'rotate-180' : ''}`}
-                  />
+                  <span>Kelola Multi-Outlet</span>
+                  <ArrowRight size={12} />
                 </button>
               </div>
-
-              {/* Store Selector Popover */}
-              {isStoreMenuOpen && (
-                <div className="absolute bottom-full left-0 mb-2 w-64 bg-white text-gray-900 rounded-lg border border-gray-200 shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                  <div className="px-2.5 py-1.5 border-b border-gray-100 flex items-center justify-between">
-                    <p className="text-[11px] font-black text-gray-800">Pilih / Ganti Outlet Toko</p>
-                    <span className="text-[9px] bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded">
-                      Multi-Outlet
-                    </span>
-                  </div>
-
-                  <div className="max-h-48 overflow-y-auto space-y-1 my-1.5">
-                    {tenants.map(t => {
-                      const isSelected = t.id === activeTenant?.id;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => {
-                            onSelectTenant?.(t.id);
-                            setIsStoreMenuOpen(false);
-                          }}
-                          className={`w-full text-left p-2 rounded-md flex items-center justify-between text-xs transition-colors cursor-pointer ${
-                            isSelected
-                              ? 'bg-orange-50 text-orange-600 font-bold'
-                              : 'hover:bg-gray-50 text-gray-700 font-medium'
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1 pr-2">
-                            <p className="truncate font-bold leading-tight">{t.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate mt-0.5">{t.branchName}</p>
-                          </div>
-                          {isSelected && <Check size={14} className="text-orange-600 shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="pt-2 border-t border-gray-100 space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsStoreMenuOpen(false);
-                        onOpenRegisterModal?.();
-                      }}
-                      className="w-full py-1.5 px-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-[11px] rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-none"
-                    >
-                      <Plus size={13} />
-                      Tambah Toko / Outlet Baru
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsStoreMenuOpen(false);
-                        onSelectMenu('Multi-Outlet');
-                      }}
-                      className="w-full py-1.5 px-2 text-gray-700 hover:bg-gray-100 font-semibold text-[11px] rounded-md transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <span>Kelola Multi-Outlet</span>
-                      <ArrowRight size={12} />
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

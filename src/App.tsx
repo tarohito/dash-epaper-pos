@@ -18,13 +18,14 @@ import { CategoryListView } from'./components/inventory/CategoryListView';
 import { AddProductModal } from'./components/inventory/AddProductModal';
 import { AddCategoryModal } from'./components/inventory/AddCategoryModal';
 import { DashboardView } from './components/dashboard/DashboardView';
+import { CustomerView } from './components/customer/CustomerView';
 import { PromoManagementView } from './components/promo/PromoManagementView';
 import { TenantManagementView } from './components/tenant/TenantManagementView';
 import { RegisterTenantModal } from './components/tenant/RegisterTenantModal';
 import { FallbackView } from './components/common/FallbackView';
 
-import { Product, CartItem, Transaction, BuybackItem, PromoCampaign, Tenant } from './types';
-import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, INITIAL_BUYBACKS, INITIAL_PROMOS } from './data/initialData';
+import { Product, CartItem, Transaction, BuybackItem, PromoCampaign, Tenant, Customer } from './types';
+import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, INITIAL_BUYBACKS, INITIAL_PROMOS, INITIAL_CUSTOMERS } from './data/initialData';
 import { INITIAL_TENANTS } from './data/initialTenants';
 import { DEFAULT_CATEGORIES } from './constants/kadar';
 import { playScannerBeep, playCashRegisterChime } from './utils/audio';
@@ -84,6 +85,40 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('epaper_pos_promos', JSON.stringify(promos));
   }, [promos]);
+
+  // Customers State (Persisted)
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      const saved = localStorage.getItem('epaper_pos_customers');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_CUSTOMERS;
+  });
+
+  const [buybackInitialCustomer, setBuybackInitialCustomer] = useState<{
+    name: string;
+    phone: string;
+  } | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('epaper_pos_customers', JSON.stringify(customers));
+  }, [customers]);
+
+  const handleSaveCustomer = (savedCustomer: Customer) => {
+    setCustomers(prev => {
+      const index = prev.findIndex(c => c.id === savedCustomer.id);
+      if (index >= 0) {
+        const next = [...prev];
+        next[index] = savedCustomer;
+        return next;
+      }
+      return [savedCustomer, ...prev];
+    });
+  };
+
+  const handleDeleteCustomer = (id: string) => {
+    setCustomers(prev => prev.filter(c => c.id !== id));
+  };
 
   // Multi-Tenant State (Persisted)
   const [tenants, setTenants] = useState<Tenant[]>(() => {
@@ -562,6 +597,23 @@ const App: React.FC = () => {
                     setIsBuybackReceiptModalOpen(true);
                   }}
                   onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
+                  initialCustomer={buybackInitialCustomer}
+                />
+              ) : activeMenu === 'Pelanggan' ? (
+                <CustomerView
+                  customers={customers}
+                  transactions={transactions}
+                  buybacks={buybacks}
+                  onSaveCustomer={handleSaveCustomer}
+                  onDeleteCustomer={handleDeleteCustomer}
+                  onSelectCustomerForPOS={name => {
+                    setCustomerName(name);
+                    setActiveMenu('Kasir POS (Penjualan)');
+                  }}
+                  onSelectCustomerForBuyback={(name, phone) => {
+                    setBuybackInitialCustomer({ name, phone });
+                    setActiveMenu('Buyback (Pembelian)');
+                  }}
                 />
               ) : activeMenu === 'Dashboard' ? (
                 <DashboardView

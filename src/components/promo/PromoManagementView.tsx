@@ -120,46 +120,46 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
         {/* Left: 3 Metric Cards */}
         <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
               Promo Aktif
             </span>
             <div className="my-2">
-              <span className="text-2xl sm:text-3xl font-black text-gray-900">
+              <span className="text-lg sm:text-xl font-bold text-gray-900">
                 {activePromos.length}
               </span>
               <span className="text-xs text-gray-500 ml-1.5">dari {promos.length} promo</span>
             </div>
-            <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+            <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
               <CheckCircle2 size={13} /> Sedang berlangsung
             </p>
           </div>
 
           <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
               Produk Terdampak
             </span>
             <div className="my-2">
-              <span className="text-2xl sm:text-3xl font-black text-gray-900">
+              <span className="text-lg sm:text-xl font-bold text-gray-900">
                 {totalPromoProducts}
               </span>
               <span className="text-xs text-gray-500 ml-1.5">perhiasan</span>
             </div>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-xs text-gray-500">
               Mendapatkan potongan harga di kasir
             </p>
           </div>
 
           <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex flex-col justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
               Rata-Rata Diskon
             </span>
             <div className="my-2">
-              <span className="text-2xl sm:text-3xl font-black text-yellow-600">
+              <span className="text-lg sm:text-xl font-bold text-orange-600">
                 {avgDiscount}%
               </span>
               <span className="text-xs text-gray-500 ml-1.5">potongan</span>
             </div>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-xs text-gray-500">
               Hemat maksimal bagi pelanggan
             </p>
           </div>

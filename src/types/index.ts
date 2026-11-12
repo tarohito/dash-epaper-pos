@@ -111,3 +111,20 @@ export interface Tenant {
   databaseSchema: string;
   status: 'Aktif' | 'Trial' | 'Nonaktif';
 }
+
+export interface Customer {
+  id: string;
+  memberCode: string;
+  name: string;
+  phone: string;
+  nik?: string;
+  type: 'Reguler' | 'VIP' | 'Mitra / Toko';
+  address?: string;
+  preferredKadar?: string;
+  ringSize?: string;
+  notes?: string;
+  createdAt: string;
+  totalSpent?: number;
+  totalTransactions?: number;
+}
+

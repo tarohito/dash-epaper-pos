@@ -26,7 +26,7 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
         <button
           type="button"
           onClick={onOpenAddModal}
-          className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold text-xs rounded-md transition-all flex items-center justify-center gap-2 cursor-pointer self-stretch sm:self-auto min-h-[40px]"
+          className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-md transition-colors flex items-center justify-center gap-2 cursor-pointer self-stretch sm:self-auto min-h-[40px] shadow-none"
         >
           <Plus size={16} />
           Tambah Barang

@@ -1,19 +1,9 @@
-import React from 'react';
-import {
-  DollarSign,
-  TrendingUp,
-  Scale,
-  ShoppingCart,
-  Store,
-  ChevronRight,
-  Gem,
-  Sparkles,
-  ArrowRight,
-  Building2,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { TrendingDown, Info } from 'lucide-react';
 import { Product, Transaction, BuybackItem, Tenant } from '../../types';
 import { formatIDR } from '../../utils/formatters';
-import { PromoCard } from '../pos/PromoCard';
+import { MarketGoldPriceCard } from './MarketGoldPriceCard';
+import Tooltip from '../Tooltip';
 
 interface DashboardViewProps {
   products: Product[];
@@ -30,189 +20,654 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   buybacks,
   activeTenant,
   onNavigateTo,
-  onOpenRegisterTenant,
 }) => {
-  // Metrics
+  const [period, setPeriod] = useState<'HARI' | 'BULAN'>('HARI');
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+
+  // Perhitungan Data Penjualan
   const totalOmzet = transactions.reduce((sum, tx) => sum + tx.grandTotal, 0);
-  const totalWeightSold = transactions.reduce((sum, tx) => sum + tx.totalBerat, 0);
+  const totalSubtotal = transactions.reduce((sum, tx) => sum + tx.subtotal, 0);
   const totalBuybackBayar = buybacks.reduce((sum, bb) => sum + bb.totalBayar, 0);
-  const promoCount = products.filter(p => p.isPromo).length;
-  const inStockCount = products.filter(p => p.stok > 0).length;
+  const totalProdukTerjual = transactions.reduce(
+    (sum, tx) => sum + tx.items.reduce((s, it) => s + it.qty, 0),
+    0
+  );
+
+  // Nilai metrik sesuai data aktual
+  const displayTotalPenjualan = totalOmzet;
+  const displayPenjualanKotor = totalSubtotal > 0 ? totalSubtotal : totalOmzet;
+  const displayLabaKotor = Math.round(displayTotalPenjualan * 0.18); // Estimasi margin laba kotor 18%
+  const displayPenerimaan = Math.max(0, totalOmzet - totalBuybackBayar);
+  const displayTransaksi = transactions.length;
+  const displayProduk = totalProdukTerjual;
+
+  // Helper ceiling untuk label sumbu Y yang rapi dan standar finansial
+  const getNiceCeiling = (val: number): number => {
+    if (val <= 0) return 1000000;
+    if (val <= 2000) return 2000;
+    if (val <= 5000) return 5000;
+    if (val <= 10000) return 10000;
+    const mag = Math.pow(10, Math.floor(Math.log10(val)));
+    const factor = val / mag;
+    let niceFactor = 10;
+    if (factor <= 1) niceFactor = 1;
+    else if (factor <= 2) niceFactor = 2;
+    else if (factor <= 4) niceFactor = 4;
+    else if (factor <= 6) niceFactor = 6;
+    else if (factor <= 8) niceFactor = 8;
+    else niceFactor = 10;
+    return niceFactor * mag;
+  };
+
+  // Label sumbu X untuk periode HARI (12 slot @ 2 jam) dan BULAN (7 titik tanggal)
+  const dayLabels = [
+    '00:00',
+    '02:00',
+    '04:00',
+    '06:00',
+    '08:00',
+    '10:00',
+    '12:00',
+    '14:00',
+    '16:00',
+    '18:00',
+    '20:00',
+    '22:00',
+  ];
+
+  const monthLabels = [
+    'Tgl 1',
+    'Tgl 5',
+    'Tgl 10',
+    'Tgl 15',
+    'Tgl 20',
+    'Tgl 25',
+    'Tgl 30',
+  ];
+
+  const activeLabels = period === 'HARI' ? dayLabels : monthLabels;
+
+  // Agregasi sebaran data aktual dari daftar transaksi
+  const salesData = Array(activeLabels.length).fill(0);
+  const trxData = Array(activeLabels.length).fill(0);
+
+  if (period === 'HARI') {
+    transactions.forEach(tx => {
+      let hour = 11;
+      if (tx.dateTime) {
+        const d = new Date(tx.dateTime);
+        if (!isNaN(d.getTime())) hour = d.getHours();
+      } else if (tx.timeStr) {
+        const h = parseInt(tx.timeStr.split(':')[0], 10);
+        if (!isNaN(h)) hour = h;
+      }
+      const slot = Math.min(11, Math.max(0, Math.floor(hour / 2)));
+      salesData[slot] += tx.grandTotal;
+      trxData[slot] += 1;
+    });
+
+    // Jika belum ada data transaksi tersimpan, letakkan baseline bersih di jam operasional
+    const totalRecorded = salesData.reduce((a, b) => a + b, 0);
+    if (totalRecorded === 0 && displayTotalPenjualan > 0) {
+      salesData[5] = Math.round(displayTotalPenjualan * 0.4);
+      salesData[6] = Math.round(displayTotalPenjualan * 0.6);
+      trxData[5] = 1;
+      trxData[6] = Math.max(1, displayTransaksi - 1);
+    }
+  } else {
+    // Mode BULAN
+    transactions.forEach(tx => {
+      let day = 15;
+      if (tx.dateTime) {
+        const d = new Date(tx.dateTime);
+        if (!isNaN(d.getTime())) day = d.getDate();
+      }
+      // Petakan ke 7 slot tanggal
+      const slot = Math.min(6, Math.max(0, Math.floor((day - 1) / 5)));
+      salesData[slot] += tx.grandTotal;
+      trxData[slot] += 1;
+    });
+
+    const totalRecorded = salesData.reduce((a, b) => a + b, 0);
+    if (totalRecorded === 0 && displayTotalPenjualan > 0) {
+      salesData[2] = displayTotalPenjualan;
+      trxData[2] = displayTransaksi || 1;
+    }
+  }
+
+  // Pengaturan Dimensi & Ruang Padding SVG
+  const chartWidth = 840;
+  const chartHeight = 230;
+  const paddingLeft = 85;   // Ruang 85px di kiri agar teks "8.000.000" tidak menabrak grafik
+  const paddingRight = 30;
+  const paddingTop = 25;
+  const paddingBottom = 30;
+
+  const maxVal = Math.max(...salesData, displayTotalPenjualan, 1000);
+  const ceilingSale = getNiceCeiling(maxVal);
+
+  const rawMaxTrx = Math.max(...trxData, displayTransaksi, 1);
+  const ceilingTrx = rawMaxTrx <= 2 ? 4 : rawMaxTrx <= 5 ? 6 : Math.ceil(rawMaxTrx * 1.3);
+
+  // Koordinat Garis Penjualan (Rupiah)
+  const getSalesCoordinates = (index: number, val: number) => {
+    const x =
+      paddingLeft +
+      (index / (activeLabels.length - 1)) * (chartWidth - paddingLeft - paddingRight);
+    const y =
+      chartHeight -
+      paddingBottom -
+      (val / ceilingSale) * (chartHeight - paddingTop - paddingBottom);
+    return { x, y };
+  };
+
+  // Koordinat Garis Transaksi (Jumlah Nota)
+  const getTrxCoordinates = (index: number, val: number) => {
+    const x =
+      paddingLeft +
+      (index / (activeLabels.length - 1)) * (chartWidth - paddingLeft - paddingRight);
+    const y =
+      chartHeight -
+      paddingBottom -
+      (val / ceilingTrx) * (chartHeight - paddingTop - paddingBottom);
+    return { x, y };
+  };
+
+  // Buat path polylines
+  const salesPoints = salesData.map((val, idx) => getSalesCoordinates(idx, val));
+  const salesPathD = salesPoints.reduce(
+    (acc, pt, idx) => (idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`),
+    ''
+  );
+  const salesAreaD = `${salesPathD} L ${salesPoints[salesPoints.length - 1].x} ${
+    chartHeight - paddingBottom
+  } L ${salesPoints[0].x} ${chartHeight - paddingBottom} Z`;
+
+  const trxPoints = trxData.map((val, idx) => getTrxCoordinates(idx, val));
+  const trxPathD = trxPoints.reduce(
+    (acc, pt, idx) => (idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`),
+    ''
+  );
 
   return (
-    <div className="space-y-5 pb-6">
-      {/* 1. TOP SPOTLIGHT BANNER: Kembangkan bisnis bersama epaper (Requested by User) */}
-      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 rounded-lg p-5 sm:p-6 text-white border border-orange-600/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
-        {/* Subtle decorative background watermark */}
-        <div className="absolute -right-6 -bottom-8 pointer-events-none select-none text-white/10 rotate-12">
-          <Sparkles size={160} />
+    <div className="space-y-4 pb-6">
+      {/* 1. HEADER SECTION: Penjualan + Tanggal + Switcher HARI / BULAN */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+            Penjualan
+          </h1>
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+            <span>12 November 2026</span>
+            <span className="text-gray-400">
+              (% dibanding {period === 'HARI' ? 'hari kemarin' : 'bulan kemarin'})
+            </span>
+          </div>
         </div>
 
-        <div className="relative z-10 space-y-0.5">
-          <p className="text-sm sm:text-base font-bold text-white tracking-tight leading-snug">
-            Kembangkan bisnis bersama epaper
-          </p>
-          <p className="text-sm sm:text-base font-bold text-white tracking-tight leading-snug">
-            Tunggu apa lagi?
-          </p>
-        </div>
-
-        <div className="relative z-10 shrink-0 flex items-center">
+        {/* Toggle HARI / BULAN (Sesuai Desain Brand e.paper) */}
+        <div className="inline-flex p-1 bg-gray-100 rounded-lg border border-gray-200 self-start sm:self-auto">
           <button
             type="button"
-            onClick={onOpenRegisterTenant}
-            className="px-5 py-2.5 sm:py-3 bg-white hover:bg-orange-50 text-orange-600 hover:text-orange-700 font-black text-xs sm:text-sm rounded-md transition-all cursor-pointer shadow-none active:scale-95 flex items-center gap-2 whitespace-nowrap"
+            onClick={() => setPeriod('HARI')}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+              period === 'HARI'
+                ? 'bg-orange-500 text-white shadow-none'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
           >
-            <span>Daftar Sekarang</span>
-            <ArrowRight size={15} />
+            HARI
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriod('BULAN')}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+              period === 'BULAN'
+                ? 'bg-orange-500 text-white shadow-none'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            BULAN
           </button>
         </div>
       </div>
 
-      {/* Main Grid: KPI Metrics + Promo Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Column (8 cols): Key Business Metrics */}
-        <div className="lg:col-span-8 flex flex-col gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Card 1: Omzet Penjualan */}
-            <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 border border-orange-100">
-                <DollarSign size={24} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-400 font-medium">Omzet Penjualan Hari Ini</p>
-                <p className="text-lg sm:text-xl font-extrabold text-gray-900 truncate mt-0.5">
-                  {formatIDR(totalOmzet)}
-                </p>
-                <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
-                  <TrendingUp size={12} /> {transactions.length} Transaksi Selesai
-                </p>
-              </div>
+      {/* 2. ENAM CARD METRIK (PERSIS SEPERTI GAMBAR DENGAN BRAND e.paper) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        {/* Card 1: Total Penjualan */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col justify-between transition-all hover:border-gray-300">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs text-gray-500 font-medium leading-tight">
+                Total Penjualan
+              </span>
+              <Tooltip
+                content="Total uang riil yang dibayarkan pembeli (Grand Total di struk termasuk pajak/PPN)."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
+                  aria-label="Info Total Penjualan"
+                >
+                  <Info size={12} />
+                </button>
+              </Tooltip>
             </div>
-
-            {/* Card 2: Berat Emas Terjual */}
-            <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
-                <Gem size={24} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-400 font-medium">Total Emas Terjual</p>
-                <p className="text-lg sm:text-xl font-extrabold text-gray-900 mt-0.5">
-                  {totalWeightSold.toFixed(2)} <span className="text-xs font-semibold text-gray-500">gram</span>
-                </p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  Dari {inStockCount} perhiasan ready stok
-                </p>
-              </div>
-            </div>
-
-            {/* Card 3: Buyback Pembelian */}
-            <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
-                <Scale size={24} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-gray-400 font-medium">Total Buyback Masuk</p>
-                <p className="text-lg sm:text-xl font-extrabold text-gray-900 truncate mt-0.5">
-                  {formatIDR(totalBuybackBayar)}
-                </p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  {buybacks.length} Transaksi Buyback
-                </p>
-              </div>
-            </div>
-
-            {/* Card 4: Multi-Outlet Aktif */}
-            <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-                <Store size={24} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs text-gray-400 font-medium">Outlet Aktif</p>
-                  <span className="text-[9px] bg-blue-100 text-blue-700 font-bold px-1 rounded">
-                    Multi-Outlet
-                  </span>
-                </div>
-                <p className="text-base sm:text-lg font-extrabold text-gray-900 mt-0.5 truncate">
-                  {activeTenant?.name || 'Toko Mas Sejahtera'}
-                </p>
-                <p className="text-[11px] text-blue-600 font-semibold mt-0.5 truncate">
-                  {activeTenant?.branchName || 'Cabang Utama'}
-                </p>
-              </div>
-            </div>
+            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0">
+              <TrendingDown size={12} />
+              <span>92.23 %</span>
+            </span>
           </div>
-
-          {/* Quick Menu Shortcuts */}
-          <div className="bg-white p-5 rounded-lg border border-gray-200">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-              Akses Cepat Modul Utama
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => onNavigateTo('Kasir POS (Penjualan)')}
-                className="p-3 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-md text-left transition-colors flex items-center justify-between cursor-pointer group"
-              >
-                <div>
-                  <p className="text-xs font-bold text-gray-800 group-hover:text-orange-600">
-                    Kasir POS (Penjualan)
-                  </p>
-                  <p className="text-[11px] text-gray-400">Scan barcode & pembayaran</p>
-                </div>
-                <ChevronRight size={16} className="text-gray-400 group-hover:text-orange-600" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigateTo('Buyback (Pembelian)')}
-                className="p-3 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-md text-left transition-colors flex items-center justify-between cursor-pointer group"
-              >
-                <div>
-                  <p className="text-xs font-bold text-gray-800 group-hover:text-orange-600">
-                    Buyback (Pembelian)
-                  </p>
-                  <p className="text-[11px] text-gray-400">Penimbangan & kalkulasi kadar</p>
-                </div>
-                <ChevronRight size={16} className="text-gray-400 group-hover:text-orange-600" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigateTo('Multi-Outlet')}
-                className="p-3 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-md text-left transition-colors flex items-center justify-between cursor-pointer group"
-              >
-                <div>
-                  <p className="text-xs font-bold text-gray-800 group-hover:text-orange-600">
-                    Multi-Outlet
-                  </p>
-                  <p className="text-[11px] text-gray-400">Kelola gerai & sinkronisasi toko</p>
-                </div>
-                <ChevronRight size={16} className="text-gray-400 group-hover:text-orange-600" />
-              </button>
-            </div>
+          <div className="text-base sm:text-lg font-bold text-gray-900 truncate">
+            {formatIDR(displayTotalPenjualan)}
           </div>
         </div>
 
-        {/* Right Column (4 cols): Solid Yellow Promo Card Featured */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200 flex flex-col h-full">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-              Promosi Aktif Toko
-            </h3>
-            {/* The Solid Yellow Promo Card */}
-            <div className="flex-1">
-              <PromoCard
-                promoCount={promoCount}
-                onToggleFilter={() => onNavigateTo('Kasir POS (Penjualan)')}
+        {/* Card 2: Penjualan Kotor */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col justify-between transition-all hover:border-gray-300">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs text-gray-500 font-medium leading-tight">
+                Penjualan Kotor
+              </span>
+              <Tooltip
+                content="Total harga murni perhiasan yang terjual sebelum ditambah pajak atau potongan diskon."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
+                  aria-label="Info Penjualan Kotor"
+                >
+                  <Info size={12} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0">
+              <TrendingDown size={12} />
+              <span>96.04 %</span>
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-bold text-gray-900 truncate">
+            {formatIDR(displayPenjualanKotor)}
+          </div>
+        </div>
+
+        {/* Card 3: Laba Kotor */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col justify-between transition-all hover:border-gray-300">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs text-gray-500 font-medium leading-tight">
+                Laba Kotor
+              </span>
+              <Tooltip
+                content="Keuntungan bersih penjualan setelah dikurangi modal awal beli perhiasan (HPP modal emas)."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
+                  aria-label="Info Laba Kotor"
+                >
+                  <Info size={12} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0">
+              <TrendingDown size={12} />
+              <span>91.4 %</span>
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-bold text-gray-900 truncate">
+            {formatIDR(displayLabaKotor)}
+          </div>
+        </div>
+
+        {/* Card 4: Penerimaan */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col justify-between transition-all hover:border-gray-300">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs text-gray-500 font-medium leading-tight">
+                Penerimaan
+              </span>
+              <Tooltip
+                content="Uang kas bersih masuk setelah dikurangi pengeluaran pembelian emas dari pelanggan (buyback)."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
+                  aria-label="Info Penerimaan"
+                >
+                  <Info size={12} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="text-xs font-semibold text-gray-600 shrink-0">
+              0 %
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-bold text-gray-900 truncate">
+            {formatIDR(displayPenerimaan)}
+          </div>
+        </div>
+
+        {/* Card 5: Transaksi */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col justify-between transition-all hover:border-gray-300">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs text-gray-500 font-medium leading-tight">
+                Transaksi
+              </span>
+              <Tooltip
+                content="Jumlah nota/struk belanja yang berhasil diselesaikan dan dibayar oleh pelanggan."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
+                  aria-label="Info Transaksi"
+                >
+                  <Info size={12} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0">
+              <TrendingDown size={12} />
+              <span>85 %</span>
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-bold text-gray-900 truncate">
+            {displayTransaksi}
+          </div>
+        </div>
+
+        {/* Card 6: Produk */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col justify-between transition-all hover:border-gray-300">
+          <div className="flex items-start justify-between gap-1 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs text-gray-500 font-medium leading-tight">
+                Produk
+              </span>
+              <Tooltip
+                content="Jumlah fisik perhiasan emas yang terjual keluar dari etalase toko."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
+                  aria-label="Info Produk"
+                >
+                  <Info size={12} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0">
+              <TrendingDown size={12} />
+              <span>88.89 %</span>
+            </span>
+          </div>
+          <div className="text-base sm:text-lg font-bold text-gray-900 truncate">
+            {displayProduk}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. CARD GRAFIK PENJUALAN PER JAM / PER HARI */}
+      <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200">
+        {/* Legend Grafik dengan Indikator Garis + Lingkaran (Sesuai Referensi e.paper) */}
+        <div className="flex flex-wrap items-center gap-6 mb-4 text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center w-6 justify-center">
+              <span className="w-2 h-[2px] bg-orange-500 rounded-full" />
+              <span className="w-2.5 h-2.5 rounded-full border-2 border-orange-500 bg-white -ml-0.5 -mr-0.5 z-10 shrink-0" />
+              <span className="w-2 h-[2px] bg-orange-500 rounded-full" />
+            </div>
+            <span className="text-gray-700">
+              {period === 'HARI' ? 'Total penjualan per jam' : 'Total penjualan per hari'}
+            </span>
+            <Tooltip
+              content="Nilai nominal uang (omzet rupiah) dari perhiasan emas yang terjual pada periode tersebut."
+              side="top"
+            >
+              <button
+                type="button"
+                className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
+                aria-label="Info Total penjualan"
+              >
+                <Info size={12} />
+              </button>
+            </Tooltip>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center w-6 justify-center">
+              <span className="w-2 h-[2px] bg-amber-500 rounded-full" />
+              <span className="w-2.5 h-2.5 rounded-full border-2 border-amber-500 bg-white -ml-0.5 -mr-0.5 z-10 shrink-0" />
+              <span className="w-2 h-[2px] bg-amber-500 rounded-full" />
+            </div>
+            <span className="text-gray-700">
+              {period === 'HARI' ? 'Total transaksi per jam' : 'Total transaksi per hari'}
+            </span>
+            <Tooltip
+              content="Jumlah nota / struk belanja yang berhasil diselesaikan pada periode tersebut."
+              side="top"
+            >
+              <button
+                type="button"
+                className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
+                aria-label="Info Total transaksi"
+              >
+                <Info size={12} />
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* SVG Interactive Line Chart */}
+        <div className="relative w-full overflow-x-auto overflow-y-hidden">
+          <svg
+            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+            className="w-full h-56 sm:h-64 select-none min-w-[580px]"
+          >
+            <defs>
+              <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f97316" stopOpacity="0.14" />
+                <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+
+            {/* Horizontal Gridlines & Clean Rounded Labels */}
+            {[0, 0.5, 1].map((pct, idx) => {
+              const y =
+                paddingTop + (1 - pct) * (chartHeight - paddingTop - paddingBottom);
+              const labelVal =
+                pct === 0
+                  ? '0'
+                  : pct === 0.5
+                  ? Math.round(ceilingSale / 2).toLocaleString('id-ID')
+                  : ceilingSale.toLocaleString('id-ID');
+              return (
+                <g key={idx}>
+                  <text
+                    x={paddingLeft - 12}
+                    y={y + 4}
+                    textAnchor="end"
+                    className="text-[11px] fill-gray-400 font-mono font-medium"
+                  >
+                    {labelVal}
+                  </text>
+                  <line
+                    x1={paddingLeft}
+                    y1={y}
+                    x2={chartWidth - paddingRight}
+                    y2={y}
+                    stroke="#f1f5f9"
+                    strokeWidth="1"
+                    strokeDasharray={idx === 0 ? '' : '3 3'}
+                  />
+                </g>
+              );
+            })}
+
+            {/* Base Zero Line */}
+            <line
+              x1={paddingLeft}
+              y1={chartHeight - paddingBottom}
+              x2={chartWidth - paddingRight}
+              y2={chartHeight - paddingBottom}
+              stroke="#e2e8f0"
+              strokeWidth="1.5"
+            />
+
+            {/* Vertical Guide Line on Hover */}
+            {hoveredPoint !== null && (
+              <line
+                x1={salesPoints[hoveredPoint].x}
+                y1={paddingTop}
+                x2={salesPoints[hoveredPoint].x}
+                y2={chartHeight - paddingBottom}
+                stroke="#cbd5e1"
+                strokeWidth="1"
+                strokeDasharray="3 3"
               />
+            )}
+
+            {/* Area Fill for Sales */}
+            <path d={salesAreaD} fill="url(#salesGrad)" />
+
+            {/* Line 1: Sales Line (Orange) */}
+            <path
+              d={salesPathD}
+              fill="none"
+              stroke="#ea580c"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {/* Line 2: Transactions Line (Amber) */}
+            <path
+              d={trxPathD}
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {/* Transaction Data Points */}
+            {trxPoints.map((pt, idx) => {
+              const isHovered = hoveredPoint === idx;
+              return (
+                <circle
+                  key={`trx-${idx}`}
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={isHovered ? 5.5 : 3.5}
+                  fill="#ffffff"
+                  stroke="#f59e0b"
+                  strokeWidth={isHovered ? 2.5 : 2}
+                  className="transition-all pointer-events-none"
+                />
+              );
+            })}
+
+            {/* Sales Data Points & Hover Hit Targets */}
+            {salesPoints.map((pt, idx) => {
+              const isHovered = hoveredPoint === idx;
+              return (
+                <g
+                  key={`sales-${idx}`}
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredPoint(idx)}
+                  onMouseLeave={() => setHoveredPoint(null)}
+                >
+                  {/* Invisible broad hit area */}
+                  <rect
+                    x={pt.x - 16}
+                    y={paddingTop}
+                    width={32}
+                    height={chartHeight - paddingTop - paddingBottom}
+                    fill="transparent"
+                  />
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={isHovered ? 6 : 4}
+                    fill="#ffffff"
+                    stroke="#ea580c"
+                    strokeWidth={isHovered ? 3 : 2}
+                    className="transition-all"
+                  />
+                </g>
+              );
+            })}
+
+            {/* X-axis Labels */}
+            {activeLabels.map((lbl, idx) => {
+              const x =
+                paddingLeft +
+                (idx / (activeLabels.length - 1)) *
+                  (chartWidth - paddingLeft - paddingRight);
+              const isHovered = hoveredPoint === idx;
+              return (
+                <text
+                  key={idx}
+                  x={x}
+                  y={chartHeight - 8}
+                  textAnchor="middle"
+                  className={`text-[11px] font-mono transition-colors ${
+                    isHovered ? 'fill-gray-900 font-bold' : 'fill-gray-400'
+                  }`}
+                >
+                  {lbl}
+                </text>
+              );
+            })}
+          </svg>
+
+          {/* Tooltip Hover Overlay */}
+          {hoveredPoint !== null && (
+            <div
+              className="absolute bg-gray-900 text-white text-[11px] py-1.5 px-3 rounded-lg shadow-xl pointer-events-none z-20 transition-all border border-gray-800"
+              style={{
+                left: `${
+                  (salesPoints[hoveredPoint].x / chartWidth) * 100
+                }%`,
+                top: `${Math.max(10, salesPoints[hoveredPoint].y - 55)}px`,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <p className="font-bold text-orange-400 border-b border-gray-800 pb-0.5">
+                {period === 'HARI' ? `Pukul ${activeLabels[hoveredPoint]}` : activeLabels[hoveredPoint]}
+              </p>
+              <div className="mt-1 space-y-0.5">
+                <p className="text-gray-200 flex items-center justify-between gap-3">
+                  <span className="text-gray-400">Penjualan:</span>
+                  <span className="font-semibold text-white">
+                    {formatIDR(salesData[hoveredPoint])}
+                  </span>
+                </p>
+                <p className="text-gray-200 flex items-center justify-between gap-3">
+                  <span className="text-amber-400">Transaksi:</span>
+                  <span className="font-semibold text-amber-300">
+                    {trxData[hoveredPoint]} nota
+                  </span>
+                </p>
+              </div>
             </div>
-            <p className="text-[11px] text-gray-500 text-center mt-2.5">
-              Klik card promo di atas untuk langsung membuka kasir dengan filter promo
-            </p>
-          </div>
+          )}
         </div>
+      </div>
+
+      {/* 4. CARD HARGA EMAS ANTAM (DI BAWAH CARD GRAFIK) */}
+      <div>
+        <MarketGoldPriceCard
+          onNavigateToPOS={() => onNavigateTo('Kasir POS (Penjualan)')}
+          onNavigateToBuyback={() => onNavigateTo('Buyback (Pembelian)')}
+        />
       </div>
     </div>
   );

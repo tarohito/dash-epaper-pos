@@ -88,11 +88,8 @@ export const Header: React.FC<HeaderProps> = ({
           className="flex items-center gap-2 cursor-pointer select-none"
           onClick={() => onSelectMenu('Kasir POS (Penjualan)')}
         >
-          <span className="text-2xl sm:text-[28px] lg:text-[30px] font-black tracking-tight text-gradient-brand whitespace-nowrap leading-none flex items-center">
+          <span className="text-xl sm:text-2xl font-bold tracking-tight text-gradient-brand whitespace-nowrap leading-none flex items-center">
             e.paper
-          </span>
-          <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase whitespace-nowrap hidden sm:inline leading-none">
-            POS JEWELLERY
           </span>
         </div>
       </div>
