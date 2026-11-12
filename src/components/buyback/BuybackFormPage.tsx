@@ -1081,12 +1081,7 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
         {/* ========================================================= */}
         {/* BOTTOM ACTION BAR                                         */}
         {/* ========================================================= */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-500">
-            <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
-            <span>Transaksi aman, tercatat ke database POS, dan siap dicetak ke nota resmi.</span>
-          </div>
-
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-end gap-3 shadow-xs">
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <button
               type="button"

@@ -17,7 +17,7 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
           onAddToCart(product);
         }
       }}
-      className={`bg-white border rounded-lg transition-all duration-200 group flex flex-col justify-between relative overflow-hidden active:scale-[0.98] select-none ${
+      className={`bg-white border rounded-xl transition-all duration-200 group flex flex-col justify-between relative overflow-hidden active:scale-[0.98] select-none ${
         isOutOfStock
           ? 'border-gray-200 opacity-60 cursor-not-allowed bg-gray-50/50'
           : 'border-gray-200 cursor-pointer hover:border-orange-500 shadow-xs hover:shadow-md'
@@ -36,25 +36,25 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
             }`}
           />
           {/* Category & Promo Badge */}
-          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 flex flex-col gap-1 items-start">
-            <span className="text-xs font-semibold px-2 py-0.5 bg-white/95 backdrop-blur-sm text-orange-600 rounded-md border border-orange-100 inline-block shadow-xs">
+          <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+            <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 bg-white/95 backdrop-blur-xs text-orange-600 rounded-md border border-orange-100 shadow-2xs">
               {product.category}
             </span>
             {product.isPromo && (
-              <span className="text-xs font-bold px-2 py-0.5 bg-yellow-400 text-gray-950 rounded-md inline-block">
+              <span className="text-[10px] sm:text-xs font-bold px-1.5 py-0.5 bg-yellow-400 text-gray-950 rounded-md shadow-2xs">
                 {product.promoLabel || 'PROMO'}
               </span>
             )}
           </div>
           {/* Stock Badge */}
-          <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5">
+          <div className="absolute top-2 right-2">
             <span
-              className={`text-xs font-semibold px-2 py-0.5 rounded-md inline-block backdrop-blur-sm ${
+              className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs shadow-2xs ${
                 isOutOfStock
                   ? 'bg-red-500 text-white'
                   : product.stok <= 3
                   ? 'bg-amber-500 text-white'
-                  : 'text-emerald-700 bg-white/95 border border-emerald-100 shadow-xs'
+                  : 'text-emerald-700 bg-white/95 border border-emerald-100'
               }`}
             >
               {isOutOfStock ? 'Habis' : `Stok: ${product.stok}`}
@@ -62,28 +62,31 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
           </div>
         </div>
 
-        {/* Product Name */}
-        <div className="p-2.5 sm:p-3 pb-1 sm:pb-2">
+        {/* Product Details: Simple Name, Direct Price, then Weight below it */}
+        <div className="p-2.5 sm:p-3 flex flex-col justify-between flex-1">
           <h3
             className={`text-xs sm:text-sm font-semibold leading-snug line-clamp-2 ${
               isOutOfStock ? 'text-gray-400' : 'text-gray-900 group-hover:text-orange-600 transition-colors'
             }`}
+            title={product.name}
           >
             {product.name}
           </h3>
-        </div>
-      </div>
 
-      {/* Bottom Info: Weight & Price */}
-      <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 pt-1.5 sm:pt-2 border-t border-gray-100 flex items-end justify-between mt-auto">
-        <div>
-          <div className="text-xs text-gray-500 font-medium leading-none mb-1">Berat</div>
-          <div className="text-xs sm:text-sm font-bold font-mono text-gray-800 leading-none">{product.berat.toFixed(2)}g</div>
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-gray-500 font-medium leading-none mb-1">Harga</div>
-          <div className={`text-xs sm:text-sm font-bold font-mono leading-none ${isOutOfStock ? 'text-gray-400' : 'text-orange-600'}`}>
-            {formatIDR(product.harga)}
+          <div className="mt-1.5 sm:mt-2 flex flex-col gap-0.5">
+            {/* Harga Langsung */}
+            <div
+              className={`text-sm sm:text-base font-black font-mono tracking-tight leading-tight ${
+                isOutOfStock ? 'text-gray-400' : 'text-orange-600'
+              }`}
+            >
+              {formatIDR(product.harga)}
+            </div>
+
+            {/* Dibawahnya Berat */}
+            <div className="text-[11px] sm:text-xs text-gray-500 font-medium leading-tight">
+              Berat : <span className="font-semibold text-gray-700 font-mono">{product.berat.toFixed(2)} g</span>
+            </div>
           </div>
         </div>
       </div>
