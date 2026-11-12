@@ -1,11 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import tippy, { Instance, Placement } from 'tippy.js';
-import 'tippy.js/dist/tippy.css';
+import React, { useEffect, useRef } from'react';
+import tippy, { Instance, Placement } from'tippy.js';
+import'tippy.js/dist/tippy.css';
 
 export interface TooltipProps {
   children: React.ReactElement;
   content: React.ReactNode;
-  side?: 'top' | 'right' | 'bottom' | 'left';
+  side?:'top' |'right' |'bottom' |'left';
   sideOffset?: number;
   delayDuration?: number;
   disabled?: boolean;
@@ -16,7 +16,7 @@ export const TooltipProvider = ({ children }: { children: React.ReactNode; delay
 export const Tooltip = ({
   children,
   content,
-  side = 'top',
+  side ='top',
   sideOffset = 8,
   delayDuration = 80,
   disabled = false,
@@ -34,7 +34,7 @@ export const Tooltip = ({
       return;
     }
 
-    const tooltipContent = typeof content === 'string' ? content : String(content);
+    const tooltipContent = typeof content ==='string' ? content : String(content);
 
     instanceRef.current = tippy(el, {
       content: tooltipContent,
@@ -43,7 +43,7 @@ export const Tooltip = ({
       delay: [delayDuration, 0],
       duration: [150, 100],
       arrow: true,
-      animation: 'fade',
+      animation:'fade',
     });
 
     return () => {
@@ -62,11 +62,11 @@ export const Tooltip = ({
     ref: (node: HTMLElement | null) => {
       targetRef.current = node;
       const childProps = (children as any).props;
-      if (childProps && typeof childProps === 'object' && 'ref' in childProps) {
+      if (childProps && typeof childProps ==='object' &&'ref' in childProps) {
         const childRef = childProps.ref;
-        if (typeof childRef === 'function') {
+        if (typeof childRef ==='function') {
           childRef(node);
-        } else if (childRef && typeof childRef === 'object' && 'current' in childRef) {
+        } else if (childRef && typeof childRef ==='object' &&'current' in childRef) {
           childRef.current = node;
         }
       }

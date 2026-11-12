@@ -7,6 +7,23 @@ export interface Product {
   stok: number;
   category: string;
   image: string;
+  isPromo?: boolean;
+  promoDiscountPercent?: number;
+  promoLabel?: string;
+}
+
+export interface PromoCampaign {
+  id: string;
+  name: string;
+  code: string;
+  discountPercent: number;
+  label: string;
+  startDate: string;
+  endDate: string;
+  productIds: number[];
+  isActive: boolean;
+  minPurchase?: number;
+  description?: string;
 }
 
 export interface CartItem extends Product {
@@ -75,4 +92,22 @@ export interface BuybackItem {
   bankName?: string;
   accountNo?: string;
   catatan?: string;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  code: string;
+  branchName: string;
+  address: string;
+  city: string;
+  plan: 'Basic Single-Store' | 'Pro Multi-Outlet' | 'Enterprise Multi-Tenant';
+  cashierCount: number;
+  productCount: number;
+  phone: string;
+  email: string;
+  slug: string;
+  logoInitial: string;
+  databaseSchema: string;
+  status: 'Aktif' | 'Trial' | 'Nonaktif';
 }

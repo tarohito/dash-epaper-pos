@@ -1,6 +1,6 @@
-import React from 'react';
-import { BuybackItem } from '../../types';
-import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
+import React from'react';
+import { BuybackItem } from'../../types';
+import { GoldInvoiceDocument } from'../common/GoldInvoiceDocument';
 
 interface PrintableBuybackReceiptProps {
   receipt: BuybackItem | null;

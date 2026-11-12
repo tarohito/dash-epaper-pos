@@ -22,11 +22,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-gray-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[94vh]">
+      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[94vh]">
         {/* Modal Top Bar */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-emerald-50/50">
           <div className="flex items-center gap-2.5">
-            <span className="p-2 bg-emerald-500 text-white rounded-xl">
+            <span className="p-2 bg-emerald-500 text-white rounded-md">
               <CheckCircle2 size={18} />
             </span>
             <div>
@@ -39,7 +39,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -60,7 +60,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               onClose();
               onViewDailyTransactions();
             }}
-            className="px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer text-center min-h-[40px]"
+            className="px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer text-center min-h-[40px]"
           >
             Lihat Transaksi Harian
           </button>
@@ -68,14 +68,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer text-center min-h-[40px]"
+              className="px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-md transition-colors cursor-pointer text-center min-h-[40px]"
             >
               Transaksi Baru
             </button>
             <button
               type="button"
               onClick={onPrint}
-              className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+              className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-extrabold text-xs rounded-md transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
             >
               <Printer size={16} />
               Cetak Nota Emas (Print)

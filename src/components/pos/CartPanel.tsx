@@ -1,8 +1,8 @@
-import React from 'react';
-import { Receipt, Boxes, Gem, Trash2, Minus, Plus, CreditCard } from 'lucide-react';
-import { CartItem } from '../../types';
-import { formatIDR } from '../../utils/formatters';
-import Tooltip from '../Tooltip';
+import React from'react';
+import { Receipt, Boxes, Gem, Trash2, Minus, Plus, CreditCard } from'lucide-react';
+import { CartItem } from'../../types';
+import { formatIDR } from'../../utils/formatters';
+import Tooltip from'../Tooltip';
 
 interface CartPanelProps {
   cart: CartItem[];
@@ -28,7 +28,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   const totalQty = cart.reduce((acc, item) => acc + item.qty, 0);
 
   return (
-    <div className="w-full lg:w-[340px] xl:w-[370px] bg-white rounded-2xl border border-gray-200 flex flex-col flex-1 min-h-0 overflow-hidden shadow-xs">
+    <div className="w-full lg:w-[340px] xl:w-[370px] bg-white rounded-lg border border-gray-200 flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Cart Header */}
       <div className="p-3 sm:p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/60">
         <div className="flex items-center gap-2">
@@ -36,7 +36,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             <button
               type="button"
               onClick={onBackToCatalog}
-              className="lg:hidden p-1.5 -ml-1 text-gray-500 hover:text-orange-600 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"
+              className="lg:hidden p-1.5 -ml-1 text-gray-500 hover:text-orange-600 rounded-md min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"
               title="Kembali ke Katalog"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -48,7 +48,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             Keranjang Pesanan
           </h2>
         </div>
-        <span className="px-2.5 py-0.5 bg-orange-100 text-orange-700 text-[11px] font-bold rounded-full">
+        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[11px] font-bold rounded">
           {totalQty} Item
         </span>
       </div>
@@ -65,9 +65,9 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             {cart.map(item => (
               <div
                 key={item.id}
-                className="p-3 bg-white border border-gray-100 rounded-xl flex gap-3 group relative"
+                className="p-3 bg-white border border-gray-100 rounded-md flex gap-3 group relative"
               >
-                <div className="w-12 h-12 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 bg-gray-50 rounded-md border border-gray-100 flex items-center justify-center shrink-0">
                   <Gem size={20} className="text-gray-400" />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -85,13 +85,13 @@ export const CartPanel: React.FC<CartPanelProps> = ({
                         e.stopPropagation();
                         onRemoveItem(item.id);
                       }}
-                      className="text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center cursor-pointer"
+                      className="text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center cursor-pointer"
                       aria-label="Hapus item"
                     >
                       <Trash2 size={16} />
                     </button>
                   </Tooltip>
-                  <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg p-1 mt-1.5">
+                  <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-md p-1 mt-1.5">
                     <Tooltip content="Kurang" side="top" sideOffset={4}>
                       <button
                         type="button"
@@ -99,7 +99,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
                           e.stopPropagation();
                           onUpdateQty(item.id, -1);
                         }}
-                        className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-white rounded-md transition-all cursor-pointer active:scale-95"
+                        className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-white rounded transition-all cursor-pointer active:scale-95"
                         aria-label="Kurang satu"
                       >
                         <Minus size={13} />
@@ -113,7 +113,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
                           e.stopPropagation();
                           onUpdateQty(item.id, 1);
                         }}
-                        className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-white rounded-md transition-all cursor-pointer active:scale-95"
+                        className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-white rounded transition-all cursor-pointer active:scale-95"
                         aria-label="Tambah satu"
                       >
                         <Plus size={13} />
@@ -147,7 +147,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
           type="button"
           onClick={onOpenPaymentModal}
           disabled={cart.length === 0}
-          className="w-full py-3 sm:py-3.5 min-h-[44px] sm:min-h-[48px] bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-xl transition-all flex justify-center items-center cursor-pointer disabled:cursor-not-allowed text-xs sm:text-sm active:scale-[0.99] shadow-md shadow-emerald-600/10"
+          className="w-full py-3 sm:py-3.5 min-h-[44px] sm:min-h-[48px] bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-md transition-all flex justify-center items-center cursor-pointer disabled:cursor-not-allowed text-xs sm:text-sm active:scale-[0.99] -600/10"
         >
           Proses Pembayaran ({totalQty} Item)
         </button>

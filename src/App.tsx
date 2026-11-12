@@ -1,32 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Scale, ReceiptText, Gem, Menu } from 'lucide-react';
-import { TooltipProvider } from './components/Tooltip';
-import { Header } from './components/layout/Header';
-import { Sidebar } from './components/layout/Sidebar';
-import { PosView } from './components/pos/PosView';
-import { BarcodeScannerModal } from './components/pos/BarcodeScannerModal';
-import { PaymentModal } from './components/pos/PaymentModal';
-import { ReceiptModal } from './components/pos/ReceiptModal';
-import { PrintableReceipt } from './components/pos/PrintableReceipt';
-import { ScanFeedbackToast } from './components/pos/ScanFeedbackToast';
-import { BuybackView } from './components/buyback/BuybackView';
-import { BuybackReceiptModal } from './components/buyback/BuybackReceiptModal';
-import { PrintableBuybackReceipt } from './components/buyback/PrintableBuybackReceipt';
-import { DailyTransactionsView } from './components/transactions/DailyTransactionsView';
-import { ProductListView } from './components/inventory/ProductListView';
-import { CategoryListView } from './components/inventory/CategoryListView';
-import { AddProductModal } from './components/inventory/AddProductModal';
-import { AddCategoryModal } from './components/inventory/AddCategoryModal';
+import React, { useState, useEffect } from'react';
+import { ShoppingCart, Scale, ReceiptText, Gem, Menu } from'lucide-react';
+import { TooltipProvider } from'./components/Tooltip';
+import { Header } from'./components/layout/Header';
+import { Sidebar } from'./components/layout/Sidebar';
+import { PosView } from'./components/pos/PosView';
+import { BarcodeScannerModal } from'./components/pos/BarcodeScannerModal';
+import { PaymentModal } from'./components/pos/PaymentModal';
+import { ReceiptModal } from'./components/pos/ReceiptModal';
+import { PrintableReceipt } from'./components/pos/PrintableReceipt';
+import { ScanFeedbackToast } from'./components/pos/ScanFeedbackToast';
+import { BuybackView } from'./components/buyback/BuybackView';
+import { BuybackReceiptModal } from'./components/buyback/BuybackReceiptModal';
+import { PrintableBuybackReceipt } from'./components/buyback/PrintableBuybackReceipt';
+import { DailyTransactionsView } from'./components/transactions/DailyTransactionsView';
+import { ProductListView } from'./components/inventory/ProductListView';
+import { CategoryListView } from'./components/inventory/CategoryListView';
+import { AddProductModal } from'./components/inventory/AddProductModal';
+import { AddCategoryModal } from'./components/inventory/AddCategoryModal';
+import { DashboardView } from './components/dashboard/DashboardView';
+import { PromoManagementView } from './components/promo/PromoManagementView';
+import { TenantManagementView } from './components/tenant/TenantManagementView';
+import { RegisterTenantModal } from './components/tenant/RegisterTenantModal';
 import { FallbackView } from './components/common/FallbackView';
 
-import { Product, CartItem, Transaction, BuybackItem } from './types';
-import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, INITIAL_BUYBACKS } from './data/initialData';
+import { Product, CartItem, Transaction, BuybackItem, PromoCampaign, Tenant } from './types';
+import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, INITIAL_BUYBACKS, INITIAL_PROMOS } from './data/initialData';
+import { INITIAL_TENANTS } from './data/initialTenants';
 import { DEFAULT_CATEGORIES } from './constants/kadar';
 import { playScannerBeep, playCashRegisterChime } from './utils/audio';
 
 const App: React.FC = () => {
   // Navigation & Layout State
-  const [activeMenu, setActiveMenu] = useState('Kasir POS');
+  const [activeMenu, setActiveMenu] = useState('Kasir POS (Penjualan)');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isProdukExpanded, setIsProdukExpanded] = useState(true);
   const [hasNotification, setHasNotification] = useState(true);
@@ -67,6 +72,95 @@ const App: React.FC = () => {
     return INITIAL_BUYBACKS;
   });
 
+  // Promos State (Persisted)
+  const [promos, setPromos] = useState<PromoCampaign[]>(() => {
+    try {
+      const saved = localStorage.getItem('epaper_pos_promos');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_PROMOS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('epaper_pos_promos', JSON.stringify(promos));
+  }, [promos]);
+
+  // Multi-Tenant State (Persisted)
+  const [tenants, setTenants] = useState<Tenant[]>(() => {
+    try {
+      const saved = localStorage.getItem('epaper_pos_tenants');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_TENANTS;
+  });
+
+  const [activeTenantId, setActiveTenantId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('epaper_pos_active_tenant_id');
+      if (saved) return saved;
+    } catch {}
+    return INITIAL_TENANTS[0]?.id || 'tenant-tms-001';
+  });
+
+  const [isRegisterTenantOpen, setIsRegisterTenantOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('epaper_pos_tenants', JSON.stringify(tenants));
+  }, [tenants]);
+
+  useEffect(() => {
+    localStorage.setItem('epaper_pos_active_tenant_id', activeTenantId);
+  }, [activeTenantId]);
+
+  const activeTenant = tenants.find(t => t.id === activeTenantId) || tenants[0];
+
+  const handleRegisterTenant = (newTenant: Tenant) => {
+    setTenants(prev => [newTenant, ...prev]);
+    setActiveTenantId(newTenant.id);
+  };
+
+  // Synchronize product promo flags dynamically with active promos
+  const activePromos = promos.filter(p => p.isActive);
+  const productsWithPromo = products.map(product => {
+    const applicablePromo = activePromos.find(p => p.productIds.includes(product.id));
+    if (applicablePromo) {
+      return {
+        ...product,
+        isPromo: true,
+        promoDiscountPercent: applicablePromo.discountPercent,
+        promoLabel: applicablePromo.label,
+      };
+    }
+    return {
+      ...product,
+      isPromo: false,
+      promoDiscountPercent: undefined,
+      promoLabel: undefined,
+    };
+  });
+
+  const handleSavePromo = (savedPromo: PromoCampaign) => {
+    setPromos(prev => {
+      const index = prev.findIndex(p => p.id === savedPromo.id);
+      if (index >= 0) {
+        const next = [...prev];
+        next[index] = savedPromo;
+        return next;
+      }
+      return [savedPromo, ...prev];
+    });
+  };
+
+  const handleDeletePromo = (id: string) => {
+    setPromos(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleTogglePromoStatus = (id: string) => {
+    setPromos(prev =>
+      prev.map(p => (p.id === id ? { ...p, isActive: !p.isActive } : p))
+    );
+  };
+
   // Cart & POS State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,7 +200,7 @@ const App: React.FC = () => {
   const tax = Math.round(subtotal * 0.11);
   const grandTotal = subtotal + tax;
 
-  const filteredProducts = products.filter(
+  const filteredProducts = productsWithPromo.filter(
     p =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase())
@@ -166,9 +260,9 @@ const App: React.FC = () => {
       found = products.find(p => p.name.toLowerCase() === clean);
     }
     if (!found) {
-      const alphaNum = clean.replace(/[^a-z0-9]/g, '');
+      const alphaNum = clean.replace(/[^a-z0-9]/g,'');
       if (alphaNum.length >= 4) {
-        found = products.find(p => p.sku.toLowerCase().replace(/[^a-z0-9]/g, '') === alphaNum);
+        found = products.find(p => p.sku.toLowerCase().replace(/[^a-z0-9]/g,'') === alphaNum);
       }
     }
 
@@ -178,7 +272,7 @@ const App: React.FC = () => {
       setScanCount(prev => prev + 1);
       setScanFeedback({
         product: found,
-        time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        time: new Date().toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
       });
       setTimeout(() => setScanFeedback(null), 3000);
       setSearchQuery('');
@@ -189,7 +283,7 @@ const App: React.FC = () => {
 
   // Global Hardware Barcode Scanner Listener (Keystrokes with Enter)
   useEffect(() => {
-    let scanBuffer = '';
+    let scanBuffer ='';
     let lastKeyTime = Date.now();
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -198,7 +292,7 @@ const App: React.FC = () => {
       const interval = now - lastKeyTime;
       lastKeyTime = now;
 
-      if (e.key === 'Enter') {
+      if (e.key ==='Enter') {
         const queryToScan = (scanBuffer.length >= 3 ? scanBuffer : searchQuery).trim();
         if (queryToScan) {
           const success = handleAutoScanCode(queryToScan);
@@ -206,7 +300,7 @@ const App: React.FC = () => {
             e.preventDefault();
           }
         }
-        scanBuffer = '';
+        scanBuffer ='';
       } else if (e.key.length === 1) {
         if (interval > 80) {
           scanBuffer = e.key;
@@ -222,7 +316,7 @@ const App: React.FC = () => {
 
   // Payment Confirmation Handler
   const handleConfirmPayment = (paymentData: {
-    method: 'cash' | 'debit' | 'transfer' | 'qris';
+    method:'cash' |'debit' |'transfer' |'qris';
     cashReceived?: number;
     debitBank?: string;
     debitCardLast4?: string;
@@ -231,8 +325,8 @@ const App: React.FC = () => {
     transferRef?: string;
   }) => {
     const now = new Date();
-    const dateNum = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const invoiceNo = `TRX-${dateNum}-${String(transactions.length + 1).padStart(3, '0')}`;
+    const dateNum = now.toISOString().slice(0, 10).replace(/-/g,'');
+    const invoiceNo = `TRX-${dateNum}-${String(transactions.length + 1).padStart(3,'0')}`;
 
     const txItems = cart.map(item => ({
       id: item.id,
@@ -252,10 +346,10 @@ const App: React.FC = () => {
       id: invoiceNo,
       invoiceNo,
       dateTime: now.toISOString(),
-      dateStr: now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-      timeStr: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      cashier: 'Administrator Kasir (Shift 1)',
-      customerName: customerName.trim() || 'Pelanggan Umum',
+      dateStr: now.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }),
+      timeStr: now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+      cashier:'Administrator Kasir (Shift 1)',
+      customerName: customerName.trim() ||'Pelanggan Umum',
       items: txItems,
       totalQty,
       totalBerat,
@@ -271,8 +365,8 @@ const App: React.FC = () => {
         debitApprovalCode: paymentData.debitApprovalCode,
         transferBank: paymentData.transferBank,
         transferRef: paymentData.transferRef,
-        qrisNmid: paymentData.method === 'qris' ? 'ID102003928192' : undefined,
-        qrisRrn: paymentData.method === 'qris' ? `RRN${Date.now().toString().slice(-8)}` : undefined,
+        qrisNmid: paymentData.method ==='qris' ?'ID102003928192' : undefined,
+        qrisRrn: paymentData.method ==='qris' ? `RRN${Date.now().toString().slice(-8)}` : undefined,
       },
     };
 
@@ -308,13 +402,13 @@ const App: React.FC = () => {
   };
 
   // Buyback Creation Handler
-  const handleSaveBuyback = (newBuybackData: Omit<BuybackItem, 'id' | 'invoiceNo' | 'date'>) => {
+  const handleSaveBuyback = (newBuybackData: Omit<BuybackItem,'id' |'invoiceNo' |'date'>) => {
     const now = new Date();
     const dateStr =
-      now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) +
-      ', ' +
-      now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    const invoiceNo = `BB-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now .getDate() .toString() .padStart(2, '0')}-${(buybacks.length + 1).toString().padStart(3, '0')}`;
+      now.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) +
+',' +
+      now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    const invoiceNo = `BB-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2,'0')}${now .getDate() .toString() .padStart(2,'0')}-${(buybacks.length + 1).toString().padStart(3,'0')}`;
 
     const createdBuyback: BuybackItem = {
       ...newBuybackData,
@@ -334,7 +428,7 @@ const App: React.FC = () => {
   };
 
   // Inventory Save Product Handler
-  const handleSaveProduct = (newProductData: Omit<Product, 'id'>) => {
+  const handleSaveProduct = (newProductData: Omit<Product,'id'>) => {
     const created: Product = {
       ...newProductData,
       id: Date.now(),
@@ -394,20 +488,24 @@ const App: React.FC = () => {
                 setIsProdukExpanded(!isProdukExpanded);
               }
             }}
+            tenants={tenants}
+            activeTenantId={activeTenantId}
+            onSelectTenant={setActiveTenantId}
+            onOpenRegisterModal={() => setIsRegisterTenantOpen(true)}
           />
 
           {/* Main Content Area */}
           <div className="flex-1 min-h-0 flex flex-col min-w-0 relative bg-gray-100 overflow-hidden">
             <main
               className={`flex-1 min-h-0 flex flex-col ${
-                activeMenu === 'Kasir POS'
+                activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS'
                   ? 'p-2 sm:p-3 overflow-hidden'
                   : 'p-2 sm:p-4 pb-20 md:pb-4 overflow-y-auto'
               }`}
             >
-              {activeMenu === 'Kasir POS' ? (
+              {activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS' ? (
                 <PosView
-                  products={products}
+                  products={productsWithPromo}
                   filteredProducts={filteredProducts}
                   searchQuery={searchQuery}
                   onSearchChange={setSearchQuery}
@@ -422,31 +520,40 @@ const App: React.FC = () => {
                   grandTotal={grandTotal}
                   onOpenPaymentModal={() => setIsPaymentModalOpen(true)}
                 />
-              ) : activeMenu === 'Transaksi Harian' ? (
+              ) : activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian' ? (
                 <DailyTransactionsView
                   transactions={transactions}
                   onSelectReceipt={tx => {
                     setSelectedReceipt(tx);
                     setIsReceiptModalOpen(true);
                   }}
-                  onNavigateToPos={() => setActiveMenu('Kasir POS')}
+                  onNavigateToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
+                />
+              ) : activeMenu === 'Promo' ? (
+                <PromoManagementView
+                  promos={promos}
+                  products={productsWithPromo}
+                  onSavePromo={handleSavePromo}
+                  onDeletePromo={handleDeletePromo}
+                  onTogglePromoStatus={handleTogglePromoStatus}
+                  onNavigateToPosWithPromo={() => setActiveMenu('Kasir POS (Penjualan)')}
                 />
               ) : activeMenu === 'Daftar Barang' ? (
                 <ProductListView
-                  products={products}
+                  products={productsWithPromo}
                   onOpenAddModal={() => setIsAddProductModalOpen(true)}
                   onAddToCartAndOpenPos={p => {
                     handleAddToCart(p);
-                    setActiveMenu('Kasir POS');
+                    setActiveMenu('Kasir POS (Penjualan)');
                   }}
                 />
               ) : activeMenu === 'Daftar Kategori' ? (
                 <CategoryListView
                   categories={categories}
-                  products={products}
+                  products={productsWithPromo}
                   onOpenAddCategoryModal={() => setIsAddCategoryModalOpen(true)}
                 />
-              ) : activeMenu === 'Pembelian (buyback)' ? (
+              ) : activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? (
                 <BuybackView
                   buybacks={buybacks}
                   onSaveBuyback={handleSaveBuyback}
@@ -454,10 +561,27 @@ const App: React.FC = () => {
                     setSelectedBuybackReceipt(bb);
                     setIsBuybackReceiptModalOpen(true);
                   }}
-                  onBackToPos={() => setActiveMenu('Kasir POS')}
+                  onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
+                />
+              ) : activeMenu === 'Dashboard' ? (
+                <DashboardView
+                  products={productsWithPromo}
+                  transactions={transactions}
+                  buybacks={buybacks}
+                  activeTenant={activeTenant}
+                  onNavigateTo={setActiveMenu}
+                  onOpenRegisterTenant={() => setIsRegisterTenantOpen(true)}
+                />
+              ) : activeMenu === 'Multi-Tenant & Outlet' || activeMenu === 'Multi-Outlet' || activeMenu === 'Multi-Tenant' ? (
+                <TenantManagementView
+                  tenants={tenants}
+                  activeTenantId={activeTenantId}
+                  onSelectTenant={setActiveTenantId}
+                  onOpenRegisterModal={() => setIsRegisterTenantOpen(true)}
+                  onNavigateToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
                 />
               ) : (
-                <FallbackView title={activeMenu} onBackToPos={() => setActiveMenu('Kasir POS')} />
+                <FallbackView title={activeMenu} onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')} />
               )}
             </main>
 
@@ -465,20 +589,20 @@ const App: React.FC = () => {
         </div>
 
         {/* Bottom Navigation for Tablet & Mobile (lg:hidden) - menus moved from top to bottom */}
-        <nav className="lg:hidden shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1.5 sm:px-3 py-1 flex items-center justify-around shadow-lg z-30 min-h-[56px]">
+        <nav className="lg:hidden shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1.5 sm:px-3 py-1 flex items-center justify-around z-30 min-h-[56px]">
           <button
             type="button"
-            onClick={() => setActiveMenu('Kasir POS')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
-              activeMenu === 'Kasir POS'
-                ? 'text-orange-600 font-bold bg-orange-50/80 shadow-2xs'
+            onClick={() => setActiveMenu('Kasir POS (Penjualan)')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+              activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS'
+                ? 'text-orange-600 font-bold bg-orange-50/80'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             <div className="relative">
-              <ShoppingCart size={19} className={activeMenu === 'Kasir POS' ? 'text-orange-600' : 'text-gray-500'} />
+              <ShoppingCart size={19} className={activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS' ? 'text-orange-600' : 'text-gray-500'} />
               {cart.reduce((a, b) => a + b.qty, 0) > 0 && (
-                <span className="absolute -top-1 -right-2.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
+                <span className="absolute -top-1 -right-2.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center">
                   {cart.reduce((a, b) => a + b.qty, 0)}
                 </span>
               )}
@@ -488,36 +612,36 @@ const App: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveMenu('Pembelian (buyback)')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
-              activeMenu === 'Pembelian (buyback)'
-                ? 'text-orange-600 font-bold bg-orange-50/80 shadow-2xs'
+            onClick={() => setActiveMenu('Buyback (Pembelian)')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+              activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)'
+                ? 'text-orange-600 font-bold bg-orange-50/80'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            <Scale size={19} className={activeMenu === 'Pembelian (buyback)' ? 'text-orange-600' : 'text-gray-500'} />
+            <Scale size={19} className={activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? 'text-orange-600' : 'text-gray-500'} />
             <span className="text-[10px] mt-0.5 leading-none">Buyback</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveMenu('Transaksi Harian')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
-              activeMenu === 'Transaksi Harian'
-                ? 'text-orange-600 font-bold bg-orange-50/80 shadow-2xs'
+            onClick={() => setActiveMenu('Transaksi')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+              activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian'
+                ? 'text-orange-600 font-bold bg-orange-50/80'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            <ReceiptText size={19} className={activeMenu === 'Transaksi Harian' ? 'text-orange-600' : 'text-gray-500'} />
+            <ReceiptText size={19} className={activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian' ? 'text-orange-600' : 'text-gray-500'} />
             <span className="text-[10px] mt-0.5 leading-none">Transaksi</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveMenu('Daftar Barang')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
               activeMenu === 'Daftar Barang'
-                ? 'text-orange-600 font-bold bg-orange-50/80 shadow-2xs'
+                ? 'text-orange-600 font-bold bg-orange-50/80'
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
@@ -528,7 +652,7 @@ const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsSidebarCollapsed(false)}
-            className="flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all text-gray-500 hover:text-gray-900 min-w-[56px] min-h-[46px] cursor-pointer active:scale-95"
+            className="flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all text-gray-500 hover:text-gray-900 min-w-[56px] min-h-[46px] cursor-pointer active:scale-95"
           >
             <Menu size={19} />
             <span className="text-[10px] mt-0.5 leading-none">Menu</span>
@@ -539,7 +663,7 @@ const App: React.FC = () => {
         <BarcodeScannerModal
           isOpen={isScanModalOpen}
           onClose={() => setIsScanModalOpen(false)}
-          products={products}
+          products={productsWithPromo}
           onScanCode={handleAutoScanCode}
           isSoundEnabled={isSoundEnabled}
           onToggleSound={() => setIsSoundEnabled(!isSoundEnabled)}
@@ -564,7 +688,7 @@ const App: React.FC = () => {
           onClose={() => setIsReceiptModalOpen(false)}
           receipt={selectedReceipt}
           onPrint={() => window.print()}
-          onViewDailyTransactions={() => setActiveMenu('Transaksi Harian')}
+          onViewDailyTransactions={() => setActiveMenu('Transaksi')}
         />
 
         <BuybackReceiptModal
@@ -585,6 +709,12 @@ const App: React.FC = () => {
           isOpen={isAddCategoryModalOpen}
           onClose={() => setIsAddCategoryModalOpen(false)}
           onSaveCategory={handleSaveCategory}
+        />
+
+        <RegisterTenantModal
+          isOpen={isRegisterTenantOpen}
+          onClose={() => setIsRegisterTenantOpen(false)}
+          onSaveTenant={handleRegisterTenant}
         />
 
         <ScanFeedbackToast feedback={scanFeedback} />

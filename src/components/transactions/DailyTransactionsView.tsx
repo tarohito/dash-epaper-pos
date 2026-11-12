@@ -50,13 +50,13 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Bar Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-lg border border-gray-200">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="p-2 bg-orange-100 text-orange-600 rounded-xl">
+            <span className="p-2 bg-orange-100 text-orange-600 rounded-lg">
               <ReceiptText size={20} />
             </span>
-            <h1 className="text-xl font-bold text-gray-900">Rekap Transaksi Harian</h1>
+            <h1 className="text-xl font-bold text-gray-900">Rekap Transaksi</h1>
           </div>
           <p className="text-xs text-gray-500">
             Histori seluruh transaksi kasir, rincian pembayaran, dan cetak ulang bukti nota struk perhiasan
@@ -66,18 +66,18 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
           <button
             type="button"
             onClick={onNavigateToPos}
-            className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-2 cursor-pointer"
           >
             <ShoppingCart size={15} />
-            Buka Kasir POS
+            Buka Kasir POS (Penjualan)
           </button>
         </div>
       </div>
 
       {/* KPI Metric Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+        <div className="bg-white p-5 rounded-lg border border-gray-200 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
             <DollarSign size={24} />
           </div>
           <div>
@@ -89,8 +89,8 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 border border-orange-100">
+        <div className="bg-white p-5 rounded-lg border border-gray-200 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 border border-orange-100">
             <Gem size={24} />
           </div>
           <div>
@@ -102,8 +102,8 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+        <div className="bg-white p-5 rounded-lg border border-gray-200 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
             <Wallet size={24} />
           </div>
           <div>
@@ -120,7 +120,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
+      <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
         <div className="flex-1 w-full relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
           <input
@@ -128,7 +128,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
             placeholder="Cari transaksi berdasarkan No. Faktur, nama pelanggan, atau SKU..."
             value={txSearchQuery}
             onChange={e => setTxSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-500 focus:bg-white transition-all font-medium"
+            className="w-full pl-10 pr-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white transition-all font-medium"
           />
         </div>
         {/* Method Filter Buttons */}
@@ -144,7 +144,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
               key={tab.id}
               type="button"
               onClick={() => setTxFilterMethod(tab.id)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer whitespace-nowrap min-h-[36px] ${
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer whitespace-nowrap min-h-[36px] ${
                 txFilterMethod === tab.id ? 'bg-orange-500 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -157,7 +157,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
       {/* MOBILE LIST CARDS VIEW (md:hidden) */}
       <div className="md:hidden space-y-3">
         {filtered.map(tx => (
-          <div key={tx.id} className="bg-white p-4 rounded-2xl border border-gray-200 space-y-3 shadow-xs">
+          <div key={tx.id} className="bg-white p-4 rounded-lg border border-gray-200 space-y-3 shadow-xs">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
               <div>
                 <span className="font-mono font-bold text-gray-900 text-xs">{tx.invoiceNo}</span>
@@ -187,25 +187,25 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
             <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
               <div>
                 {tx.paymentMethod === 'cash' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                     <Banknote size={12} />
                     Tunai
                   </span>
                 )}
                 {tx.paymentMethod === 'debit' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
                     <CreditCard size={12} />
                     Debit {tx.paymentDetails.debitBank}
                   </span>
                 )}
                 {tx.paymentMethod === 'transfer' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
                     <Building2 size={12} />
                     Trf {tx.paymentDetails.transferBank}
                   </span>
                 )}
                 {tx.paymentMethod === 'qris' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
                     <QrCode size={12} />
                     QRIS
                   </span>
@@ -214,7 +214,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectReceipt(tx)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 font-bold rounded-xl text-xs transition-colors cursor-pointer min-h-[36px]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 font-bold rounded-md text-xs transition-colors cursor-pointer min-h-[36px]"
               >
                 <Printer size={13} />
                 Cetak Struk
@@ -224,14 +224,14 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
         ))}
 
         {filtered.length === 0 && (
-          <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center text-gray-400 text-xs">
+          <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-400 text-xs">
             Tidak ada riwayat transaksi yang cocok dengan filter.
           </div>
         )}
       </div>
 
       {/* DESKTOP & TABLET TRANSACTIONS TABLE (hidden md:block) */}
-      <div className="hidden md:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase font-semibold tracking-wider text-[11px]">
@@ -267,25 +267,25 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                   </td>
                   <td className="py-4 px-4">
                     {tx.paymentMethod === 'cash' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                         <Banknote size={13} />
                         Tunai
                       </span>
                     )}
                     {tx.paymentMethod === 'debit' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
                         <CreditCard size={13} />
                         Debit {tx.paymentDetails.debitBank}
                       </span>
                     )}
                     {tx.paymentMethod === 'transfer' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
                         <Building2 size={13} />
                         Trf {tx.paymentDetails.transferBank}
                       </span>
                     )}
                     {tx.paymentMethod === 'qris' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
                         <QrCode size={13} />
                         QRIS GPN
                       </span>
@@ -300,7 +300,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onSelectReceipt(tx)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-orange-500 hover:text-white text-gray-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer min-h-[36px]"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-orange-500 hover:text-white text-gray-700 font-semibold rounded-md text-xs transition-colors cursor-pointer min-h-[36px]"
                       >
                         <Printer size={13} />
                         Cetak Struk

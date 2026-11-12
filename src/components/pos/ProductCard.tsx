@@ -17,7 +17,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           onAddToCart(product);
         }
       }}
-      className={`bg-white border rounded-2xl transition-all duration-200 group flex flex-col justify-between relative overflow-hidden active:scale-[0.98] select-none ${
+      className={`bg-white border rounded-lg transition-all duration-200 group flex flex-col justify-between relative overflow-hidden active:scale-[0.98] select-none ${
         isOutOfStock
           ? 'border-gray-200 opacity-60 cursor-not-allowed bg-gray-50/50'
           : 'border-gray-200 cursor-pointer hover:border-orange-500 shadow-xs hover:shadow-md'
@@ -33,11 +33,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
               !isOutOfStock ? 'group-hover:scale-105' : 'grayscale-40'
             }`}
           />
-          {/* Category Badge */}
-          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5">
+          {/* Category & Promo Badge */}
+          <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 flex flex-col gap-1 items-start">
             <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 bg-white/95 backdrop-blur-sm text-orange-600 rounded-md border border-orange-100 inline-block">
               {product.category}
             </span>
+            {product.isPromo && (
+              <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 bg-yellow-400 text-gray-950 rounded-md inline-block">
+                {product.promoLabel || 'PROMO'}
+              </span>
+            )}
           </div>
           {/* Stock Badge */}
           <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5">

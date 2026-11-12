@@ -1,11 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from'react';
 import {
   Bell,
-  User,
   ChevronDown,
-  Scale,
-  ReceiptText,
-} from 'lucide-react';
+} from'lucide-react';
 import Tooltip from '../Tooltip';
 
 interface HeaderProps {
@@ -47,94 +44,78 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [isAdminMenuOpen, onCloseAdminMenu]);
 
-  const headerMenus = [
-    { name: 'Pembelian (buyback)', icon: Scale },
-    { name: 'Transaksi Harian', icon: ReceiptText },
-  ];
-
   return (
     <header className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 bg-white border-b border-gray-200 z-30 shrink-0 relative">
-      {/* 1. LOGO & SIDEBAR TOGGLE (Left) */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* SIDEBAR TOGGLE BUTTON */}
-        <Tooltip content={isSidebarCollapsed ? 'Buka Menu' : 'Sembunyikan Menu'} side="bottom" sideOffset={8}>
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className="p-2 -ml-1 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-colors flex items-center justify-center cursor-pointer shrink-0 min-w-[40px] min-h-[40px]"
-            aria-label="Toggle Sidebar"
-          >
-            <svg
-              className="w-5 h-5 transition-transform duration-200"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      {/* 1. LOGO & SIDEBAR TOGGLE (Left - Aligned left) */}
+      <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3 shrink-0">
+        {/* SIDEBAR TOGGLE / MINIMIZE BUTTON (Desktop only; hidden on mobile & tablet since bottom nav has Menu) */}
+        <div className="hidden lg:flex items-center">
+          <Tooltip content={isSidebarCollapsed ? 'Buka Menu' : 'Sembunyikan Menu'} side="bottom" sideOffset={8}>
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="p-1.5 -ml-1 text-gray-500 hover:text-orange-600 transition-colors flex items-center justify-center cursor-pointer shrink-0 outline-none focus:outline-none"
+              aria-label="Toggle Sidebar"
             >
-              {isSidebarCollapsed ? (
-                <>
-                  <line x1="4" y1="6" x2="20" y2="6" />
-                  <line x1="4" y1="12" x2="14" y2="12" />
-                  <line x1="4" y1="18" x2="18" y2="18" />
-                </>
-              ) : (
-                <>
-                  <line x1="4" y1="6" x2="16" y2="6" />
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <line x1="4" y1="18" x2="12" y2="18" />
-                </>
-              )}
-            </svg>
-          </button>
-        </Tooltip>
+              <svg
+                className="w-5 h-5 transition-transform duration-200"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {isSidebarCollapsed ? (
+                  <>
+                    <line x1="4" y1="6" x2="20" y2="6" />
+                    <line x1="4" y1="12" x2="14" y2="12" />
+                    <line x1="4" y1="18" x2="18" y2="18" />
+                  </>
+                ) : (
+                  <>
+                    <line x1="4" y1="6" x2="16" y2="6" />
+                    <line x1="4" y1="12" x2="20" y2="12" />
+                    <line x1="4" y1="18" x2="12" y2="18" />
+                  </>
+                )}
+              </svg>
+            </button>
+          </Tooltip>
+        </div>
 
         <div
-          className="flex items-baseline gap-1.5 sm:gap-2 cursor-pointer select-none"
-          onClick={() => onSelectMenu('Kasir POS')}
+          className="flex items-center gap-2 cursor-pointer select-none"
+          onClick={() => onSelectMenu('Kasir POS (Penjualan)')}
         >
-          <span className="text-lg sm:text-xl font-bold tracking-tight text-gradient-brand whitespace-nowrap">
+          <span className="text-2xl sm:text-[28px] lg:text-[30px] font-black tracking-tight text-gradient-brand whitespace-nowrap leading-none flex items-center">
             e.paper
           </span>
-          <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider sm:tracking-widest text-gray-400 uppercase whitespace-nowrap hidden xs:inline">
+          <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-gray-400 uppercase whitespace-nowrap hidden sm:inline leading-none">
             POS JEWELLERY
           </span>
         </div>
       </div>
 
-      {/* 2. HORIZONTAL MENU (Visible only on desktop lg+, moves to bottom navigation on tablet & phone) */}
-      <div className="hidden lg:flex items-center h-full gap-4 lg:gap-8 mx-2 sm:mx-4 overflow-x-auto">
-        {headerMenus.map(menu => {
-          const Icon = menu.icon;
-          const isActive = activeMenu === menu.name;
-          return (
-            <button
-              key={menu.name}
-              type="button"
-              onClick={() => onSelectMenu(menu.name)}
-              className={`h-full flex items-center gap-1.5 lg:gap-2 text-xs font-semibold transition-colors cursor-pointer relative px-2 shrink-0 ${
-                isActive ? 'text-orange-600 font-bold' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <Icon size={15} className={isActive ? 'text-orange-500' : 'text-gray-400'} />
-              <span className="whitespace-nowrap">{menu.name}</span>
-              {isActive && (
-                <span className="absolute -bottom-px left-0 right-0 h-[2.5px] bg-orange-500 rounded-t-xs" />
-              )}
-            </button>
-          );
-        })}
+      {/* 2. ACTIVE PAGE INDICATOR (Center - Horizontally Centered across header) */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center text-center pointer-events-none z-10">
+        <div className="pointer-events-auto flex items-center justify-center gap-1.5 sm:gap-2 text-xs">
+          <span className="text-gray-400 font-medium hidden md:inline">Menu</span>
+          <span className="text-gray-300 hidden md:inline">/</span>
+          <span className="text-orange-600 font-bold bg-orange-50/90 px-2.5 py-1 rounded-md border border-orange-200/60 text-xs whitespace-nowrap shadow-none">
+            {activeMenu}
+          </span>
+        </div>
       </div>
 
-      {/* 3. RIGHT ICONS (Notification & User Profile) */}
-      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+      {/* 3. RIGHT ICONS (Notification & User Profile - Aligned right) */}
+      <div className="flex-1 flex items-center justify-end gap-1 sm:gap-2 shrink-0">
 
         <Tooltip content={hasNotification ? 'Ada notifikasi baru' : 'Tidak ada notifikasi'} side="bottom" sideOffset={6}>
           <button
             type="button"
             onClick={onToggleNotification}
-            className="relative p-2 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-colors flex items-center justify-center cursor-pointer min-w-[40px] min-h-[40px]"
+            className="relative p-2 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-md transition-colors flex items-center justify-center cursor-pointer min-w-[40px] min-h-[40px] outline-none focus:outline-none"
             aria-label="Notifikasi"
           >
             <Bell size={19} />
@@ -149,23 +130,23 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onToggleAdminMenu}
-            className="flex items-center gap-1.5 sm:gap-2 text-xs font-semibold text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-colors cursor-pointer p-1.5 sm:p-2 min-h-[40px]"
+            className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs font-semibold text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-md transition-colors cursor-pointer p-1.5 sm:p-2 min-h-[40px] outline-none focus:outline-none"
             aria-expanded={isAdminMenuOpen}
           >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white flex items-center justify-center font-bold text-xs">
               AD
             </div>
             <span className="hidden sm:inline font-bold">Admin</span>
             <ChevronDown
               size={14}
               className={`text-gray-400 transition-transform duration-200 hidden sm:inline ${
-                isAdminMenuOpen ? 'rotate-180 text-orange-500' : ''
+                isAdminMenuOpen ?'rotate-180 text-orange-500' :''
               }`}
             />
           </button>
 
           {isAdminMenuOpen && (
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-gray-100 py-1.5 z-50 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
               {/* User Profile Header */}
               <div className="px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-3">
@@ -177,7 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <p className="text-[11px] text-gray-400 truncate">Shift 1 (08:00 - 16:00)</p>
                   </div>
                 </div>
-                <div className="mt-2.5 flex items-center justify-between text-[11px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-medium">
+                <div className="mt-2.5 flex items-center justify-between text-[11px] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md font-medium">
                   <span>Status Shift:</span>
                   <span className="font-bold flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -194,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onSelectMenu('Pengaturan');
                     onCloseAdminMenu();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-xl transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
                 >
                   Pengaturan Toko
                 </button>
@@ -204,7 +185,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onSelectMenu('Rekap Shift');
                     onCloseAdminMenu();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-xl transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
                 >
                   Laporan Tutup Kasir
                 </button>

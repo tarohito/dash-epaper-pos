@@ -1,28 +1,28 @@
-import React from 'react';
-import { Transaction, BuybackItem } from '../../types';
-import { formatIDR } from '../../utils/formatters';
+import React from'react';
+import { Transaction, BuybackItem } from'../../types';
+import { formatIDR } from'../../utils/formatters';
 
 interface GoldInvoiceDocumentProps {
   receipt: Transaction | BuybackItem;
-  type?: 'sale' | 'buyback';
+  type?:'sale' |'buyback';
   id?: string;
 }
 
 export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
   receipt,
-  type = 'sale',
+  type ='sale',
   id,
 }) => {
-  const isBuyback = type === 'buyback';
+  const isBuyback = type ==='buyback';
   const buybackData = isBuyback ? (receipt as BuybackItem) : null;
   const saleData = !isBuyback ? (receipt as Transaction) : null;
 
   const invoiceNo = receipt.invoiceNo;
   const customerName = receipt.customerName;
-  const customerPhone = isBuyback ? buybackData?.customerPhone : '081234567890';
+  const customerPhone = isBuyback ? buybackData?.customerPhone :'081234567890';
   const dateStr = isBuyback
     ? buybackData?.date
-    : `${saleData?.dateStr || ''} ${saleData?.timeStr || ''}`.trim() || '11 Nov 2026, 14:30';
+    : `${saleData?.dateStr ||''} ${saleData?.timeStr ||''}`.trim() ||'11 Nov 2026, 14:30';
 
   const totalAmount = isBuyback ? buybackData?.totalBayar || 0 : saleData?.grandTotal || 0;
   const subtotalAmount = isBuyback
@@ -33,8 +33,8 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
   return (
     <div
       id={id}
-      className="relative bg-white text-gray-900 font-sans p-4 sm:p-7 md:p-8 rounded-2xl border border-gray-200 w-full max-w-3xl mx-auto overflow-hidden leading-normal select-none"
-      style={{ minHeight: '560px' }}
+      className="relative bg-white text-gray-900 font-sans p-4 sm:p-7 md:p-8 rounded-lg border border-gray-200 w-full max-w-3xl mx-auto overflow-hidden leading-normal select-none"
+      style={{ minHeight:'560px' }}
     >
       {/* ========================================================= */}
       {/* CENTER WATERMARK (Identik seperti di foto nota emas resmi) */}
@@ -95,7 +95,7 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
             <div className="text-xs space-y-0.5 pt-1 text-gray-800">
               <div className="flex items-center gap-1.5 font-bold">
                 <span className="text-gray-500 font-normal">No. Pelanggan :</span>
-                <span className="font-mono text-gray-900 font-extrabold">N{invoiceNo.replace(/[^0-9]/g, '').slice(-8) || '26813770'}</span>
+                <span className="font-mono text-gray-900 font-extrabold">N{invoiceNo.replace(/[^0-9]/g,'').slice(-8) ||'26813770'}</span>
                 <span className="text-gray-900 font-bold ml-1">{customerName}</span>
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-gray-700">
@@ -115,7 +115,7 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
               ))}
             </div>
             <div className="font-mono text-xs font-black tracking-wider text-gray-900 mt-1">
-              {isBuyback ? invoiceNo : `NS.${invoiceNo.replace(/[^0-9]/g, '') || '525001.260700036'}`}
+              {isBuyback ? invoiceNo : `NS.${invoiceNo.replace(/[^0-9]/g,'') ||'525001.260700036'}`}
             </div>
             <div className="text-[11px] text-gray-600 font-medium">{dateStr}</div>
             <div className="text-[11px] font-bold text-gray-700">
@@ -153,7 +153,7 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
                     {buybackData.beratBersih.toFixed(2)}
                   </td>
                   <td className="py-2.5 px-3 text-right font-mono font-black text-gray-900">
-                    {formatIDR(subtotalAmount).replace('Rp', '').trim()}
+                    {formatIDR(subtotalAmount).replace('Rp','').trim()}
                   </td>
                 </tr>
               ) : (
@@ -165,11 +165,11 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
                       <div className="text-[10px] text-gray-400 font-mono">SKU: {it.sku}</div>
                     </td>
                     <td className="py-2.5 px-3 text-center font-mono font-bold">
-                      {it.name.includes('24K') ? '999.9' : it.name.includes('22K') ? '916' : '750 (18K)'}
+                      {it.name.includes('24K') ?'999.9' : it.name.includes('22K') ?'916' :'750 (18K)'}
                     </td>
                     <td className="py-2.5 px-3 text-center font-mono font-bold">{it.berat.toFixed(2)}</td>
                     <td className="py-2.5 px-3 text-right font-mono font-black text-gray-900">
-                      {formatIDR(it.subtotal).replace('Rp', '').trim()}
+                      {formatIDR(it.subtotal).replace('Rp','').trim()}
                     </td>
                   </tr>
                 ))
@@ -186,13 +186,13 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
           {/* Left Column (7 cols): Thumb Photo & QR */}
           <div className="md:col-span-7 flex items-center gap-3">
             {/* Small Product Thumbnail */}
-            <div className="w-16 h-16 rounded-xl border border-gray-300 p-1 bg-white shrink-0 flex items-center justify-center overflow-hidden">
+            <div className="w-16 h-16 rounded-md border border-gray-300 p-1 bg-white shrink-0 flex items-center justify-center overflow-hidden">
               <img
                 src={
                   isBuyback
-                    ? 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=150&q=80'
+                    ?'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=150&q=80'
                     : saleData?.items[0]?.image ||
-                      'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=150&q=80'
+'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=150&q=80'
                 }
                 alt="Product"
                 className="w-full h-full object-cover rounded-lg"
@@ -232,9 +232,9 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
               <span className="font-mono font-bold">0</span>
             </div>
             <div className="flex justify-between text-gray-700">
-              <span className="font-semibold">{isBuyback ? 'Potongan Ongkos' : 'Diskon'}</span>
+              <span className="font-semibold">{isBuyback ?'Potongan Ongkos' :'Diskon'}</span>
               <span className="font-mono font-bold">
-                {diskonOrPotongan > 0 ? formatIDR(diskonOrPotongan).replace('Rp', '').trim() : '0'}
+                {diskonOrPotongan > 0 ? formatIDR(diskonOrPotongan).replace('Rp','').trim() :'0'}
               </span>
             </div>
 
@@ -242,7 +242,7 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
             <div className="bg-[#d4a017] text-gray-950 px-4 py-2 rounded font-black flex justify-between items-center">
               <span className="text-sm uppercase tracking-widest">TOTAL</span>
               <span className="text-base font-mono">
-                {formatIDR(totalAmount).replace('Rp', '').trim()}
+                {formatIDR(totalAmount).replace('Rp','').trim()}
               </span>
             </div>
           </div>

@@ -1,7 +1,7 @@
-import React from 'react';
-import { Scale, X, Printer } from 'lucide-react';
-import { BuybackItem } from '../../types';
-import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
+import React from'react';
+import { Scale, X, Printer } from'lucide-react';
+import { BuybackItem } from'../../types';
+import { GoldInvoiceDocument } from'../common/GoldInvoiceDocument';
 
 interface BuybackReceiptModalProps {
   isOpen: boolean;
@@ -20,11 +20,11 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-gray-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[94vh]">
+      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[94vh]">
         {/* Header Modal */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-orange-50/60">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-orange-500 text-white flex items-center justify-center">
+            <div className="w-9 h-9 rounded-md bg-orange-500 text-white flex items-center justify-center">
               <Scale size={18} />
             </div>
             <div>
@@ -37,7 +37,7 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 cursor-pointer"
+            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md hover:bg-gray-100 cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -55,14 +55,14 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer text-center min-h-[40px]"
+            className="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-md transition-colors cursor-pointer text-center min-h-[40px]"
           >
             Tutup
           </button>
           <button
             type="button"
             onClick={onPrint}
-            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
           >
             <Printer size={15} />
             Cetak Nota Buyback

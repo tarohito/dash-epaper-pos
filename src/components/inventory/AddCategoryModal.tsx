@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FolderTree, X } from 'lucide-react';
+import React, { useState } from'react';
+import { FolderTree, X } from'lucide-react';
 
 interface AddCategoryModalProps {
   isOpen: boolean;
@@ -29,11 +29,11 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-gray-200 w-full max-w-md overflow-hidden flex flex-col">
+      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-md overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-orange-50/40">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-orange-500 text-white flex items-center justify-center">
               <FolderTree size={20} />
             </div>
             <div>
@@ -44,7 +44,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="p-2 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -61,7 +61,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
               value={categoryName}
               onChange={e => setCategoryName(e.target.value)}
               placeholder="Cth: Cincin Tunangan, Gelang Kaki, dsb..."
-              className="w-full px-4 py-3 text-sm font-semibold bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-500 focus:bg-white"
+              className="w-full px-4 py-3 text-sm font-semibold bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white"
             />
             <p className="text-[11px] text-gray-400 mt-1.5">
               Kategori baru akan langsung tersedia di filter etalase dan formulir tambah produk.
@@ -72,13 +72,13 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+              className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold text-xs rounded-md transition-all cursor-pointer"
             >
               Simpan Kategori
             </button>
