@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import {
   Users,
+  UserPlus,
+  ShoppingCart,
   Search,
   Phone,
   MessageCircle,
@@ -130,9 +132,10 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
             setEditingCustomer(null);
             setIsAddModalOpen(true);
           }}
-          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs shrink-0 inline-flex items-center justify-center active:scale-[0.98]"
+          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs shrink-0 inline-flex items-center justify-center gap-1.5 active:scale-[0.98]"
         >
-          Tambah Pelanggan Baru
+          <UserPlus size={16} />
+          <span>Tambah Pelanggan Baru</span>
         </button>
       </div>
 
@@ -368,40 +371,44 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onSelectCustomerForPOS(c.name)}
-                              className="h-7 px-2.5 inline-flex items-center justify-center text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md transition-colors cursor-pointer"
+                              className="h-7 px-2.5 inline-flex items-center justify-center gap-1 text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md transition-colors cursor-pointer"
                               title="Buka Kasir POS untuk pelanggan ini"
                             >
-                              POS
+                              <ShoppingCart size={12} />
+                              <span>POS</span>
                             </button>
 
                             {/* Tombol Buyback */}
                             <button
                               type="button"
                               onClick={() => onSelectCustomerForBuyback(c.name, c.phone)}
-                              className="h-7 px-2.5 inline-flex items-center justify-center text-xs font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md transition-colors cursor-pointer"
+                              className="h-7 px-2.5 inline-flex items-center justify-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md transition-colors cursor-pointer"
                               title="Input Buyback untuk pelanggan ini"
                             >
-                              Buyback
+                              <Scale size={12} />
+                              <span>Buyback</span>
                             </button>
 
                             {/* Tombol Edit */}
                             <button
                               type="button"
                               onClick={() => handleEdit(c)}
-                              className="h-7 px-2 inline-flex items-center justify-center text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                              className="h-7 px-2 inline-flex items-center justify-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
                               title="Edit Data"
                             >
-                              Edit
+                              <Edit2 size={12} />
+                              <span>Edit</span>
                             </button>
 
                             {/* Tombol Hapus */}
                             <button
                               type="button"
                               onClick={() => handleDelete(c)}
-                              className="h-7 px-2 inline-flex items-center justify-center text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                              className="h-7 px-2 inline-flex items-center justify-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
                               title="Hapus Pelanggan"
                             >
-                              Hapus
+                              <Trash2 size={12} />
+                              <span>Hapus</span>
                             </button>
                           </div>
                         </td>
@@ -493,16 +500,18 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onSelectCustomerForPOS(c.name)}
-                          className="px-2.5 py-1 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded transition-colors cursor-pointer"
+                          className="px-2.5 py-1 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded transition-colors cursor-pointer inline-flex items-center gap-1"
                         >
-                          Kasir POS
+                          <ShoppingCart size={12} />
+                          <span>Kasir POS</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => onSelectCustomerForBuyback(c.name, c.phone)}
-                          className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded transition-colors cursor-pointer"
+                          className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded transition-colors cursor-pointer inline-flex items-center gap-1"
                         >
-                          Buyback
+                          <Scale size={12} />
+                          <span>Buyback</span>
                         </button>
                       </div>
 
@@ -510,16 +519,18 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleEdit(c)}
-                          className="px-2 py-1 text-xs font-semibold text-gray-600 hover:text-gray-900 rounded cursor-pointer"
+                          className="px-2 py-1 text-xs font-semibold text-gray-600 hover:text-gray-900 rounded cursor-pointer inline-flex items-center gap-1"
                         >
-                          Edit
+                          <Edit2 size={12} />
+                          <span>Edit</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(c)}
-                          className="px-2 py-1 text-xs font-semibold text-red-500 hover:text-red-700 rounded cursor-pointer"
+                          className="px-2 py-1 text-xs font-semibold text-red-500 hover:text-red-700 rounded cursor-pointer inline-flex items-center gap-1"
                         >
-                          Hapus
+                          <Trash2 size={12} />
+                          <span>Hapus</span>
                         </button>
                       </div>
                     </div>

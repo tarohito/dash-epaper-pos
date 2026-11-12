@@ -1,4 +1,5 @@
 import React from 'react';
+import { Plus, ShoppingCart } from 'lucide-react';
 import { Product } from'../../types';
 import { formatIDR } from'../../utils/formatters';
 
@@ -25,9 +26,10 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
         <button
           type="button"
           onClick={onOpenAddModal}
-          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer self-stretch sm:self-auto shadow-xs active:scale-[0.98]"
+          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer self-stretch sm:self-auto shadow-xs active:scale-[0.98]"
         >
-          Tambah Barang
+          <Plus size={16} />
+          <span>Tambah Barang</span>
         </button>
       </div>
 
@@ -65,9 +67,10 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                 type="button"
                 onClick={() => onAddToCartAndOpenPos(p)}
                 disabled={p.stok <= 0}
-                className="px-3.5 py-2 bg-orange-50 hover:bg-orange-500 hover:text-white disabled:bg-gray-100 disabled:text-gray-400 text-orange-600 font-semibold rounded-md text-xs sm:text-sm transition-colors cursor-pointer min-h-[38px] flex items-center justify-center"
+                className="px-3.5 py-2 bg-orange-50 hover:bg-orange-500 hover:text-white disabled:bg-gray-100 disabled:text-gray-400 text-orange-600 font-semibold rounded-md text-xs sm:text-sm transition-colors cursor-pointer min-h-[38px] inline-flex items-center justify-center gap-1.5"
               >
-                Masukkan Kasir
+                <ShoppingCart size={14} />
+                <span>Masukkan Kasir</span>
               </button>
             </div>
           </div>
@@ -121,9 +124,10 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onAddToCartAndOpenPos(p)}
-                      className="h-8 px-3 bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 font-semibold rounded-md text-xs sm:text-sm transition-colors cursor-pointer inline-flex items-center justify-center"
+                      className="h-8 px-3 bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 font-semibold rounded-md text-xs sm:text-sm transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                     >
-                      Masukkan Kasir
+                      <ShoppingCart size={13} />
+                      <span>Masukkan Kasir</span>
                     </button>
                   </td>
                 </tr>

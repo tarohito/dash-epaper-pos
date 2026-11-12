@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Search,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import { Tenant } from '../../types';
 
@@ -66,9 +67,10 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
           <button
             type="button"
             onClick={onOpenRegisterModal}
-            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer shadow-xs active:scale-[0.98]"
+            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
           >
-            Tambah Toko / Outlet Baru
+            <Plus size={16} />
+            <span>Tambah Toko / Outlet Baru</span>
           </button>
         </div>
       </div>

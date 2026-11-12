@@ -13,7 +13,11 @@ import {
   Clock,
   Store,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  Printer,
 } from 'lucide-react';
 import { BuybackGoldItem, BuybackItem } from '../../types';
 import { formatIDR } from '../../utils/formatters';
@@ -526,16 +530,18 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
               <button
                 type="button"
                 onClick={() => handleAddItem('Logam Mulia Batangan')}
-                className="h-9 px-3.5 text-xs sm:text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+                className="h-9 px-3.5 text-xs sm:text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
-                Emas Batangan
+                <Plus size={15} />
+                <span>Emas Batangan</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleAddItem('Perhiasan')}
-                className="h-9 px-3.5 text-xs sm:text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+                className="h-9 px-3.5 text-xs sm:text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
-                Perhiasan
+                <Plus size={15} />
+                <span>Perhiasan</span>
               </button>
             </div>
           </div>
@@ -565,9 +571,10 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(item.id)}
-                        className="inline-flex items-center text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-md transition-colors cursor-pointer border border-transparent hover:border-red-200"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-md transition-colors cursor-pointer border border-transparent hover:border-red-200"
                       >
-                        Hapus Item
+                        <Trash2 size={13} />
+                        <span>Hapus Item</span>
                       </button>
                     )}
                   </div>
@@ -1084,15 +1091,17 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 sm:flex-none h-11 px-5 text-xs sm:text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center text-center shadow-xs"
+              className="flex-1 sm:flex-none h-11 px-5 text-xs sm:text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 text-center shadow-xs"
             >
-              Batal / Kembali
+              <ArrowLeft size={16} className="text-gray-500" />
+              <span>Batal / Kembali</span>
             </button>
             <button
               type="submit"
-              className="flex-1 sm:flex-none h-11 px-6 text-xs sm:text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center active:scale-[0.98]"
+              className="flex-1 sm:flex-none h-11 px-6 text-xs sm:text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-2 active:scale-[0.98]"
             >
-              Simpan &amp; Cetak Struk Buyback
+              <Printer size={16} />
+              <span>Simpan &amp; Cetak Struk Buyback</span>
             </button>
           </div>
         </div>

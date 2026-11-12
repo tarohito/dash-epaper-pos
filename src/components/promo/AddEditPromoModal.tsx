@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Check, Package, Tag, AlertCircle } from 'lucide-react';
+import { X, Calendar, Check, Package, Tag, AlertCircle, Save } from 'lucide-react';
 import { PromoCampaign, Product } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import { NumericInput } from '../common/NumericInput';
@@ -346,14 +346,16 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
             onClick={onClose}
             className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs"
           >
-            Batal
+            <X size={15} className="mr-1.5 text-gray-500" />
+            <span>Batal</span>
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center active:scale-[0.98]"
+            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
-            {editingPromo ? 'Simpan Perubahan' : 'Buat Promo'}
+            <Save size={15} />
+            <span>{editingPromo ? 'Simpan Perubahan' : 'Buat Promo'}</span>
           </button>
         </div>
       </div>

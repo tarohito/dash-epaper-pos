@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, ShoppingCart, Printer } from 'lucide-react';
 import { Transaction } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import Tooltip from '../Tooltip';
@@ -61,9 +61,10 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
             <button
               type="button"
               onClick={onNavigateToPos}
-              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
+              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
             >
-              Buka Kasir POS
+              <ShoppingCart size={16} />
+              <span>Buka Kasir POS</span>
             </button>
           </div>
         </div>
@@ -277,9 +278,10 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onSelectReceipt(tx)}
-                          className="inline-flex items-center justify-center h-8 px-2.5 text-xs font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-orange-500 border border-orange-200 hover:border-orange-500 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="inline-flex items-center justify-center gap-1.5 h-8 px-2.5 text-xs font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-orange-500 border border-orange-200 hover:border-orange-500 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
                         >
-                          Cetak Nota
+                          <Printer size={13} />
+                          <span>Cetak Nota</span>
                         </button>
                       </td>
                     </tr>

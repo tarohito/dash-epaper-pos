@@ -2,6 +2,8 @@ import React, { useRef, useEffect } from'react';
 import {
   Bell,
   ChevronDown,
+  Settings,
+  FileSpreadsheet,
 } from'lucide-react';
 import Tooltip from '../Tooltip';
 
@@ -174,7 +176,8 @@ export const Header: React.FC<HeaderProps> = ({
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
                 >
-                  Pengaturan Toko
+                  <Settings size={15} className="text-gray-400 shrink-0" />
+                  <span>Pengaturan Toko</span>
                 </button>
                 <button
                   type="button"
@@ -184,7 +187,8 @@ export const Header: React.FC<HeaderProps> = ({
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
                 >
-                  Laporan Tutup Kasir
+                  <FileSpreadsheet size={15} className="text-gray-400 shrink-0" />
+                  <span>Laporan Tutup Kasir</span>
                 </button>
               </div>
             </div>

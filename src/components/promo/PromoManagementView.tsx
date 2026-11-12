@@ -8,6 +8,10 @@ import {
   Sparkles,
   Tag,
   Package,
+  Plus,
+  Pencil,
+  Trash2,
+  ShoppingCart,
 } from 'lucide-react';
 import { PromoCampaign, Product } from '../../types';
 import { AddEditPromoModal } from './AddEditPromoModal';
@@ -102,9 +106,10 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
         <button
           type="button"
           onClick={handleOpenAddModal}
-          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer shrink-0 shadow-xs active:scale-[0.98]"
+          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-[0.98]"
         >
-          Buat Promo Baru
+          <Plus size={16} />
+          <span>Buat Promo Baru</span>
         </button>
       </div>
 
@@ -329,16 +334,18 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleOpenEditModal(promo)}
-                    className="px-2.5 py-1 text-xs font-semibold text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded border border-gray-200 transition-colors cursor-pointer"
+                    className="px-2.5 py-1 text-xs font-semibold text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded border border-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1"
                   >
-                    Edit
+                    <Pencil size={12} />
+                    <span>Edit</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onDeletePromo(promo.id)}
-                    className="px-2.5 py-1 text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded border border-gray-200 transition-colors cursor-pointer"
+                    className="px-2.5 py-1 text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded border border-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1"
                   >
-                    Hapus
+                    <Trash2 size={12} />
+                    <span>Hapus</span>
                   </button>
                 </div>
 
@@ -346,9 +353,10 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigateToPosWithPromo(promo)}
-                    className="px-3.5 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-semibold text-xs sm:text-sm rounded transition-colors inline-flex items-center justify-center cursor-pointer"
+                    className="px-3.5 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-semibold text-xs sm:text-sm rounded transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    Buka di Kasir
+                    <ShoppingCart size={13} />
+                    <span>Buka di Kasir</span>
                   </button>
                 )}
               </div>

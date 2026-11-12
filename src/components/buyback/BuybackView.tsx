@@ -6,7 +6,9 @@ import {
   ReceiptText,
   Calendar,
   Building2,
-  FileText
+  FileText,
+  Plus,
+  Printer,
 } from 'lucide-react';
 import { BuybackItem } from '../../types';
 import { formatIDR } from '../../utils/formatters';
@@ -91,9 +93,10 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('form')}
-              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
+              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
             >
-              Transaksi Buyback Baru
+              <Plus size={16} />
+              <span>Transaksi Buyback Baru</span>
             </button>
           </div>
         </div>
@@ -280,9 +283,10 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                           <button
                             type="button"
                             onClick={() => setViewMode('form')}
-                            className="mt-3 inline-flex items-center px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200"
+                            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200"
                           >
-                            Buat Transaksi Buyback Baru
+                            <Plus size={14} />
+                            <span>Buat Transaksi Buyback Baru</span>
                           </button>
                         )}
                       </td>
@@ -384,9 +388,10 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onSelectReceipt(bb)}
-                                className="inline-flex items-center justify-center h-8 px-2.5 text-xs font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-orange-500 border border-orange-200 hover:border-orange-500 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
+                                className="inline-flex items-center justify-center gap-1.5 h-8 px-2.5 text-xs font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-orange-500 border border-orange-200 hover:border-orange-500 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
                               >
-                                Cetak Nota
+                                <Printer size={13} />
+                                <span>Cetak Nota</span>
                               </button>
                           </td>
                         </tr>

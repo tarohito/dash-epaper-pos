@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  Check,
 } from 'lucide-react';
 import { Product } from '../../types';
 import { formatIDR } from '../../utils/formatters';
@@ -333,9 +334,10 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer"
+            className="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 active:scale-[0.98]"
           >
-            Selesai Scan
+            <Check size={16} />
+            <span>Selesai Scan</span>
           </button>
         </div>
       </div>

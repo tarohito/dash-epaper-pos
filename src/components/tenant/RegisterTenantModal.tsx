@@ -291,7 +291,8 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
                 onClick={onClose}
                 className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs"
               >
-                Batal
+                <X size={15} className="mr-1.5 text-gray-500" />
+                <span>Batal</span>
               </button>
               <button
                 type="submit"

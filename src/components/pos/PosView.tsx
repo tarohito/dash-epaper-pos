@@ -125,9 +125,11 @@ export const PosView: React.FC<PosViewProps> = ({
               }`}
               title="Filter Kategori Perhiasan"
             >
+              <Filter size={13} className="mr-1.5 shrink-0 opacity-70" />
               <span className="max-w-[70px] sm:max-w-[110px] truncate">
                 {selectedCategory === 'Semua' ? 'Kategori' : selectedCategory}
               </span>
+              <ChevronDown size={13} className="ml-1 shrink-0 opacity-60" />
             </button>
 
             {/* Dropdown Menu Kategori */}
@@ -223,6 +225,7 @@ export const PosView: React.FC<PosViewProps> = ({
             className="h-9 px-3.5 bg-white border border-gray-200 hover:border-orange-500 hover:text-orange-600 rounded-lg text-gray-700 text-xs sm:text-sm font-semibold inline-flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs"
             title="Buka Scanner Barcode"
           >
+            <Barcode size={16} className="mr-1.5 text-orange-600 shrink-0" />
             <span className="hidden sm:inline">Scan Barcode</span>
             <span className="sm:hidden text-xs">Scan</span>
           </button>

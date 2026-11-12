@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, ReceiptText, Plus } from 'lucide-react';
 import { Transaction } from '../../types';
 import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
 
@@ -58,7 +58,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             }}
             className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs text-center"
           >
-            Lihat Transaksi Harian
+            <ReceiptText size={15} className="mr-1.5 text-gray-500" />
+            <span>Lihat Transaksi Harian</span>
           </button>
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
             <button
@@ -66,7 +67,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               onClick={onClose}
               className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs text-center"
             >
-              Transaksi Baru
+              <Plus size={15} className="mr-1.5 text-gray-500" />
+              <span>Transaksi Baru</span>
             </button>
             <button
               type="button"
@@ -74,7 +76,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
             >
               <Printer size={16} />
-              Cetak Nota Emas (Print)
+              <span>Cetak Nota Emas (Print)</span>
             </button>
           </div>
         </div>

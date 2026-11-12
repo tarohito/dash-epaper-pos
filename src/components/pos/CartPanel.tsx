@@ -149,7 +149,8 @@ export const CartPanel: React.FC<CartPanelProps> = ({
           disabled={cart.length === 0}
           className="w-full h-11 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-lg transition-all inline-flex justify-center items-center cursor-pointer disabled:cursor-not-allowed text-sm active:scale-[0.99] shadow-xs"
         >
-          Proses Pembayaran ({totalQty} Item)
+          <CreditCard size={18} className="mr-2 shrink-0" />
+          <span>Proses Pembayaran ({totalQty} Item)</span>
         </button>
       </div>
     </div>

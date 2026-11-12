@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from'react';
-import { X } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 import { Product } from '../../types';
 import { formatNumber } from '../../utils/formatters';
 import { CustomSelect } from '../common/CustomSelect';
@@ -194,13 +194,15 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               onClick={onClose}
               className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs"
             >
-              Batal
+              <X size={15} className="mr-1.5 text-gray-500" />
+              <span>Batal</span>
             </button>
             <button
               type="submit"
-              className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs active:scale-[0.98]"
+              className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs active:scale-[0.98]"
             >
-              Simpan Barang
+              <Save size={15} />
+              <span>Simpan Barang</span>
             </button>
           </div>
         </form>

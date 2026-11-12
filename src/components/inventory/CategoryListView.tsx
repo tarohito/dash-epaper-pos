@@ -1,5 +1,5 @@
 import React from'react';
-import { Gem } from 'lucide-react';
+import { Gem, Plus } from 'lucide-react';
 import { Product } from'../../types';
 
 interface CategoryListViewProps {
@@ -25,9 +25,10 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
         <button
           type="button"
           onClick={onOpenAddCategoryModal}
-          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer self-stretch sm:self-auto shadow-xs active:scale-[0.98]"
+          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer self-stretch sm:self-auto shadow-xs active:scale-[0.98]"
         >
-          Tambah Daftar Kategori
+          <Plus size={16} />
+          <span>Tambah Kategori</span>
         </button>
       </div>
 
