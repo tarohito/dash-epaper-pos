@@ -50,41 +50,38 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 bg-white border-b border-gray-200 z-30 shrink-0 relative">
       {/* 1. LOGO & SIDEBAR TOGGLE (Left - Aligned left) */}
       <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3 shrink-0">
-        {/* SIDEBAR TOGGLE / MINIMIZE BUTTON (Desktop only; hidden on mobile & tablet since bottom nav has Menu) */}
-        <div className="hidden lg:flex items-center">
-          <Tooltip content={isSidebarCollapsed ? 'Buka Menu' : 'Sembunyikan Menu'} side="bottom" sideOffset={8}>
-            <button
-              type="button"
-              onClick={onToggleSidebar}
-              className="p-1.5 -ml-1 text-gray-500 hover:text-orange-600 transition-colors flex items-center justify-center cursor-pointer shrink-0 outline-none focus:outline-none"
-              aria-label="Toggle Sidebar"
-            >
-              <svg
-                className="w-5 h-5 transition-transform duration-200"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {isSidebarCollapsed ? (
-                  <>
-                    <line x1="4" y1="6" x2="20" y2="6" />
-                    <line x1="4" y1="12" x2="14" y2="12" />
-                    <line x1="4" y1="18" x2="18" y2="18" />
-                  </>
-                ) : (
-                  <>
-                    <line x1="4" y1="6" x2="16" y2="6" />
-                    <line x1="4" y1="12" x2="20" y2="12" />
-                    <line x1="4" y1="18" x2="12" y2="18" />
-                  </>
-                )}
-              </svg>
-            </button>
-          </Tooltip>
-        </div>
+        {/* SIDEBAR TOGGLE / MINIMIZE BUTTON (Direct button without wrapper) */}
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="p-1 -ml-1 text-gray-500 hover:text-orange-600 transition-colors flex items-center justify-center cursor-pointer shrink-0 outline-none focus:outline-none"
+          title={isSidebarCollapsed ? 'Buka Menu' : 'Sembunyikan Menu'}
+          aria-label="Toggle Sidebar"
+        >
+          <svg
+            className="w-5 h-5 transition-transform duration-200"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {isSidebarCollapsed ? (
+              <>
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="14" y2="12" />
+                <line x1="4" y1="18" x2="18" y2="18" />
+              </>
+            ) : (
+              <>
+                <line x1="4" y1="6" x2="16" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="12" y2="18" />
+              </>
+            )}
+          </svg>
+        </button>
 
         <div
           className="flex items-center gap-2 cursor-pointer select-none"

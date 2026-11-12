@@ -9,10 +9,12 @@ import {
   FileText,
   Plus,
   Printer,
+  Eye,
 } from 'lucide-react';
 import { BuybackItem } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import { BuybackFormPage } from './BuybackFormPage';
+import { BuybackDetailModal } from './BuybackDetailModal';
 import Tooltip from '../Tooltip';
 
 interface BuybackViewProps {
@@ -36,7 +38,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMethod, setFilterMethod] = useState<'all' | 'transfer' | 'cash'>('all');
-  const [tableDensity, setTableDensity] = useState<'compact' | 'detailed'>('compact');
+  const [selectedDetailItem, setSelectedDetailItem] = useState<BuybackItem | null>(null);
 
   // Filtered Buybacks
   const filteredBuybacks = buybacks.filter(bb => {
@@ -214,64 +216,27 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                   Uang Tunai
                 </button>
               </div>
-
-              {/* Toggle Kerapatan Tampilan: Ringkas vs Detail */}
-              <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center ml-auto sm:ml-0">
-                <button
-                  type="button"
-                  onClick={() => setTableDensity('compact')}
-                  className={`h-full px-2.5 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                    tableDensity === 'compact'
-                      ? 'bg-white text-gray-900 shadow-2xs font-bold'
-                      : 'text-gray-500 hover:text-gray-800'
-                  }`}
-                  title="Tampilan ringkas, hemat tempat & kolom"
-                >
-                  Ringkas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTableDensity('detailed')}
-                  className={`h-full px-2.5 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                    tableDensity === 'detailed'
-                      ? 'bg-white text-gray-900 shadow-2xs font-bold'
-                      : 'text-gray-500 hover:text-gray-800'
-                  }`}
-                  title="Tampilan rinci seluruh kolom kotor & potongan"
-                >
-                  Detail
-                </button>
-              </div>
             </div>
           </div>
 
           {/* Table Container dengan border bersih */}
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-xs sm:text-sm text-left border-collapse">
-                <thead className="bg-gray-50 text-gray-600 uppercase font-semibold text-xs border-b border-gray-200">
+                <thead className="bg-gray-50 text-gray-600 uppercase font-semibold text-[11px] sm:text-xs border-b border-gray-200 tracking-wider">
                   <tr>
-                    <th className={tableDensity === 'compact' ? 'py-2.5 px-3' : 'py-3 px-3.5'}>No. Transaksi</th>
-                    <th className={tableDensity === 'compact' ? 'py-2.5 px-3' : 'py-3 px-3'}>Nasabah</th>
-                    <th className={tableDensity === 'compact' ? 'py-2.5 px-3' : 'py-3 px-3'}>Item &amp; Kadar</th>
-                    <th className={tableDensity === 'compact' ? 'py-2.5 px-3 text-center' : 'py-3 px-3 text-center'}>Berat</th>
-                    {tableDensity === 'detailed' && (
-                      <>
-                        <th className="py-3 px-3 text-right">Nilai Kotor</th>
-                        <th className="py-3 px-3 text-right">Potongan / Pajak</th>
-                      </>
-                    )}
-                    <th className={tableDensity === 'compact' ? 'py-2.5 px-3 text-right' : 'py-3 px-3 text-right'}>
-                      {tableDensity === 'compact' ? 'Total Dana Bersih' : 'Total Bersih'}
-                    </th>
-                    <th className={tableDensity === 'compact' ? 'py-2.5 px-2.5 text-center' : 'py-3 px-3 text-center'}>Metode</th>
-                    <th className={tableDensity === 'compact' ? 'py-2.5 px-2.5 text-center' : 'py-3 px-3.5 text-center'}>Aksi</th>
+                    <th className="py-3 px-3.5 sm:px-4">No. Transaksi</th>
+                    <th className="py-3 px-3 sm:px-4">Nasabah</th>
+                    <th className="py-3 px-3 sm:px-4">Barang &amp; Kadar</th>
+                    <th className="py-3 px-3 sm:px-4 text-center">Berat</th>
+                    <th className="py-3 px-3 sm:px-4 text-right">Total Bayar</th>
+                    <th className="py-3 px-3 sm:px-4 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {filteredBuybacks.length === 0 ? (
                     <tr>
-                      <td colSpan={tableDensity === 'compact' ? 7 : 9} className="py-12 text-center text-gray-400">
+                      <td colSpan={6} className="py-12 text-center text-gray-400">
                         <ReceiptText size={36} className="mx-auto mb-2 text-gray-300" />
                         <p className="text-sm font-semibold text-gray-600">Tidak ada transaksi buyback</p>
                         <p className="text-xs text-gray-400 mt-0.5">
@@ -293,106 +258,83 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                     </tr>
                   ) : (
                     filteredBuybacks.map(bb => {
-                      const nilaiKotor = bb.totalKotor || bb.beratBersih * bb.hargaPerGram;
-                      const totalPotongan = (bb.potonganBiaya || bb.biayaLebur || 0) + (bb.pph22 || 0);
-
                       return (
-                        <tr key={bb.id} className="hover:bg-orange-50/20 transition-colors">
-                          {/* No Transaksi */}
-                          <td className={tableDensity === 'compact' ? 'py-2 px-3 whitespace-nowrap' : 'py-3 px-3.5 whitespace-nowrap'}>
-                            <span className="font-mono font-bold text-gray-900 block text-xs sm:text-sm">{bb.invoiceNo}</span>
+                        <tr key={bb.id} className="hover:bg-orange-50/25 transition-colors">
+                          {/* 1. No Transaksi & Tanggal */}
+                          <td className="py-3 px-3.5 sm:px-4 whitespace-nowrap">
+                            <span className="font-mono font-bold text-gray-900 block text-xs sm:text-sm">
+                              {bb.invoiceNo}
+                            </span>
                             <span className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
                               <Calendar size={11} /> {bb.date}
                             </span>
                           </td>
 
-                          {/* Nasabah */}
-                          <td className={tableDensity === 'compact' ? 'py-2 px-3 min-w-[130px]' : 'py-3 px-3 min-w-[140px]'}>
-                            <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">{bb.customerName}</span>
-                            <span className="text-[11px] text-gray-500 font-mono block">{bb.customerPhone}</span>
-                            {tableDensity === 'detailed' && bb.customerNik && (
-                              <span className="text-xs text-gray-400 font-mono block">
-                                NIK: {bb.customerNik.slice(0, 6)}******{bb.customerNik.slice(-4)}
-                              </span>
-                            )}
+                          {/* 2. Nasabah & Kontak */}
+                          <td className="py-3 px-3 sm:px-4 min-w-[130px]">
+                            <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
+                              {bb.customerName}
+                            </span>
+                            <span className="text-[11px] text-gray-500 font-mono block">
+                              {bb.customerPhone || '-'}
+                            </span>
                           </td>
 
-                          {/* Item & Kadar */}
-                          <td className={tableDensity === 'compact' ? 'py-2 px-3 min-w-[140px]' : 'py-3 px-3 min-w-[160px]'}>
+                          {/* 3. Barang & Kadar */}
+                          <td className="py-3 px-3 sm:px-4 min-w-[140px]">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-semibold text-gray-900 text-xs sm:text-sm leading-tight">
+                              <span className="font-semibold text-gray-900 text-xs sm:text-sm">
                                 {bb.itemType}
                               </span>
                               <span className="text-[10px] sm:text-[11px] bg-amber-50 text-amber-800 font-bold px-1.5 py-0.2 rounded border border-amber-200 font-mono">
                                 {bb.kadar}
                               </span>
                             </div>
-                            <span className="text-[11px] text-gray-400 block mt-0.5">{bb.kondisi}</span>
+                            <span className="text-[11px] text-gray-400 block mt-0.5 truncate max-w-[160px]">
+                              {bb.kondisi}
+                            </span>
                           </td>
 
-                          {/* Berat */}
-                          <td className={tableDensity === 'compact' ? 'py-2 px-3 text-center whitespace-nowrap font-mono font-bold text-gray-900 text-xs sm:text-sm' : 'py-3 px-3 text-center whitespace-nowrap font-mono font-bold text-gray-900'}>
+                          {/* 4. Berat Bersih */}
+                          <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap font-mono font-bold text-gray-900 text-xs sm:text-sm">
                             {bb.beratBersih.toFixed(2)} gr
                           </td>
 
-                          {/* Kolom Nilai Kotor & Potongan (Khusus Mode Detail) */}
-                          {tableDensity === 'detailed' && (
-                            <>
-                              <td className="py-3 px-3 text-right whitespace-nowrap font-mono text-gray-600 text-xs sm:text-sm">
-                                {formatIDR(nilaiKotor)}
-                              </td>
-                              <td className="py-3 px-3 text-right whitespace-nowrap font-mono text-xs">
-                                {totalPotongan > 0 ? (
-                                  <span className="text-rose-600 font-semibold block">
-                                    - {formatIDR(totalPotongan)}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400">Rp 0</span>
-                                )}
-                                {bb.pph22 && bb.pph22 > 0 ? (
-                                  <span className="text-gray-400 block text-[11px]">
-                                    (PPh: {formatIDR(bb.pph22)})
-                                  </span>
-                                ) : null}
-                              </td>
-                            </>
-                          )}
-
-                          {/* Total Bersih */}
-                          <td className={tableDensity === 'compact' ? 'py-2 px-3 text-right whitespace-nowrap' : 'py-3 px-3 text-right whitespace-nowrap'}>
-                            <span className="font-mono font-bold text-xs sm:text-sm text-gray-900 block">
+                          {/* 5. Total Bayar & Metode */}
+                          <td className="py-3 px-3 sm:px-4 text-right whitespace-nowrap">
+                            <span className="font-mono font-black text-xs sm:text-sm text-gray-900 block">
                               {formatIDR(bb.totalBayar)}
                             </span>
-                            {tableDensity === 'compact' && totalPotongan > 0 && (
-                              <span className="text-[11px] text-gray-400 font-mono block leading-tight mt-0.5">
-                                Kotor: {formatIDR(nilaiKotor)} <span className="text-rose-500 font-medium">&bull; Pot: -{formatIDR(totalPotongan)}</span>
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Metode Pencairan */}
-                          <td className={tableDensity === 'compact' ? 'py-2 px-2.5 text-center whitespace-nowrap' : 'py-3 px-3 text-center whitespace-nowrap'}>
-                            <span
-                              className={`inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded capitalize ${
-                                bb.paymentMethod === 'transfer'
-                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              }`}
-                            >
-                              {bb.paymentMethod === 'transfer' ? (bb.bankName || 'Transfer') : 'Tunai'}
+                            <span className="inline-block mt-0.5 text-[10px] font-semibold px-1.5 py-0.2 rounded capitalize bg-gray-100 text-gray-600">
+                              {bb.paymentMethod === 'transfer' ? (bb.bankName ? `Transfer (${bb.bankName})` : 'Transfer Bank') : 'Tunai'}
                             </span>
                           </td>
 
-                          {/* Aksi */}
-                          <td className={tableDensity === 'compact' ? 'py-2 px-2.5 text-center whitespace-nowrap' : 'py-3 px-3.5 text-center whitespace-nowrap'}>
-                              <button
-                                type="button"
-                                onClick={() => onSelectReceipt(bb)}
-                                className="inline-flex items-center justify-center gap-1.5 h-8 px-2.5 text-xs font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-orange-500 border border-orange-200 hover:border-orange-500 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <Printer size={13} />
-                                <span>Cetak Nota</span>
-                              </button>
+                          {/* 6. Aksi (Icon Saja dengan Tooltip) */}
+                          <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
+                            <div className="inline-flex items-center justify-center gap-1.5">
+                              <Tooltip content="Lihat Rincian Lengkap" side="top">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedDetailItem(bb)}
+                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                  aria-label="Lihat Rincian Lengkap"
+                                >
+                                  <Eye size={15} />
+                                </button>
+                              </Tooltip>
+
+                              <Tooltip content="Cetak Nota Resmi" side="top">
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectReceipt(bb)}
+                                  className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                  aria-label="Cetak Nota Resmi"
+                                >
+                                  <Printer size={15} />
+                                </button>
+                              </Tooltip>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -409,12 +351,20 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                 <strong>{buybacks.length}</strong> transaksi buyback
               </span>
               <span className="hidden sm:inline text-gray-400">
-                Arsip transaksi terenkripsi &amp; terintegrasi POS
+                Klik tombol <strong>Detail</strong> pada baris untuk memeriksa rincian potongan, NIK, dan perhitungannya
               </span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Buyback Detail Modal */}
+      <BuybackDetailModal
+        isOpen={!!selectedDetailItem}
+        item={selectedDetailItem}
+        onClose={() => setSelectedDetailItem(null)}
+        onPrintReceipt={onSelectReceipt}
+      />
     </div>
   );
 };

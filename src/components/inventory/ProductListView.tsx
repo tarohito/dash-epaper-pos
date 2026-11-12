@@ -1,7 +1,8 @@
 import React from 'react';
 import { Plus, ShoppingCart } from 'lucide-react';
-import { Product } from'../../types';
-import { formatIDR } from'../../utils/formatters';
+import { Product } from '../../types';
+import { formatIDR } from '../../utils/formatters';
+import Tooltip from '../Tooltip';
 
 interface ProductListViewProps {
   products: Product[];
@@ -121,14 +122,16 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                   </td>
                   <td className="py-3.5 px-4 text-right font-bold text-sm sm:text-base text-gray-900 font-mono tabular-nums">{formatIDR(p.harga)}</td>
                   <td className="py-3.5 px-5 text-center">
-                    <button
-                      type="button"
-                      onClick={() => onAddToCartAndOpenPos(p)}
-                      className="h-8 px-3 bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 font-semibold rounded-md text-xs sm:text-sm transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                    >
-                      <ShoppingCart size={13} />
-                      <span>Masukkan Kasir</span>
-                    </button>
+                    <Tooltip content="Masukkan ke Kasir POS" side="top">
+                      <button
+                        type="button"
+                        onClick={() => onAddToCartAndOpenPos(p)}
+                        className="w-8 h-8 bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 border border-orange-200 hover:border-orange-500 font-semibold rounded-lg text-xs transition-colors cursor-pointer inline-flex items-center justify-center shadow-2xs active:scale-95 mx-auto"
+                        aria-label="Masukkan ke Kasir POS"
+                      >
+                        <ShoppingCart size={15} />
+                      </button>
+                    </Tooltip>
                   </td>
                 </tr>
               ))}

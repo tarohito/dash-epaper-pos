@@ -275,14 +275,16 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
 
                       {/* Aksi Print Nota (Icon Saja dengan Tooltip) */}
                       <td className="py-3 px-3.5 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => onSelectReceipt(tx)}
-                          className="inline-flex items-center justify-center gap-1.5 h-8 px-2.5 text-xs font-semibold text-orange-600 hover:text-white bg-orange-50 hover:bg-orange-500 border border-orange-200 hover:border-orange-500 rounded-md transition-all cursor-pointer shadow-2xs active:scale-95"
-                        >
-                          <Printer size={13} />
-                          <span>Cetak Nota</span>
-                        </button>
+                        <Tooltip content="Cetak Ulang Nota" side="top">
+                          <button
+                            type="button"
+                            onClick={() => onSelectReceipt(tx)}
+                            className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95 mx-auto"
+                            aria-label="Cetak Ulang Nota"
+                          >
+                            <Printer size={15} />
+                          </button>
+                        </Tooltip>
                       </td>
                     </tr>
                   ))
