@@ -8,7 +8,6 @@ import {
   TrendingUp,
   Wallet,
   ShoppingBag,
-  Headset,
   Gem,
 } from 'lucide-react';
 import { DashboardSummaryResponse, Tenant } from '../../types';
@@ -204,28 +203,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-4 pb-6">
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-xl border border-orange-300/60 bg-gradient-to-r from-[#ff6a00] to-[#ff3b00] shadow-xs md:min-h-[200px] lg:min-h-[232px] flex flex-col md:flex-row md:items-center">
+      <div className="@container relative overflow-hidden rounded-xl border border-orange-300/60 bg-gradient-to-r from-[#ff6a00] to-[#ff3b00] shadow-xs">
         <img
           src="/assets/aistudio/banner_01_26f17fb6.jpeg"
           alt="Kelola Penjualan dan Stok dalam Satu Sistem"
-          className="w-full h-36 sm:h-44 object-cover object-right md:absolute md:inset-0 md:h-full md:w-full select-none"
+          className="w-full h-auto block select-none"
         />
-        <div
-          className="hidden md:block absolute inset-0 bg-gradient-to-r from-[#ff6a00]/80 via-[#ff5900]/30 to-transparent pointer-events-none"
-          aria-hidden="true"
-        />
-        <div className="relative z-10 p-4 sm:p-6 md:px-7 lg:px-9 md:max-w-[52%] lg:max-w-[48%]">
-          <h2 className="text-lg sm:text-2xl lg:text-3xl font-bold text-white leading-snug tracking-tight text-balance">
-            Kelola Penjualan dan Stok dalam Satu Sistem
+        <div className="p-4 sm:p-5 md:p-0 md:absolute md:inset-y-0 md:left-0 md:flex md:flex-col md:justify-center md:pl-[4.2cqw] md:pr-2 md:w-[52%]">
+          <h2 className="text-[clamp(1.125rem,5.2cqw,1.75rem)] md:text-[clamp(1.125rem,3.1cqw,2.5rem)] font-bold text-white leading-[1.2] tracking-tight">
+            <span className="block whitespace-nowrap">Kelola Penjualan dan</span>
+            <span className="block whitespace-nowrap">Stok dalam Satu Sistem</span>
           </h2>
-          <div className="mt-4">
+          <div className="mt-3 md:mt-[1.4cqw]">
             <button
               type="button"
               onClick={() => setIsCsModalOpen(true)}
-              className="h-9 px-4 bg-white hover:bg-orange-50 text-orange-600 font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer shadow-xs active:scale-[0.98]"
+              className="h-9 px-4 bg-white hover:bg-orange-50 text-orange-600 font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center whitespace-nowrap cursor-pointer shadow-xs active:scale-[0.98]"
             >
-              <Headset size={15} className="shrink-0" />
-              <span>Berlangganan Sekarang</span>
+              Berlangganan Sekarang
             </button>
           </div>
         </div>
@@ -283,10 +278,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 6 Modern Metric KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-        <div className="bg-orange-100 p-4 sm:p-5 rounded-xl border border-orange-200 hover:border-orange-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
                 Total Penjualan
               </span>
               <Tooltip
@@ -295,14 +290,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Total Penjualan"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-white text-orange-600 border border-orange-200 shadow-2xs flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
               <Coins size={16} strokeWidth={2} />
             </span>
           </div>
@@ -313,15 +308,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <TrendingDown size={12} />
                 <span>92.23%</span>
               </span>
-              <span className="text-gray-600">termasuk PPN 11%</span>
+              <span className="text-gray-400">termasuk PPN 11%</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-amber-100 p-4 sm:p-5 rounded-xl border border-amber-200 hover:border-amber-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
                 Penjualan Kotor
               </span>
               <Tooltip
@@ -330,14 +325,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Penjualan Kotor"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-white text-amber-600 border border-amber-200 shadow-2xs flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
               <ReceiptText size={16} strokeWidth={2} />
             </span>
           </div>
@@ -348,15 +343,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <TrendingDown size={12} />
                 <span>96.04%</span>
               </span>
-              <span className="text-gray-600">sebelum pajak</span>
+              <span className="text-gray-400">sebelum pajak</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-emerald-100 p-4 sm:p-5 rounded-xl border border-emerald-200 hover:border-emerald-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
                 Laba Kotor
               </span>
               <Tooltip
@@ -365,14 +360,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Laba Kotor"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-white text-emerald-600 border border-emerald-200 shadow-2xs flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
               <TrendingUp size={16} strokeWidth={2} />
             </span>
           </div>
@@ -383,15 +378,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <TrendingDown size={12} />
                 <span>91.4%</span>
               </span>
-              <span className="text-gray-600">estimasi margin HPP</span>
+              <span className="text-gray-400">estimasi margin HPP</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-teal-100 p-4 sm:p-5 rounded-xl border border-teal-200 hover:border-teal-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
                 Penerimaan Kas Bersih
               </span>
               <Tooltip
@@ -400,14 +395,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Penerimaan"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-white text-teal-600 border border-teal-200 shadow-2xs flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-teal-50/80 text-teal-600 border border-teal-100/80 flex items-center justify-center shrink-0">
               <Wallet size={16} strokeWidth={2} />
             </span>
           </div>
@@ -415,15 +410,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <MoneyAmount value={displayPenerimaan} maxFontPx={24} minFontPx={13} />
             <div className="flex items-center gap-1.5 mt-1 text-xs">
               <span className="font-semibold text-gray-700 font-mono">0%</span>
-              <span className="text-gray-600">penjualan dikurangi buyback</span>
+              <span className="text-gray-400">penjualan dikurangi buyback</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-blue-100 p-4 sm:p-5 rounded-xl border border-blue-200 hover:border-blue-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
                 Total Transaksi
               </span>
               <Tooltip
@@ -432,14 +427,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Transaksi"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-white text-blue-600 border border-blue-200 shadow-2xs flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
               <ShoppingBag size={16} strokeWidth={2} />
             </span>
           </div>
@@ -452,15 +447,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <TrendingDown size={12} />
                 <span>85%</span>
               </span>
-              <span className="text-gray-600">transaksi selesai (non-void)</span>
+              <span className="text-gray-400">transaksi selesai (non-void)</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-purple-100 p-4 sm:p-5 rounded-xl border border-purple-200 hover:border-purple-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
                 Produk Terjual
               </span>
               <Tooltip
@@ -469,14 +464,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Produk"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-white text-purple-600 border border-purple-200 shadow-2xs flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-purple-50/80 text-purple-600 border border-purple-100/80 flex items-center justify-center shrink-0">
               <Gem size={16} strokeWidth={2} />
             </span>
           </div>
@@ -489,7 +484,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <TrendingDown size={12} />
                 <span>88.89%</span>
               </span>
-              <span className="text-gray-600">unit perhiasan keluar</span>
+              <span className="text-gray-400">unit perhiasan keluar</span>
             </div>
           </div>
         </div>
