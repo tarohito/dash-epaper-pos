@@ -7,7 +7,7 @@ interface UsePaginationOptions {
 
 export function usePagination<T>(items: T[], options?: UsePaginationOptions) {
   const [currentPage, setCurrentPage] = useState(options?.initialPage || 1);
-  const [pageSize, setPageSize] = useState(options?.initialPageSize || 25);
+  const [pageSize, setPageSize] = useState(options?.initialPageSize || 10);
 
   const totalItems = items.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));

@@ -205,9 +205,15 @@ ensureColumn('buybacks', 'voidReason', 'TEXT');
 ensureColumn('buybacks', 'voidedAt', 'TEXT');
 ensureColumn('buybacks', 'customerId', 'TEXT');
 
+ensureColumn('customers', 'npwp', 'TEXT');
+ensureColumn('customers', 'goldColor', 'TEXT');
+ensureColumn('customers', 'braceletSize', 'TEXT');
+ensureColumn('customers', 'birthDate', 'TEXT');
+
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_transactions_customer_id ON transactions(customerId);
   CREATE INDEX IF NOT EXISTS idx_buybacks_customer_id ON buybacks(customerId);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_nik_unique ON customers(nik) WHERE nik IS NOT NULL AND TRIM(nik) != '';
 `);
 
 function safeJsonParse<T>(raw: string | null | undefined, fallback: T): T {
@@ -1551,10 +1557,14 @@ export function getAllCustomers(): Customer[] {
     name: string;
     phone: string;
     nik: string | null;
+    npwp: string | null;
     type: 'Reguler' | 'VIP' | 'Mitra / Toko';
     address: string | null;
     preferredKadar: string | null;
+    goldColor: string | null;
     ringSize: string | null;
+    braceletSize: string | null;
+    birthDate: string | null;
     notes: string | null;
     createdAt: string;
     totalSpent: number;
@@ -1567,15 +1577,42 @@ export function getAllCustomers(): Customer[] {
     name: r.name,
     phone: r.phone,
     nik: r.nik ?? undefined,
+    npwp: r.npwp ?? undefined,
     type: r.type,
     address: r.address ?? undefined,
     preferredKadar: r.preferredKadar ?? undefined,
+    goldColor: r.goldColor ?? undefined,
     ringSize: r.ringSize ?? undefined,
+    braceletSize: r.braceletSize ?? undefined,
+    birthDate: r.birthDate ?? undefined,
     notes: r.notes ?? undefined,
     createdAt: r.createdAt,
     totalSpent: r.totalSpent,
     totalTransactions: r.totalTransactions,
   }));
+}
+
+export function generateNextMemberCode(): string {
+  const rows = db.prepare("SELECT memberCode FROM customers WHERE memberCode LIKE 'MBR-%'").all() as Array<{
+    memberCode: string;
+  }>;
+  let maxSeq = 0;
+  for (const row of rows) {
+    const match = /^MBR-(\d+)$/i.exec(row.memberCode.trim());
+    if (match && match[1].length <= 3) {
+      const n = Number(match[1]);
+      if (Number.isFinite(n) && n > maxSeq) {
+        maxSeq = n;
+      }
+    }
+  }
+  let next = maxSeq + 1;
+  let candidate = `MBR-${String(next).padStart(3, '0')}`;
+  while (db.prepare('SELECT 1 FROM customers WHERE memberCode = ?').get(candidate)) {
+    next += 1;
+    candidate = `MBR-${String(next).padStart(3, '0')}`;
+  }
+  return candidate;
 }
 
 export function getAllPromos(): PromoCampaign[] {
@@ -1694,7 +1731,7 @@ export function queryProducts(opts: {
   sortDir?: 'asc' | 'desc';
 }): ProductsPageResponse {
   const page = Math.max(1, Math.floor(opts.page ?? 1));
-  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 25)));
+  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
   const category = (opts.category ?? '').trim();
   const promoOnly = Boolean(opts.promoOnly);
@@ -1909,7 +1946,7 @@ export function queryTransactions(opts: {
   sortDir?: 'asc' | 'desc';
 }): TransactionsPageResponse {
   const page = Math.max(1, Math.floor(opts.page ?? 1));
-  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 20)));
+  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
   const method = (opts.method ?? 'semua').trim();
   const sortDir = normalizeSortDir(opts.sortDir);
@@ -2236,7 +2273,7 @@ export function queryBuybacks(opts: {
   sortDir?: 'asc' | 'desc';
 }): BuybacksPageResponse {
   const page = Math.max(1, Math.floor(opts.page ?? 1));
-  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 20)));
+  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
   const method = (opts.method ?? 'all').trim();
   const sortDir = normalizeSortDir(opts.sortDir);
@@ -2338,7 +2375,7 @@ export function queryCustomers(opts: {
   sortDir?: 'asc' | 'desc';
 }): CustomersPageResponse {
   const page = Math.max(1, Math.floor(opts.page ?? 1));
-  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 20)));
+  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
   const type = (opts.type ?? 'semua').trim();
   const sortDir = normalizeSortDir(opts.sortDir);
@@ -2369,9 +2406,9 @@ export function queryCustomers(opts: {
   if (search) {
     const like = `%${search}%`;
     conditions.push(
-      '(LOWER(c.name) LIKE ? OR LOWER(c.phone) LIKE ? OR LOWER(c.memberCode) LIKE ? OR LOWER(COALESCE(c.nik, \'\')) LIKE ? OR LOWER(COALESCE(c.address, \'\')) LIKE ?)'
+      '(LOWER(c.name) LIKE ? OR LOWER(c.phone) LIKE ? OR LOWER(c.memberCode) LIKE ? OR LOWER(COALESCE(c.nik, \'\')) LIKE ? OR LOWER(COALESCE(c.npwp, \'\')) LIKE ? OR LOWER(COALESCE(c.address, \'\')) LIKE ?)'
     );
-    params.push(like, like, like, like, like);
+    params.push(like, like, like, like, like, like);
   }
 
   if (type && type !== 'semua') {
@@ -2421,10 +2458,14 @@ export function queryCustomers(opts: {
     name: string;
     phone: string;
     nik: string | null;
+    npwp: string | null;
     type: 'Reguler' | 'VIP' | 'Mitra / Toko';
     address: string | null;
     preferredKadar: string | null;
+    goldColor: string | null;
     ringSize: string | null;
+    braceletSize: string | null;
+    birthDate: string | null;
     notes: string | null;
     createdAt: string;
     totalSpent: number;
@@ -2440,10 +2481,14 @@ export function queryCustomers(opts: {
     name: r.name,
     phone: r.phone,
     nik: r.nik ?? undefined,
+    npwp: r.npwp ?? undefined,
     type: r.type,
     address: r.address ?? undefined,
     preferredKadar: r.preferredKadar ?? undefined,
+    goldColor: r.goldColor ?? undefined,
     ringSize: r.ringSize ?? undefined,
+    braceletSize: r.braceletSize ?? undefined,
+    birthDate: r.birthDate ?? undefined,
     notes: r.notes ?? undefined,
     createdAt: r.createdAt,
     totalSpent: r.totalSpent,

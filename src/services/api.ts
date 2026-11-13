@@ -69,7 +69,7 @@ export const posApi = {
     requestJson<ProductsPageResponse>(
       `/api/products${toQueryString({
         page: params.page ?? 1,
-        pageSize: params.pageSize ?? 25,
+        pageSize: params.pageSize ?? 10,
         search: params.search,
         category: params.category,
         promoOnly: params.promoOnly ? 'true' : undefined,
@@ -134,7 +134,7 @@ export const posApi = {
     requestJson<TransactionsPageResponse>(
       `/api/transactions${toQueryString({
         page: params.page ?? 1,
-        pageSize: params.pageSize ?? 20,
+        pageSize: params.pageSize ?? 10,
         search: params.search,
         method: params.method,
         sortBy: params.sortBy,
@@ -175,7 +175,7 @@ export const posApi = {
     requestJson<BuybacksPageResponse>(
       `/api/buybacks${toQueryString({
         page: params.page ?? 1,
-        pageSize: params.pageSize ?? 20,
+        pageSize: params.pageSize ?? 10,
         search: params.search,
         method: params.method,
         sortBy: params.sortBy,
@@ -211,7 +211,7 @@ export const posApi = {
     requestJson<CustomersPageResponse>(
       `/api/customers${toQueryString({
         page: params.page ?? 1,
-        pageSize: params.pageSize ?? 20,
+        pageSize: params.pageSize ?? 10,
         search: params.search,
         type: params.type,
         sortBy: params.sortBy,

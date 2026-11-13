@@ -78,6 +78,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [quickName, setQuickName] = useState('');
   const [quickPhone, setQuickPhone] = useState('');
+  const [quickNik, setQuickNik] = useState('');
   const [isSavingMember, setIsSavingMember] = useState(false);
   const { showToast } = useToast();
 
@@ -87,6 +88,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       setErrorMsg(null);
       setIsSubmitting(false);
       setIsQuickAddOpen(false);
+      setQuickNik('');
       if (customerId) {
         setLinkedCustomer({ id: customerId, name: customerName });
       } else {
@@ -247,77 +249,96 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <label className="text-xs sm:text-sm font-semibold text-gray-800">
                 Pelanggan / Member
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuickName(customerName !== 'Pelanggan Umum' ? customerName : '');
-                  setQuickPhone('');
-                  setIsQuickAddOpen(prev => !prev);
-                }}
-                className="text-xs font-semibold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1 cursor-pointer"
-              >
-                <UserPlus size={13} />
-                <span>{isQuickAddOpen ? 'Tutup Form Cepat' : '+ Daftar Member Baru'}</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickName(customerName !== 'Pelanggan Umum' ? customerName : '');
+                    setQuickPhone('');
+                    setQuickNik('');
+                    setIsQuickAddOpen(prev => !prev);
+                  }}
+                  className="text-xs font-semibold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <UserPlus size={13} />
+                  <span>{isQuickAddOpen ? 'Tutup Form Cepat' : '+ Daftar Member Baru'}</span>
+                </button>
+              </div>
 
-            {isQuickAddOpen ? (
-              <div className="p-3 bg-white rounded-lg border border-orange-200 space-y-2.5">
-                <p className="text-[11px] font-semibold text-orange-700">
-                  Simpan ke Master Pelanggan &amp; langsung tautkan ke transaksi ini:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={quickName}
-                    onChange={e => setQuickName(e.target.value)}
-                    placeholder="Nama lengkap pelanggan *"
-                    className="h-9 px-3 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white font-medium"
-                  />
-                  <input
-                    type="tel"
-                    value={quickPhone}
-                    onChange={e => setQuickPhone(e.target.value)}
-                    placeholder="No. HP / WhatsApp *"
-                    className="h-9 px-3 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white font-mono"
-                  />
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsQuickAddOpen(false)}
-                    className="h-8 px-3 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 rounded-md cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSavingMember}
-                    onClick={async () => {
-                      const cleanName = quickName.trim();
-                      const cleanPhone = quickPhone.trim();
-                      const digits = cleanPhone.replace(/[^0-9]/g, '');
-                      if (cleanName.length < 2) {
-                        failValidation('Nama pelanggan minimal 2 karakter.');
-                        return;
-                      }
-                      if (digits.length < 8 || digits.length > 15) {
-                        failValidation('Nomor HP / WhatsApp tidak valid (8–15 digit angka).');
-                        return;
-                      }
-                      setIsSavingMember(true);
-                      setErrorMsg(null);
-                      try {
-                        const created = await posApi.createCustomer({
-                          id: `cust-${Date.now()}`,
-                          memberCode: `MBR-${String(Date.now()).slice(-4)}`,
-                          name: cleanName,
-                          phone: cleanPhone,
-                          type: 'Reguler',
-                          createdAt: new Date().toISOString().slice(0, 10),
-                          totalSpent: 0,
-                          totalTransactions: 0,
-                        });
+              {isQuickAddOpen ? (
+                <div className="p-3 bg-white rounded-lg border border-orange-200 space-y-2.5">
+                  <p className="text-[11px] font-semibold text-orange-700">
+                    Simpan ke Master Pelanggan &amp; langsung tautkan ke transaksi ini:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      value={quickName}
+                      onChange={e => setQuickName(e.target.value)}
+                      placeholder="Nama sesuai KTP *"
+                      className="h-9 px-3 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white font-medium"
+                    />
+                    <input
+                      type="tel"
+                      value={quickPhone}
+                      onChange={e => setQuickPhone(e.target.value)}
+                      placeholder="No. HP / WhatsApp *"
+                      className="h-9 px-3 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white font-mono"
+                    />
+                    <input
+                      type="text"
+                      maxLength={16}
+                      value={quickNik}
+                      onChange={e => setQuickNik(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="NIK KTP 16 digit *"
+                      className="h-9 px-3 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white font-mono"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickAddOpen(false)}
+                      className="h-8 px-3 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 rounded-md cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSavingMember}
+                      onClick={async () => {
+                        const cleanName = quickName.trim();
+                        const cleanPhone = quickPhone.trim();
+                        const digits = cleanPhone.replace(/[^0-9]/g, '');
+                        const cleanNik = quickNik.replace(/[^0-9]/g, '');
+                        if (cleanName.length < 2) {
+                          failValidation('Nama pelanggan minimal 2 karakter.');
+                          return;
+                        }
+                        if (digits.length < 8 || digits.length > 15) {
+                          failValidation('Nomor HP / WhatsApp tidak valid (8–15 digit angka).');
+                          return;
+                        }
+                        if (cleanNik.length !== 16) {
+                          failValidation(
+                            cleanNik.length === 0
+                              ? 'NIK / No. KTP wajib diisi (16 digit angka).'
+                              : `NIK harus tepat 16 digit angka (saat ini ${cleanNik.length} digit).`
+                          );
+                          return;
+                        }
+                        setIsSavingMember(true);
+                        setErrorMsg(null);
+                        try {
+                          const created = await posApi.createCustomer({
+                            id: `cust-${Date.now()}`,
+                            memberCode: '',
+                            name: cleanName,
+                            phone: cleanPhone,
+                            nik: cleanNik,
+                            type: 'Reguler',
+                            createdAt: new Date().toISOString().slice(0, 10),
+                            totalSpent: 0,
+                            totalTransactions: 0,
+                          });
                         setLinkedCustomer({
                           id: created.id,
                           name: created.name,

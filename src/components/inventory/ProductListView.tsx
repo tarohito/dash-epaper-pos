@@ -48,7 +48,7 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [items, setItems] = useState<Product[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalAllProducts, setTotalAllProducts] = useState(0);

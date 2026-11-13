@@ -128,14 +128,6 @@ const App: React.FC = () => {
     fetchBootstrapData();
   }, [fetchBootstrapData]);
 
-  const [buybackInitialCustomer, setBuybackInitialCustomer] = useState<{
-    id?: string;
-    name: string;
-    phone: string;
-    nik?: string;
-    address?: string;
-  } | null>(null);
-
   // Customer CRUD
   const handleSaveCustomer = async (savedCustomer: Customer, isEdit?: boolean) => {
     try {
@@ -482,7 +474,6 @@ const App: React.FC = () => {
   const handleSaveBuyback = async (buybackData: BuybackCreatePayload) => {
     try {
       const created = await posApi.createBuyback(buybackData);
-      setBuybackInitialCustomer(null);
       setBuybacksRefreshKey(k => k + 1);
       setDashboardRefreshKey(k => k + 1);
       setCustomersRefreshKey(k => k + 1);
@@ -728,22 +719,12 @@ const App: React.FC = () => {
                         setIsBuybackReceiptModalOpen(true);
                       }}
                       onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
-                      initialCustomer={buybackInitialCustomer}
                     />
                   ) : activeMenu === 'Pelanggan' ? (
                     <CustomerView
                       refreshTrigger={customersRefreshKey}
                       onSaveCustomer={handleSaveCustomer}
                       onDeleteCustomer={handleDeleteCustomer}
-                      onSelectCustomerForPOS={cust => {
-                        setCustomerId(cust.id);
-                        setCustomerName(cust.name);
-                        setActiveMenu('Kasir POS (Penjualan)');
-                      }}
-                      onSelectCustomerForBuyback={cust => {
-                        setBuybackInitialCustomer(cust);
-                        setActiveMenu('Buyback (Pembelian)');
-                      }}
                     />
                   ) : activeMenu === 'Dashboard' ? (
                     <DashboardView

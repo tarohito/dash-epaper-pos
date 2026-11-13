@@ -160,10 +160,14 @@ export interface Customer {
   name: string;
   phone: string;
   nik?: string;
+  npwp?: string;
   type: 'Reguler' | 'VIP' | 'Mitra / Toko';
   address?: string;
   preferredKadar?: string;
+  goldColor?: string;
   ringSize?: string;
+  braceletSize?: string;
+  birthDate?: string;
   notes?: string;
   createdAt: string;
   totalSpent?: number;

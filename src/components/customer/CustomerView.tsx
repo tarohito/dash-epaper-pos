@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users,
-  UserPlus,
-  ShoppingCart,
   MessageCircle,
-  Sparkles,
   ShoppingBag,
-  Scale,
   Pencil,
   Trash2,
-  MapPin,
-  CreditCard,
   Crown,
-  Building2,
-  UserCheck,
   Loader2,
 } from 'lucide-react';
 import { Customer, CustomerStatsSummary, CustomerWithStats } from '../../types';
@@ -38,22 +30,12 @@ interface CustomerViewProps {
   refreshTrigger: number;
   onSaveCustomer: (customer: Customer, isEdit?: boolean) => Promise<void>;
   onDeleteCustomer: (id: string) => Promise<void>;
-  onSelectCustomerForPOS: (customer: { id: string; name: string }) => void;
-  onSelectCustomerForBuyback: (customer: {
-    id: string;
-    name: string;
-    phone: string;
-    nik?: string;
-    address?: string;
-  }) => void;
 }
 
 export const CustomerView: React.FC<CustomerViewProps> = ({
   refreshTrigger,
   onSaveCustomer,
   onDeleteCustomer,
-  onSelectCustomerForPOS,
-  onSelectCustomerForBuyback,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 220);
@@ -62,7 +44,7 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [items, setItems] = useState<CustomerWithStats[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -149,73 +131,76 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 w-full pb-10">
+    <div className="space-y-4 pb-8">
       {/* 1. HEADER SECTION */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-lg border border-gray-200 shadow-xs">
+      <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 bg-orange-50 text-orange-600 rounded-lg border border-orange-100">
-              <Users size={20} />
-            </span>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-                Data Pelanggan
-              </h1>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                Kelola member toko emas, kontak WhatsApp, ukuran cincin, dan riwayat belanja
-              </p>
-            </div>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
+              Data Pelanggan &amp; Member
+            </h3>
+            {isLoading && <Loader2 size={14} className="animate-spin text-orange-500" />}
           </div>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+            Kelola member toko emas, kontak WhatsApp, ukuran cincin, dan riwayat belanja.
+          </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setEditingCustomer(null);
-            setIsAddModalOpen(true);
-          }}
-          className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs shrink-0 inline-flex items-center justify-center gap-1.5 active:scale-[0.98]"
-        >
-          <UserPlus size={16} />
-          <span>Tambah Pelanggan Baru</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingCustomer(null);
+              setIsAddModalOpen(true);
+            }}
+            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs shrink-0 inline-flex items-center justify-center active:scale-[0.98]"
+          >
+            Tambah Pelanggan Baru
+          </button>
+        </div>
       </div>
 
       {/* 2. RINGKASAN METRIK */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">Total Pelanggan Terdaftar</span>
-            <span className="w-8 h-8 rounded-lg bg-gray-50 text-gray-600 border border-gray-200/80 flex items-center justify-center shrink-0">
+            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              Total Pelanggan Terdaftar
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
               <Users size={16} strokeWidth={2} />
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tabular-nums tracking-tight">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tabular-nums tracking-tight truncate">
               {stats.totalPelanggan} Orang
             </div>
-            <p className="text-xs text-gray-400 mt-1">Database member toko</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">Member VIP &amp; Loyal</span>
-            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
-              <Crown size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold text-amber-600 font-mono tabular-nums tracking-tight">
-              {stats.totalVip} Member
-            </div>
-            <p className="text-xs text-gray-400 mt-1">Pelanggan prioritas</p>
+            <p className="text-xs text-gray-400 mt-1 truncate">Database member toko</p>
           </div>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">Akumulasi Belanja Member</span>
+            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              Member VIP &amp; Loyal
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
+              <Crown size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tabular-nums tracking-tight truncate">
+              {stats.totalVip} Member
+            </div>
+            <p className="text-xs text-gray-400 mt-1 truncate">Pelanggan prioritas</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              Akumulasi Belanja Member
+            </span>
             <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
               <ShoppingBag size={16} strokeWidth={2} />
             </span>
@@ -225,170 +210,160 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
               value={stats.totalAkumulasiBelanja}
               maxFontPx={24}
               minFontPx={13}
-              className="font-bold text-orange-600 font-mono tabular-nums tracking-tight"
             />
-            <p className="text-xs text-gray-400 mt-1">Total omzet member aktif</p>
+            <p className="text-xs text-gray-400 mt-1 truncate">Total omzet member aktif</p>
           </div>
         </div>
       </div>
 
-      {/* 3. FILTER & SEARCH BAR */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
-        <SearchInput
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Cari nama, WhatsApp, NIK KTP, atau kode member..."
-        />
+      {/* 3. TABLE WORKSPACE CARD */}
+      <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5">
+        {/* Toolbar Pencarian & Segmented Tabs */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-4">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Cari nama, kode member, WhatsApp, NIK, atau NPWP..."
+          />
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 shrink-0">
-          {[
-            { id: 'semua', label: 'Semua' },
-            { id: 'VIP', label: 'Member VIP' },
-            { id: 'Reguler', label: 'Reguler' },
-            { id: 'Mitra', label: 'Mitra / Toko' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setFilterType(tab.id)}
-              className={`h-9 px-3.5 text-xs sm:text-sm font-semibold rounded-lg inline-flex items-center justify-center transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                filterType === tab.id
-                  ? 'bg-orange-500 text-white shadow-xs'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {fetchError && (
-        <ErrorBanner message={fetchError} onRetry={() => setRetryCount(c => c + 1)} />
-      )}
-
-      {/* 4. DAFTAR PELANGGAN */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        {isLoading && items.length === 0 ? (
-          <div className="p-12 text-center text-gray-500 flex items-center justify-center gap-2 text-xs sm:text-sm">
-            <Loader2 size={18} className="animate-spin text-orange-500" />
-            <span>Memuat data pelanggan...</span>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="p-10 text-center">
-            <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Users size={22} />
-            </div>
-            <p className="text-sm font-bold text-gray-700">Tidak ada pelanggan ditemukan</p>
-            <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
-              {searchQuery
-                ? `Pencarian "${searchQuery}" tidak cocok dengan data pelanggan mana pun.`
-                : 'Belum ada data pelanggan untuk filter yang dipilih.'}
-            </p>
-            {searchQuery && (
+          <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center self-start md:self-auto shrink-0 overflow-x-auto max-w-full">
+            {[
+              { id: 'semua', label: 'Semua' },
+              { id: 'VIP', label: 'Member VIP' },
+              { id: 'Reguler', label: 'Reguler' },
+              { id: 'Mitra', label: 'Mitra / Toko' },
+            ].map(tab => (
               <button
+                key={tab.id}
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="mt-3 px-3.5 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors cursor-pointer"
+                onClick={() => setFilterType(tab.id)}
+                className={`h-full px-3 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center whitespace-nowrap ${
+                  filterType === tab.id
+                    ? 'bg-orange-500 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
-                Reset Pencarian
+                {tab.label}
               </button>
-            )}
+            ))}
           </div>
-        ) : (
-          <>
+        </div>
+
+        {fetchError && (
+          <ErrorBanner
+            message={fetchError}
+            onRetry={() => setRetryCount(c => c + 1)}
+            className="mb-3"
+          />
+        )}
+
+        {/* Inner Table & Mobile Cards Container */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-2xs">
+          {isLoading && items.length === 0 ? (
+            <div className="p-12 text-center text-gray-500 flex items-center justify-center gap-2 text-xs sm:text-sm">
+              <Loader2 size={18} className="animate-spin text-orange-500" />
+              <span>Memuat data pelanggan...</span>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="py-12 px-4 text-center text-gray-400">
+              <Users size={36} className="mx-auto mb-2 text-gray-300" />
+              <p className="text-sm font-semibold text-gray-600">Tidak ada pelanggan ditemukan</p>
+              <p className="text-xs text-gray-400 mt-0.5 max-w-sm mx-auto">
+                {searchQuery
+                  ? `Pencarian "${searchQuery}" tidak cocok dengan data pelanggan mana pun.`
+                  : 'Belum ada data pelanggan untuk filter yang dipilih.'}
+              </p>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="mt-3 px-3.5 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors cursor-pointer"
+                >
+                  Reset Pencarian
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
             {/* Desktop Table View */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
                   <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 font-semibold uppercase tracking-wider text-xs">
                     <SortableTh
-                      label="Member & Identitas"
+                      label="Pelanggan"
                       sortKey="name"
                       currentSortBy={sortBy}
                       currentSortDir={sortDir}
                       onSort={key => handleHeaderSort(key, 'asc')}
-                      className="py-3 px-4"
+                      className="py-3 px-3.5 sm:px-4"
                     />
-                    <th className="py-3 px-4">Kontak &amp; Alamat</th>
+                    <th className="py-3 px-3 sm:px-4">Kontak &amp; Domisili</th>
                     <SortableTh
-                      label="Kadar & Ukuran Jari"
+                      label="Preferensi Emas"
                       sortKey="preferredKadar"
                       currentSortBy={sortBy}
                       currentSortDir={sortDir}
                       onSort={key => handleHeaderSort(key, 'asc')}
-                      className="py-3 px-4"
+                      className="py-3 px-3 sm:px-4"
                     />
+                    <th className="py-3 px-3 sm:px-4 text-center">Ukuran</th>
                     <SortableTh
-                      label="Akumulasi Belanja"
+                      label="Total Belanja"
                       sortKey="computedSpent"
                       currentSortBy={sortBy}
                       currentSortDir={sortDir}
                       onSort={key => handleHeaderSort(key, 'desc')}
                       align="right"
-                      className="py-3 px-4"
+                      className="py-3 px-3 sm:px-4"
                     />
-                    <th className="py-3 px-4 text-center">Aksi Cepat</th>
+                    <th className="py-3 px-3 sm:px-4 text-center">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {items.map(c => {
                     const cleanPhone = c.phone.replace(/[^0-9]/g, '');
                     const waPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
 
                     return (
-                      <tr key={c.id} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="py-3.5 px-4 align-top">
-                          <div className="flex items-start gap-2.5">
-                            <span
-                              className={`p-1.5 rounded-md mt-0.5 shrink-0 ${
-                                c.type === 'VIP'
-                                  ? 'bg-amber-100 text-amber-700'
-                                  : c.type === 'Mitra / Toko'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}
-                            >
-                              {c.type === 'VIP' ? (
-                                <Crown size={14} />
-                              ) : c.type === 'Mitra / Toko' ? (
-                                <Building2 size={14} />
-                              ) : (
-                                <UserCheck size={14} />
-                              )}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-gray-900 text-xs sm:text-sm leading-tight">{c.name}</p>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <span className="font-mono text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold">
-                                  {c.memberCode}
-                                </span>
-                                <span
-                                  className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                                    c.type === 'VIP'
-                                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                      : c.type === 'Mitra / Toko'
-                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                      : 'bg-gray-100 text-gray-700'
-                                  }`}
-                                >
-                                  {c.type}
-                                </span>
-                              </div>
-                              {c.nik && (
-                                <p className="text-xs text-gray-400 font-mono mt-1 flex items-center gap-1">
-                                  <CreditCard size={12} className="shrink-0" />
-                                  <span>NIK: {c.nik}</span>
-                                </p>
-                              )}
+                      <tr key={c.id} className="hover:bg-orange-50/25 transition-colors">
+                        <td className="py-3.5 px-3.5 sm:px-4 align-top min-w-[190px]">
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-900 text-xs sm:text-sm leading-tight">
+                              {c.name}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              <span className="font-mono text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-semibold">
+                                {c.memberCode}
+                              </span>
+                              <span
+                                className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                                  c.type === 'VIP'
+                                    ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                    : c.type === 'Mitra / Toko'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                {c.type}
+                              </span>
                             </div>
+                            {(c.nik || c.npwp) && (
+                              <p className="text-xs text-gray-400 font-mono mt-1 truncate max-w-[230px]">
+                                {c.nik ? `NIK: ${c.nik}` : ''}
+                                {c.nik && c.npwp ? ' • ' : ''}
+                                {c.npwp ? `NPWP: ${c.npwp}` : ''}
+                              </p>
+                            )}
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 align-top">
+                        <td className="py-3.5 px-3 sm:px-4 align-top min-w-[180px] max-w-[250px]">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-mono font-medium text-gray-800 text-xs">{c.phone}</span>
+                              <span className="font-mono font-semibold text-gray-800 text-xs">
+                                {c.phone}
+                              </span>
                               <a
                                 href={`https://wa.me/${waPhone}`}
                                 target="_blank"
@@ -401,75 +376,61 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                               </a>
                             </div>
                             {c.address && (
-                              <p className="text-xs text-gray-500 flex items-start gap-1 max-w-xs">
-                                <MapPin size={12} className="shrink-0 mt-0.5 text-gray-400" />
-                                <span className="truncate">{c.address}</span>
+                              <p className="text-xs text-gray-500 truncate" title={c.address}>
+                                {c.address}
                               </p>
                             )}
                             {c.notes && (
-                              <p className="text-xs text-gray-400 italic max-w-xs truncate">"{c.notes}"</p>
-                            )}
-                          </div>
-                        </td>
-
-                        <td className="py-3.5 px-4 align-top">
-                          <div className="space-y-1">
-                            <div className="inline-flex items-center gap-1 text-xs text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
-                              <Sparkles size={12} />
-                              <span>{c.preferredKadar || 'Semua Kadar'}</span>
-                            </div>
-                            {c.ringSize && (
-                              <p className="text-xs text-gray-600 font-medium">
-                                Ukuran Jari: <span className="font-bold">{c.ringSize}</span>
+                              <p className="text-xs text-gray-400 italic truncate" title={c.notes}>
+                                "{c.notes}"
                               </p>
                             )}
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 align-top text-right">
+                        <td className="py-3.5 px-3 sm:px-4 align-top whitespace-nowrap">
+                          <div className="space-y-1">
+                            <span className="inline-block text-xs bg-amber-50 text-amber-800 font-mono font-bold px-2 py-0.5 rounded border border-amber-200">
+                              {c.preferredKadar || 'Semua Kadar'}
+                            </span>
+                            {c.goldColor && (
+                              <p className="text-xs text-gray-500">
+                                {c.goldColor}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-3 sm:px-4 align-top text-center whitespace-nowrap">
+                          {c.ringSize && c.ringSize !== '-' ? (
+                            <span className="font-mono text-xs font-semibold text-gray-800 block">
+                              Jari: {c.ringSize}
+                            </span>
+                          ) : null}
+                          {c.braceletSize ? (
+                            <span className="font-mono text-xs text-gray-500 block mt-0.5">
+                              {c.braceletSize}
+                            </span>
+                          ) : null}
+                          {(!c.ringSize || c.ringSize === '-') && !c.braceletSize && (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-3 sm:px-4 align-top text-right whitespace-nowrap">
                           <div>
-                            <p className="font-bold text-gray-900 text-xs sm:text-sm">
+                            <p className="font-mono font-bold text-gray-900 text-xs sm:text-sm tabular-nums">
                               {formatIDR(c.computedSpent)}
                             </p>
                             <p className="text-xs text-gray-400 mt-0.5">
-                              {c.computedTx} kali belanja
-                              {c.buybackCount > 0 ? ` (${c.buybackCount}x buyback)` : ''}
+                              {c.computedTx} transaksi
+                              {c.buybackCount > 0 ? ` • ${c.buybackCount} buyback` : ''}
                             </p>
                           </div>
                         </td>
 
                         <td className="py-3.5 px-4 align-top text-center whitespace-nowrap">
                           <div className="inline-flex items-center justify-center gap-1.5">
-                            <Tooltip content="Kasir POS" side="top">
-                              <button
-                                type="button"
-                                onClick={() => onSelectCustomerForPOS({ id: c.id, name: c.name })}
-                                className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                aria-label="Kasir POS"
-                              >
-                                <ShoppingCart size={15} />
-                              </button>
-                            </Tooltip>
-
-                            <Tooltip content="Input Buyback" side="top">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  onSelectCustomerForBuyback({
-                                    id: c.id,
-                                    name: c.name,
-                                    phone: c.phone,
-                                    nik: c.nik,
-                                    address: c.address,
-                                  })
-                                }
-                                className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                aria-label="Input Buyback"
-                              >
-                                <Scale size={15} />
-                              </button>
-                            </Tooltip>
-
                             <Tooltip content="Edit Pelanggan" side="top">
                               <button
                                 type="button"
@@ -519,13 +480,13 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="font-semibold text-gray-900 text-xs sm:text-sm leading-tight truncate">
+                          <p className="font-bold text-gray-900 text-xs sm:text-sm leading-tight truncate">
                             {c.name}
                           </p>
                           <span
                             className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${
                               c.type === 'VIP'
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
                                 : c.type === 'Mitra / Toko'
                                 ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                 : 'bg-gray-100 text-gray-700'
@@ -534,13 +495,15 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                             {c.type}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400 font-mono mt-0.5">
-                          {c.memberCode} {c.nik ? `• NIK: ${c.nik}` : ''}
+                        <p className="text-xs text-gray-400 font-mono mt-0.5 truncate">
+                          {c.memberCode}
+                          {c.nik ? ` • NIK: ${c.nik}` : ''}
+                          {c.npwp ? ` • NPWP: ${c.npwp}` : ''}
                         </p>
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className="font-bold text-gray-900 text-xs sm:text-sm block">
+                        <span className="font-mono font-bold text-gray-900 text-xs sm:text-sm tabular-nums block">
                           {formatIDR(c.computedSpent)}
                         </span>
                         <span className="text-xs text-gray-400 block">{c.computedTx} transaksi</span>
@@ -561,59 +524,36 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                         </a>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs bg-orange-50 text-orange-600 font-semibold px-2 py-0.5 rounded border border-orange-100">
-                          {c.preferredKadar || 'Emas'}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs bg-amber-50 text-amber-800 font-mono font-bold px-2 py-0.5 rounded border border-amber-200">
+                          {c.preferredKadar || 'Semua Kadar'}
                         </span>
-                        {c.ringSize && (
+                        {c.goldColor && (
                           <span className="text-xs bg-gray-100 text-gray-700 font-medium px-2 py-0.5 rounded">
-                            Size: {c.ringSize}
+                            {c.goldColor}
+                          </span>
+                        )}
+                        {c.ringSize && c.ringSize !== '-' && (
+                          <span className="text-xs bg-gray-100 text-gray-700 font-mono font-medium px-2 py-0.5 rounded">
+                            Jari: {c.ringSize}
+                          </span>
+                        )}
+                        {c.braceletSize && (
+                          <span className="text-xs bg-gray-100 text-gray-700 font-mono font-medium px-2 py-0.5 rounded">
+                            {c.braceletSize}
                           </span>
                         )}
                       </div>
                     </div>
 
                     {c.address && (
-                      <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
-                        <MapPin size={12} className="shrink-0 text-gray-400" />
-                        <span className="truncate">{c.address}</span>
+                      <p className="text-xs text-gray-500 truncate">
+                        {c.address}
                       </p>
                     )}
 
-                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <Tooltip content="Kasir POS" side="top">
-                          <button
-                            type="button"
-                            onClick={() => onSelectCustomerForPOS({ id: c.id, name: c.name })}
-                            className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                            aria-label="Kasir POS"
-                          >
-                            <ShoppingCart size={15} />
-                          </button>
-                        </Tooltip>
-                        <Tooltip content="Input Buyback" side="top">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onSelectCustomerForBuyback({
-                                id: c.id,
-                                name: c.name,
-                                phone: c.phone,
-                                nik: c.nik,
-                                address: c.address,
-                              })
-                            }
-                            className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                            aria-label="Input Buyback"
-                          >
-                            <Scale size={15} />
-                          </button>
-                        </Tooltip>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <Tooltip content="Edit Pelanggan" side="top">
+                    <div className="pt-2 border-t border-gray-100 flex items-center justify-end gap-1.5">
+                      <Tooltip content="Edit Pelanggan" side="top">
                           <button
                             type="button"
                             onClick={() => handleEdit(c)}
@@ -641,13 +581,16 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                             <Trash2 size={15} />
                           </button>
                         </Tooltip>
-                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
 
+            </>
+          )}
+
+          {items.length > 0 && (
             <PaginationControls
               currentPage={currentPage}
               totalPages={totalPages}
@@ -660,8 +603,8 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                 setCurrentPage(1);
               }}
             />
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       <AddCustomerModal

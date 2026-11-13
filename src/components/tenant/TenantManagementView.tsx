@@ -50,7 +50,7 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
     paginatedItems,
     goToPage,
     setPageSize,
-  } = usePagination(filteredTenants, { initialPageSize: 12 });
+  } = usePagination(filteredTenants, { initialPageSize: 10 });
 
   return (
     <div className="space-y-6 pb-6">

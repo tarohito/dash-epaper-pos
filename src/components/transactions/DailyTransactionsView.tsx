@@ -50,7 +50,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
   const [selectedDetailTx, setSelectedDetailTx] = useState<Transaction | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [items, setItems] = useState<Transaction[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);

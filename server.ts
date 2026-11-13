@@ -13,6 +13,7 @@ import type {
 } from './src/types/index.ts';
 import {
   db,
+  generateNextMemberCode,
   getActivePromos,
   getActiveTenantId,
   getAllCategories,
@@ -84,7 +85,7 @@ app.get('/api/products/lookup', (req, res) => {
 app.get('/api/products', (req, res) => {
   try {
     const page = Number(req.query.page ?? 1) || 1;
-    const pageSize = Number(req.query.pageSize ?? 25) || 25;
+    const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
     const category = String(req.query.category ?? 'Semua');
     const promoOnly = req.query.promoOnly === 'true' || req.query.promoOnly === '1';
@@ -327,7 +328,7 @@ app.delete('/api/categories/:name', (req, res) => {
 app.get('/api/transactions', (req, res) => {
   try {
     const page = Number(req.query.page ?? 1) || 1;
-    const pageSize = Number(req.query.pageSize ?? 20) || 20;
+    const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
     const method = String(req.query.method ?? 'semua');
     const sortBy = String(req.query.sortBy ?? 'newest');
@@ -579,7 +580,7 @@ app.post('/api/transactions/:id/void', (req, res) => {
 app.get('/api/buybacks', (req, res) => {
   try {
     const page = Number(req.query.page ?? 1) || 1;
-    const pageSize = Number(req.query.pageSize ?? 20) || 20;
+    const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
     const method = String(req.query.method ?? 'all');
     const sortBy = String(req.query.sortBy ?? 'newest');
@@ -659,13 +660,25 @@ app.post('/api/buybacks', (req, res) => {
       }
 
       if (!resolvedCustomerId && body.saveToCustomerMaster !== false) {
-        const matched = (cleanNik
-          ? db
-              .prepare('SELECT id, nik, address FROM customers WHERE nik = ? OR phone = ? OR LOWER(name) = LOWER(?) LIMIT 1')
-              .get(cleanNik, cleanPhone, cleanName)
-          : db
-              .prepare('SELECT id, nik, address FROM customers WHERE phone = ? OR LOWER(name) = LOWER(?) LIMIT 1')
-              .get(cleanPhone, cleanName)) as { id: string; nik: string | null; address: string | null } | undefined;
+        let matched: { id: string; nik: string | null; address: string | null } | undefined;
+        if (cleanNik) {
+          matched = db
+            .prepare('SELECT id, nik, address FROM customers WHERE nik = ? LIMIT 1')
+            .get(cleanNik) as { id: string; nik: string | null; address: string | null } | undefined;
+          if (!matched) {
+            matched = db
+              .prepare(
+                "SELECT id, nik, address FROM customers WHERE (nik IS NULL OR TRIM(nik) = '') AND (phone = ? OR LOWER(name) = LOWER(?)) LIMIT 1"
+              )
+              .get(cleanPhone, cleanName) as
+              | { id: string; nik: string | null; address: string | null }
+              | undefined;
+          }
+        } else {
+          matched = db
+            .prepare('SELECT id, nik, address FROM customers WHERE phone = ? OR LOWER(name) = LOWER(?) LIMIT 1')
+            .get(cleanPhone, cleanName) as { id: string; nik: string | null; address: string | null } | undefined;
+        }
 
         if (matched) {
           resolvedCustomerId = matched.id;
@@ -678,12 +691,7 @@ app.post('/api/buybacks', (req, res) => {
           }
         } else {
           const newCustId = `CUST-${Date.now()}`;
-          let memberSeq = Math.floor(1000 + Math.random() * 9000);
-          let memberCode = `MBR-${memberSeq}`;
-          while (db.prepare('SELECT id FROM customers WHERE memberCode = ?').get(memberCode)) {
-            memberSeq += 1;
-            memberCode = `MBR-${memberSeq}`;
-          }
+          const memberCode = generateNextMemberCode();
           db.prepare(
             `INSERT INTO customers (id, memberCode, name, phone, nik, type, address, preferredKadar, notes, createdAt, totalSpent, totalTransactions)
              VALUES (?, ?, ?, ?, ?, 'Reguler', ?, ?, 'Terdaftar otomatis via Buyback', ?, 0, 0)`
@@ -817,7 +825,7 @@ app.post('/api/buybacks/:id/void', (req, res) => {
 app.get('/api/customers', (req, res) => {
   try {
     const page = Number(req.query.page ?? 1) || 1;
-    const pageSize = Number(req.query.pageSize ?? 20) || 20;
+    const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
     const type = String(req.query.type ?? 'semua');
     const sortBy = String(req.query.sortBy ?? 'newest');
@@ -835,21 +843,43 @@ app.post('/api/customers', (req, res) => {
       res.status(400).json({ error: 'Nama dan nomor HP pelanggan wajib diisi.' });
       return;
     }
+    const cleanNik = (c.nik ?? '').trim().replace(/[^0-9]/g, '');
+    if (cleanNik.length !== 16) {
+      res.status(400).json({
+        error: 'NIK / No. KTP wajib diisi tepat 16 digit angka sebagai identitas unik pelanggan.',
+      });
+      return;
+    }
+    const existingByNik = db
+      .prepare('SELECT id, name, memberCode FROM customers WHERE nik = ? LIMIT 1')
+      .get(cleanNik) as { id: string; name: string; memberCode: string } | undefined;
+    if (existingByNik) {
+      res.status(409).json({
+        error: `NIK ${cleanNik} sudah terdaftar atas nama "${existingByNik.name}" (${existingByNik.memberCode}).`,
+      });
+      return;
+    }
+
     const id = c.id || `CUST-${Date.now()}`;
-    const memberCode = c.memberCode || `MBR-${Date.now().toString().slice(-4)}`;
+    const rawCode = (c.memberCode ?? '').trim().toUpperCase();
+    const memberCode = !rawCode || rawCode === 'AUTO' ? generateNextMemberCode() : rawCode;
     db.prepare(
-      `INSERT INTO customers (id, memberCode, name, phone, nik, type, address, preferredKadar, ringSize, notes, createdAt, totalSpent, totalTransactions)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO customers (id, memberCode, name, phone, nik, npwp, type, address, preferredKadar, goldColor, ringSize, braceletSize, birthDate, notes, createdAt, totalSpent, totalTransactions)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       memberCode,
       c.name.trim(),
       c.phone.trim(),
-      c.nik ?? null,
+      cleanNik,
+      c.npwp ?? null,
       c.type || 'Reguler',
       c.address ?? null,
       c.preferredKadar ?? null,
+      c.goldColor ?? null,
       c.ringSize ?? null,
+      c.braceletSize ?? null,
+      c.birthDate ?? null,
       c.notes ?? null,
       c.createdAt || new Date().toISOString().slice(0, 10),
       c.totalSpent ?? 0,
@@ -871,16 +901,38 @@ app.put('/api/customers/:id', (req, res) => {
       return;
     }
     const c = req.body as Partial<Customer>;
+    const rawIncomingNik = c.nik !== undefined ? c.nik : existing.nik ?? '';
+    const cleanNik = String(rawIncomingNik ?? '').trim().replace(/[^0-9]/g, '');
+    if (cleanNik.length !== 16) {
+      res.status(400).json({
+        error: 'NIK / No. KTP wajib diisi tepat 16 digit angka sebagai identitas unik pelanggan.',
+      });
+      return;
+    }
+    const dupNik = db
+      .prepare('SELECT id, name, memberCode FROM customers WHERE nik = ? AND id != ? LIMIT 1')
+      .get(cleanNik, id) as { id: string; name: string; memberCode: string } | undefined;
+    if (dupNik) {
+      res.status(409).json({
+        error: `NIK ${cleanNik} sudah digunakan oleh pelanggan lain ("${dupNik.name}" - ${dupNik.memberCode}).`,
+      });
+      return;
+    }
+
     db.prepare(
-      `UPDATE customers SET name = ?, phone = ?, nik = ?, type = ?, address = ?, preferredKadar = ?, ringSize = ?, notes = ? WHERE id = ?`
+      `UPDATE customers SET name = ?, phone = ?, nik = ?, npwp = ?, type = ?, address = ?, preferredKadar = ?, goldColor = ?, ringSize = ?, braceletSize = ?, birthDate = ?, notes = ? WHERE id = ?`
     ).run(
       (c.name ?? existing.name).trim(),
       (c.phone ?? existing.phone).trim(),
-      c.nik !== undefined ? c.nik : existing.nik ?? null,
+      cleanNik,
+      c.npwp !== undefined ? c.npwp : existing.npwp ?? null,
       c.type ?? existing.type,
       c.address !== undefined ? c.address : existing.address ?? null,
       c.preferredKadar !== undefined ? c.preferredKadar : existing.preferredKadar ?? null,
+      c.goldColor !== undefined ? c.goldColor : existing.goldColor ?? null,
       c.ringSize !== undefined ? c.ringSize : existing.ringSize ?? null,
+      c.braceletSize !== undefined ? c.braceletSize : existing.braceletSize ?? null,
+      c.birthDate !== undefined ? c.birthDate : existing.birthDate ?? null,
       c.notes !== undefined ? c.notes : existing.notes ?? null,
       id
     );
