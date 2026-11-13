@@ -6,6 +6,12 @@ import { NumericInput } from '../common/NumericInput';
 import { generateJewelrySku, isValidCode128 } from '../../utils/barcode';
 import { JewelryBarcodeTag } from '../common/JewelryBarcodeTag';
 import { useToast } from '../../contexts/ToastContext';
+import {
+  ModalShell,
+  MODAL_FOOTER_END_CLASS,
+  MODAL_BTN_SECONDARY_CLASS,
+  MODAL_BTN_PRIMARY_CLASS,
+} from '../common/ModalShell';
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -62,8 +68,6 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       }
     }
   }, [isOpen, editingProduct, categories]);
-
-  if (!isOpen) return null;
 
   const handleRegenerateSku = () => {
     setFormData(prev => ({
@@ -155,32 +159,41 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const previewHarga = parseFloat(String(formData.harga).replace(/[^0-9]/g, '')) || 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
-          <div>
-            <h3 className="font-bold text-gray-900 text-base sm:text-lg leading-tight">
-              {editingProduct ? 'Edit Barang Perhiasan' : 'Tambah Barang Perhiasan'}
-            </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {editingProduct
-                ? `Perbarui informasi SKU ${editingProduct.sku} di database`
-                : 'Daftarkan koleksi emas baru ke inventaris toko'}
-            </p>
-          </div>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      title={editingProduct ? 'Edit Barang Perhiasan' : 'Tambah Barang Baru'}
+      subtitle={
+        editingProduct
+          ? `Perbarui data barang SKU ${editingProduct.sku}`
+          : 'Tambahkan koleksi perhiasan ke inventaris'
+      }
+      disableEscapeClose={isSubmitting}
+      footer={
+        <div className={MODAL_FOOTER_END_CLASS}>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Tutup"
+            disabled={isSubmitting}
+            className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={20} />
+            <X size={15} className="text-gray-500 shrink-0" />
+            <span>Batal</span>
+          </button>
+          <button
+            type="submit"
+            form="product-form"
+            disabled={isSubmitting}
+            className={MODAL_BTN_PRIMARY_CLASS}
+          >
+            <Save size={15} className="shrink-0" />
+            <span>{isSubmitting ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan Barang'}</span>
           </button>
         </div>
-
-        {/* Form Body */}
-        <form noValidate onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4">
+      }
+    >
+      <form id="product-form" noValidate onSubmit={handleSubmit} className="space-y-4">
           {errorMsg && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
               <AlertCircle size={15} className="shrink-0" />
@@ -361,27 +374,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             />
           </div>
 
-          <div className="pt-3 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs"
-            >
-              <X size={15} className="mr-1.5 text-gray-500" />
-              <span>Batal</span>
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-9 px-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs active:scale-[0.98]"
-            >
-              <Save size={15} />
-              <span>{isSubmitting ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan Barang'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </ModalShell>
   );
 };

@@ -241,6 +241,8 @@ export const posApi = {
       pageSize?: number;
       search?: string;
       status?: string;
+      sortBy?: string;
+      sortDir?: 'asc' | 'desc';
     } = {},
     signal?: AbortSignal
   ) =>
@@ -250,6 +252,8 @@ export const posApi = {
         pageSize: params.pageSize ?? 10,
         search: params.search,
         status: params.status,
+        sortBy: params.sortBy,
+        sortDir: params.sortDir,
       })}`,
       { signal }
     ),

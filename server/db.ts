@@ -2494,11 +2494,23 @@ export function queryPromos(opts: {
   pageSize?: number;
   search?: string;
   status?: string;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
 }): PromosPageResponse {
   const page = Math.max(1, Math.floor(opts.page ?? 1));
   const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
   const status = (opts.status ?? 'all').trim();
+  const sortDir = opts.sortDir === 'asc' ? 'ASC' : 'DESC';
+
+  const sortMap: Record<string, string> = {
+    newest: 'rowid',
+    discountPercent: 'discountPercent',
+    name: 'LOWER(name)',
+    isActive: 'isActive',
+    endDate: 'endDate',
+  };
+  const sortCol = sortMap[opts.sortBy ?? 'newest'] ?? 'rowid';
 
   const conditions: string[] = [];
   const params: Array<string | number> = [];
@@ -2524,7 +2536,7 @@ export function queryPromos(opts: {
   const offset = (safePage - 1) * pageSize;
 
   const rows = db
-    .prepare(`SELECT * FROM promos ${whereSql} ORDER BY rowid DESC LIMIT ? OFFSET ?`)
+    .prepare(`SELECT * FROM promos ${whereSql} ORDER BY ${sortCol} ${sortDir}, rowid DESC LIMIT ? OFFSET ?`)
     .all(...params, pageSize, offset) as Array<{
     id: string;
     name: string;

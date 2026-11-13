@@ -6,6 +6,12 @@ import { NumericInput } from '../common/NumericInput';
 import { posApi } from '../../services/api';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useToast } from '../../contexts/ToastContext';
+import {
+  ModalShell,
+  MODAL_FOOTER_END_CLASS,
+  MODAL_BTN_SECONDARY_CLASS,
+  MODAL_BTN_PRIMARY_CLASS,
+} from '../common/ModalShell';
 
 interface AddEditPromoModalProps {
   isOpen: boolean;
@@ -106,8 +112,6 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
     return () => controller.abort();
   }, [isOpen, debouncedProductSearch, showToast]);
 
-  if (!isOpen) return null;
-
   const handleToggleProduct = (id: number) => {
     setSelectedProductIds(prev =>
       prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]
@@ -193,30 +197,37 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
-              {editingPromo ? 'Edit Promo Perhiasan' : 'Buat Promo Baru'}
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Atur diskon, kode kupon, dan produk promosi
-            </p>
-          </div>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      size="xl"
+      title={editingPromo ? 'Edit Promo' : 'Buat Promo Baru'}
+      subtitle="Atur diskon, kupon, dan produk promosi"
+      disableEscapeClose={isSaving}
+      footer={
+        <div className={MODAL_FOOTER_END_CLASS}>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Tutup"
+            disabled={isSaving}
+            className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={20} />
+            <X size={15} className="text-gray-500 shrink-0" />
+            <span>Batal</span>
+          </button>
+          <button
+            type="submit"
+            form="add-edit-promo-form"
+            disabled={isSaving}
+            className={MODAL_BTN_PRIMARY_CLASS}
+          >
+            {isSaving ? <Loader2 size={15} className="animate-spin shrink-0" /> : <Save size={15} className="shrink-0" />}
+            <span>{isSaving ? 'Menyimpan...' : editingPromo ? 'Simpan Perubahan' : 'Buat Promo'}</span>
           </button>
         </div>
-
-        {/* Form Body */}
-        <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
+      }
+    >
+      <form id="add-edit-promo-form" noValidate onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-xs sm:text-sm flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0" />
@@ -453,29 +464,6 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
             />
           </div>
         </form>
-
-        {/* Footer Actions */}
-        <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs disabled:opacity-50"
-          >
-            <X size={15} className="mr-1.5 text-gray-500" />
-            <span>Batal</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50"
-          >
-            {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            <span>{editingPromo ? 'Simpan Perubahan' : 'Buat Promo'}</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

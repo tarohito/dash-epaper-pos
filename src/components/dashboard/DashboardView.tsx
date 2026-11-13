@@ -8,15 +8,18 @@ import {
   TrendingUp,
   Wallet,
   ShoppingBag,
+  Headset,
   Gem,
 } from 'lucide-react';
 import { DashboardSummaryResponse, Tenant } from '../../types';
-import { formatIDR } from '../../utils/formatters';
+import { formatIDR, formatCompactIDR } from '../../utils/formatters';
 import { MarketGoldPriceCard } from './MarketGoldPriceCard';
+import { CustomerServiceModal } from './CustomerServiceModal';
 import Tooltip from '../Tooltip';
 import { posApi } from '../../services/api';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
+import { MoneyAmount } from '../common/MoneyAmount';
 
 interface DashboardViewProps {
   refreshTrigger: number;
@@ -57,6 +60,7 @@ const EMPTY_SUMMARY: DashboardSummaryResponse = {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   refreshTrigger,
+  activeTenant,
   onNavigateTo,
 }) => {
   const [period, setPeriod] = useState<'HARI' | 'BULAN'>('HARI');
@@ -65,6 +69,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [isCsModalOpen, setIsCsModalOpen] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(840);
   const { showToast } = useToast();
@@ -143,8 +148,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const chartWidth = Math.max(300, containerWidth);
   const chartHeight = chartWidth < 540 ? 220 : 256;
-  const maxLabelChars = ceilingSale.toLocaleString('id-ID').length;
-  const paddingLeft = Math.max(58, Math.min(96, maxLabelChars * 7.6 + 20));
+  const yAxisLabels = [0, 0.5, 1].map(pct =>
+    pct === 0 ? '0' : formatCompactIDR(Math.round(ceilingSale * pct))
+  );
+  const maxLabelChars = Math.max(...yAxisLabels.map(l => l.length));
+  const paddingLeft = Math.max(54, Math.min(84, maxLabelChars * 7.8 + 18));
   const paddingRight = chartWidth < 540 ? 18 : 26;
   const paddingTop = 24;
   const paddingBottom = 30;
@@ -195,6 +203,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-4 pb-6">
+      {/* Hero Banner */}
+      <div className="relative overflow-hidden rounded-xl border border-orange-300/60 bg-gradient-to-r from-[#ff6a00] to-[#ff3b00] shadow-xs md:min-h-[200px] lg:min-h-[232px] flex flex-col md:flex-row md:items-center">
+        <img
+          src="/assets/aistudio/banner_01_26f17fb6.jpeg"
+          alt="Kelola Penjualan dan Stok dalam Satu Sistem"
+          className="w-full h-36 sm:h-44 object-cover object-right md:absolute md:inset-0 md:h-full md:w-full select-none"
+        />
+        <div
+          className="hidden md:block absolute inset-0 bg-gradient-to-r from-[#ff6a00]/80 via-[#ff5900]/30 to-transparent pointer-events-none"
+          aria-hidden="true"
+        />
+        <div className="relative z-10 p-4 sm:p-6 md:px-7 lg:px-9 md:max-w-[52%] lg:max-w-[48%]">
+          <h2 className="text-lg sm:text-2xl lg:text-3xl font-bold text-white leading-snug tracking-tight text-balance">
+            Kelola Penjualan dan Stok dalam Satu Sistem
+          </h2>
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setIsCsModalOpen(true)}
+              className="h-9 px-4 bg-white hover:bg-orange-50 text-orange-600 font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer shadow-xs active:scale-[0.98]"
+            >
+              <Headset size={15} className="shrink-0" />
+              <span>Berlangganan Sekarang</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Top Header Card */}
       <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -247,10 +283,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 6 Modern Metric KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-orange-100 p-4 sm:p-5 rounded-xl border border-orange-200 hover:border-orange-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
                 Total Penjualan
               </span>
               <Tooltip
@@ -259,35 +295,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Total Penjualan"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-white text-orange-600 border border-orange-200 shadow-2xs flex items-center justify-center shrink-0">
               <Coins size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
-              {formatIDR(displayTotalPenjualan)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount value={displayTotalPenjualan} maxFontPx={24} minFontPx={13} />
             <div className="flex items-center gap-1.5 mt-1 text-xs">
-              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-600 font-mono">
                 <TrendingDown size={12} />
                 <span>92.23%</span>
               </span>
-              <span className="text-gray-400">termasuk PPN 11%</span>
+              <span className="text-gray-600">termasuk PPN 11%</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-amber-100 p-4 sm:p-5 rounded-xl border border-amber-200 hover:border-amber-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
                 Penjualan Kotor
               </span>
               <Tooltip
@@ -296,35 +330,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Penjualan Kotor"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-white text-amber-600 border border-amber-200 shadow-2xs flex items-center justify-center shrink-0">
               <ReceiptText size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
-              {formatIDR(displayPenjualanKotor)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount value={displayPenjualanKotor} maxFontPx={24} minFontPx={13} />
             <div className="flex items-center gap-1.5 mt-1 text-xs">
-              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-600 font-mono">
                 <TrendingDown size={12} />
                 <span>96.04%</span>
               </span>
-              <span className="text-gray-400">sebelum pajak</span>
+              <span className="text-gray-600">sebelum pajak</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-emerald-100 p-4 sm:p-5 rounded-xl border border-emerald-200 hover:border-emerald-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
                 Laba Kotor
               </span>
               <Tooltip
@@ -333,35 +365,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Laba Kotor"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-white text-emerald-600 border border-emerald-200 shadow-2xs flex items-center justify-center shrink-0">
               <TrendingUp size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
-              {formatIDR(displayLabaKotor)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount value={displayLabaKotor} maxFontPx={24} minFontPx={13} />
             <div className="flex items-center gap-1.5 mt-1 text-xs">
-              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-600 font-mono">
                 <TrendingDown size={12} />
                 <span>91.4%</span>
               </span>
-              <span className="text-gray-400">estimasi margin HPP</span>
+              <span className="text-gray-600">estimasi margin HPP</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-teal-100 p-4 sm:p-5 rounded-xl border border-teal-200 hover:border-teal-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
                 Penerimaan Kas Bersih
               </span>
               <Tooltip
@@ -370,32 +400,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Penerimaan"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-teal-50/80 text-teal-600 border border-teal-100/80 flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-white text-teal-600 border border-teal-200 shadow-2xs flex items-center justify-center shrink-0">
               <Wallet size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
-              {formatIDR(displayPenerimaan)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount value={displayPenerimaan} maxFontPx={24} minFontPx={13} />
             <div className="flex items-center gap-1.5 mt-1 text-xs">
-              <span className="font-semibold text-gray-500 font-mono">0%</span>
-              <span className="text-gray-400">penjualan dikurangi buyback</span>
+              <span className="font-semibold text-gray-700 font-mono">0%</span>
+              <span className="text-gray-600">penjualan dikurangi buyback</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-blue-100 p-4 sm:p-5 rounded-xl border border-blue-200 hover:border-blue-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
                 Total Transaksi
               </span>
               <Tooltip
@@ -404,14 +432,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Transaksi"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-white text-blue-600 border border-blue-200 shadow-2xs flex items-center justify-center shrink-0">
               <ShoppingBag size={16} strokeWidth={2} />
             </span>
           </div>
@@ -420,19 +448,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {displayTransaksi} Nota
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-xs">
-              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-600 font-mono">
                 <TrendingDown size={12} />
                 <span>85%</span>
               </span>
-              <span className="text-gray-400">transaksi selesai (non-void)</span>
+              <span className="text-gray-600">transaksi selesai (non-void)</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-purple-100 p-4 sm:p-5 rounded-xl border border-purple-200 hover:border-purple-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+              <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">
                 Produk Terjual
               </span>
               <Tooltip
@@ -441,14 +469,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  className="text-gray-500 hover:text-gray-800 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
                   aria-label="Info Produk"
                 >
                   <Info size={13} />
                 </button>
               </Tooltip>
             </div>
-            <span className="w-8 h-8 rounded-lg bg-purple-50/80 text-purple-600 border border-purple-100/80 flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-white text-purple-600 border border-purple-200 shadow-2xs flex items-center justify-center shrink-0">
               <Gem size={16} strokeWidth={2} />
             </span>
           </div>
@@ -457,11 +485,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {displayProduk} Pcs
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-xs">
-              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-600 font-mono">
                 <TrendingDown size={12} />
                 <span>88.89%</span>
               </span>
-              <span className="text-gray-400">unit perhiasan keluar</span>
+              <span className="text-gray-600">unit perhiasan keluar</span>
             </div>
           </div>
         </div>
@@ -497,12 +525,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               {[0, 0.5, 1].map((pct, idx) => {
                 const y = paddingTop + (1 - pct) * (chartHeight - paddingTop - paddingBottom);
-                const labelVal =
-                  pct === 0
-                    ? '0'
-                    : pct === 0.5
-                    ? Math.round(ceilingSale / 2).toLocaleString('id-ID')
-                    : ceilingSale.toLocaleString('id-ID');
+                const labelVal = yAxisLabels[idx];
                 return (
                   <g key={idx}>
                     <text x={paddingLeft - 12} y={y + 4} textAnchor="end" className="text-xs fill-gray-400 font-mono font-medium">
@@ -719,6 +742,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onNavigateToBuyback={() => onNavigateTo('Buyback (Pembelian)')}
         />
       </div>
+
+      <CustomerServiceModal
+        isOpen={isCsModalOpen}
+        onClose={() => setIsCsModalOpen(false)}
+        activeTenant={activeTenant}
+      />
     </div>
   );
 };

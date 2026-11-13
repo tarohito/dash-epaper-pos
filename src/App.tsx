@@ -691,7 +691,6 @@ const App: React.FC = () => {
                       onSavePromo={handleSavePromo}
                       onDeletePromo={handleDeletePromo}
                       onTogglePromoStatus={handleTogglePromoStatus}
-                      onNavigateToPosWithPromo={() => setActiveMenu('Kasir POS (Penjualan)')}
                     />
                   ) : activeMenu === 'Daftar Barang' ? (
                     <ProductListView

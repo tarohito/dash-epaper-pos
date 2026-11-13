@@ -3,6 +3,7 @@ import { Receipt, Boxes, Gem, Trash2, Minus, Plus, CreditCard } from'lucide-reac
 import { CartItem } from'../../types';
 import { formatIDR } from'../../utils/formatters';
 import Tooltip from'../Tooltip';
+import { MoneyAmount } from'../common/MoneyAmount';
 
 interface CartPanelProps {
   cart: CartItem[];
@@ -150,17 +151,38 @@ export const CartPanel: React.FC<CartPanelProps> = ({
       {/* Cart Totals */}
       <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-100 shrink-0">
         <div className="space-y-1 sm:space-y-1.5 mb-2.5 sm:mb-3">
-          <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-gray-600 font-medium">Subtotal</span>
-            <span className="text-gray-900 font-semibold font-mono tabular-nums">{formatIDR(subtotal)}</span>
+          <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+            <span className="text-gray-600 font-medium shrink-0">Subtotal</span>
+            <div className="flex-1 min-w-0 text-right">
+              <MoneyAmount
+                value={subtotal}
+                maxFontPx={14}
+                minFontPx={11}
+                className="text-gray-900 font-semibold font-mono tabular-nums"
+              />
+            </div>
           </div>
-          <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-gray-600 font-medium">PPN (11%)</span>
-            <span className="text-gray-900 font-semibold font-mono tabular-nums">{formatIDR(tax)}</span>
+          <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+            <span className="text-gray-600 font-medium shrink-0">PPN (11%)</span>
+            <div className="flex-1 min-w-0 text-right">
+              <MoneyAmount
+                value={tax}
+                maxFontPx={14}
+                minFontPx={11}
+                className="text-gray-900 font-semibold font-mono tabular-nums"
+              />
+            </div>
           </div>
-          <div className="pt-1.5 sm:pt-2 border-t border-gray-200 flex justify-between items-center">
-            <span className="text-gray-900 font-bold text-sm sm:text-base">Total Tagihan</span>
-            <span className="text-lg sm:text-xl font-bold font-mono text-orange-600 tabular-nums">{formatIDR(grandTotal)}</span>
+          <div className="pt-1.5 sm:pt-2 border-t border-gray-200 flex justify-between items-center gap-3">
+            <span className="text-gray-900 font-bold text-sm sm:text-base shrink-0">Total Tagihan</span>
+            <div className="flex-1 min-w-0 text-right">
+              <MoneyAmount
+                value={grandTotal}
+                maxFontPx={20}
+                minFontPx={13}
+                className="font-bold font-mono text-orange-600 tabular-nums"
+              />
+            </div>
           </div>
         </div>
         <button

@@ -1,20 +1,22 @@
 import React from 'react';
 import {
-  X,
   Printer,
-  Scale,
   User,
-  Calendar,
-  Building2,
   Coins,
-  ShieldCheck,
   CreditCard,
   FileText,
-  BadgePercent,
-  Info,
+  Image as ImageIcon,
+  PenTool,
+  Layers,
 } from 'lucide-react';
 import { BuybackItem } from '../../types';
 import { formatIDR } from '../../utils/formatters';
+import {
+  ModalShell,
+  MODAL_FOOTER_END_CLASS,
+  MODAL_BTN_PRIMARY_CLASS,
+} from '../common/ModalShell';
+import { MoneyAmount } from '../common/MoneyAmount';
 
 interface BuybackDetailModalProps {
   isOpen: boolean;
@@ -32,68 +34,69 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
   if (!isOpen || !item) return null;
 
   const nilaiKotor = item.totalKotor || item.beratBersih * item.hargaPerGram;
-  const totalPotongan =
-    (item.potonganBiaya || item.biayaLebur || 0) + (item.pph22 || 0);
-
   const isVoid = item.status === 'void';
+  const hasAttachments = Boolean(
+    item.fotoKtp || item.fotoEmas || item.ttdNasabah || item.ttdPetugas
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl border border-gray-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] shadow-2xl">
-        {/* Header Modal */}
-        <div className="px-4 sm:px-6 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
-              <Scale size={18} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-tight">
-                  Rincian Transaksi Buyback
-                </h3>
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-gray-200 text-gray-700">
-                  {item.invoiceNo}
-                </span>
-                {isVoid && (
-                  <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
-                    VOID
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                <Calendar size={12} />
-                <span>{item.date}</span>
-                {item.timeStr && <span>&bull; {item.timeStr}</span>}
-              </p>
-            </div>
-          </div>
+    <ModalShell
+      isOpen={isOpen && Boolean(item)}
+      onClose={onClose}
+      size="xl"
+      title="Rincian Transaksi Buyback"
+      subtitle={[
+        item.invoiceNo,
+        item.date,
+        item.timeStr,
+        item.branchName,
+        isVoid ? 'Status VOID' : null,
+      ]
+        .filter(Boolean)
+        .join(' • ')}
+      footer={
+        <div className={MODAL_FOOTER_END_CLASS}>
           <button
             type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Tutup"
+            onClick={() => {
+              onClose();
+              onPrintReceipt(item);
+            }}
+            className={MODAL_BTN_PRIMARY_CLASS}
           >
-            <X size={18} />
+            <Printer size={15} className="shrink-0" />
+            <span>Cetak Nota Buyback</span>
           </button>
         </div>
-
-        {/* Modal Body: Organized Cards */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+      }
+    >
+      <div className="space-y-4">
           {isVoid && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
               <strong className="font-bold block">Nota Buyback Ini Telah Di-VOID (Dibatalkan)</strong>
               {item.voidReason && <span className="block mt-0.5">Alasan: {item.voidReason}</span>}
+              {item.voidedAt && (
+                <span className="block mt-0.5 text-red-600 font-mono">
+                  Waktu Void: {item.voidedAt}
+                </span>
+              )}
             </div>
           )}
+
           {/* Highlight Banner: Total Payout */}
           <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl text-white shadow-xs flex items-center justify-between gap-4">
-            <div>
+            <div className="min-w-0 flex-1">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-100 block">
                 Total Dana Bersih Diterima Nasabah
               </span>
-              <p className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white mt-0.5">
-                {formatIDR(item.totalBayar)}
-              </p>
+              <div className="mt-0.5">
+                <MoneyAmount
+                  value={item.totalBayar}
+                  maxFontPx={28}
+                  minFontPx={15}
+                  className="font-black font-mono tracking-tight text-white tabular-nums"
+                />
+              </div>
               <p className="text-xs text-orange-100 mt-1">
                 Metode:{' '}
                 <strong className="text-white capitalize">
@@ -104,7 +107,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 )}
               </p>
             </div>
-            <div className="hidden sm:flex flex-col items-end text-right">
+            <div className="hidden sm:flex flex-col items-end text-right shrink-0">
               <span className="text-xs text-orange-100">Berat Bersih</span>
               <span className="text-xl font-bold font-mono text-white">
                 {item.beratBersih.toFixed(2)} gr
@@ -123,30 +126,32 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 <span>Identitas Nasabah</span>
               </div>
               <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-2">
                   <span className="text-gray-500">Nama Lengkap</span>
-                  <span className="font-semibold text-gray-900">{item.customerName}</span>
+                  <span className="font-semibold text-gray-900 text-right">{item.customerName}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-2">
                   <span className="text-gray-500">No. WhatsApp / HP</span>
-                  <span className="font-mono font-medium text-gray-900">{item.customerPhone || '-'}</span>
+                  <span className="font-mono font-medium text-gray-900 text-right">
+                    {item.customerPhone || '-'}
+                  </span>
                 </div>
-                {item.customerNik && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">NIK (KTP)</span>
-                    <span className="font-mono text-gray-700">{item.customerNik}</span>
-                  </div>
-                )}
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-500">NIK (KTP)</span>
+                  <span className="font-mono text-gray-700 text-right">
+                    {item.customerNik || '-'}
+                  </span>
+                </div>
                 {item.customerNpwp && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-2">
                     <span className="text-gray-500">NPWP</span>
-                    <span className="font-mono text-gray-700">{item.customerNpwp}</span>
+                    <span className="font-mono text-gray-700 text-right">{item.customerNpwp}</span>
                   </div>
                 )}
                 {item.customerAddress && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Alamat</span>
-                    <span className="text-gray-700 text-right max-w-[180px] truncate">{item.customerAddress}</span>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-500 shrink-0">Alamat</span>
+                    <span className="text-gray-700 text-right">{item.customerAddress}</span>
                   </div>
                 )}
               </div>
@@ -156,30 +161,79 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
             <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
                 <Coins size={14} className="text-orange-500" />
-                <span>Spesifikasi Emas</span>
+                <span>Spesifikasi &amp; Kondisi Emas</span>
               </div>
               <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-2">
                   <span className="text-gray-500">Jenis Perhiasan</span>
-                  <span className="font-semibold text-gray-900">{item.itemType}</span>
+                  <span className="font-semibold text-gray-900 text-right">{item.itemType}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center gap-2">
                   <span className="text-gray-500">Kadar Kemurnian</span>
                   <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold font-mono text-[11px]">
                     {item.kadar}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-2">
                   <span className="text-gray-500">Kondisi Fisik</span>
-                  <span className="font-medium text-gray-800">{item.kondisi}</span>
+                  <span className="font-medium text-gray-800 text-right">{item.kondisi}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-2">
                   <span className="text-gray-500">Surat Toko Asal</span>
-                  <span className="font-medium text-gray-800">{item.sourceNote || 'Ada Nota Asli'}</span>
+                  <span className="font-medium text-gray-800 text-right">
+                    {item.sourceNote || 'Ada Nota Asli'}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Card: Daftar Rincian Item Emas (Jika Multi-Item) */}
+          {item.items && item.items.length > 0 && (
+            <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-200/60 mb-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                  <Layers size={14} className="text-orange-500" />
+                  <span>Rincian Item Emas ({item.items.length} Item)</span>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200/70 divide-y divide-gray-100 overflow-hidden">
+                {item.items.map((gold, idx) => (
+                  <div
+                    key={gold.id || idx}
+                    className="p-2.5 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-gray-900">
+                          {gold.brandType || gold.category}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-mono text-[10px] font-bold">
+                          {gold.kadar}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-mono text-[10px] font-semibold">
+                          {gold.berat.toFixed(2)} gr
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-500 block mt-0.5">
+                        {gold.category} &bull; Kondisi: {gold.kondisi}
+                        {gold.serialNumber ? ` · SN: ${gold.serialNumber}` : ''}
+                        {gold.certYear ? ` (${gold.certYear})` : ''}
+                      </span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="font-mono font-bold text-gray-900 block tabular-nums">
+                        {formatIDR(gold.subtotal)}
+                      </span>
+                      <span className="text-[11px] text-gray-400 font-mono">
+                        @{formatIDR(gold.hargaPerGram)}/gr
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Card 3: Rincian Berat & Kalkulasi Keuangan */}
           <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
@@ -217,7 +271,9 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Nilai Kotor ({item.beratBersih.toFixed(2)} gr &times; {formatIDR(item.hargaPerGram)})</span>
+                <span className="text-gray-600">
+                  Nilai Kotor ({item.beratBersih.toFixed(2)} gr &times; {formatIDR(item.hargaPerGram)})
+                </span>
                 <span className="font-mono font-bold text-gray-900">
                   {formatIDR(nilaiKotor)}
                 </span>
@@ -271,8 +327,66 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 </div>
                 <div>
                   <span className="text-blue-500 block text-[11px]">Atas Nama (A/N)</span>
-                  <span className="font-semibold text-blue-950">{item.accountHolder || item.customerName}</span>
+                  <span className="font-semibold text-blue-950">
+                    {item.accountHolder || item.customerName}
+                  </span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Card 5: Lampiran Foto & Tanda Tangan (Jika ada) */}
+          {hasAttachments && (
+            <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
+                <ImageIcon size={14} className="text-orange-500" />
+                <span>Lampiran Dokumen &amp; Tanda Tangan</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {item.fotoKtp && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+                    <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">Foto KTP</span>
+                    <img
+                      src={item.fotoKtp}
+                      alt="Foto KTP Nasabah"
+                      className="w-full h-20 object-cover rounded border border-gray-100"
+                    />
+                  </div>
+                )}
+                {item.fotoEmas && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+                    <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">Foto Fisik Emas</span>
+                    <img
+                      src={item.fotoEmas}
+                      alt="Foto Fisik Emas"
+                      className="w-full h-20 object-cover rounded border border-gray-100"
+                    />
+                  </div>
+                )}
+                {item.ttdNasabah && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+                    <span className="text-[11px] font-semibold text-gray-500 flex items-center justify-center gap-1 mb-1.5">
+                      <PenTool size={11} /> TTD Nasabah
+                    </span>
+                    <img
+                      src={item.ttdNasabah}
+                      alt="Tanda Tangan Nasabah"
+                      className="w-full h-20 object-contain rounded bg-gray-50 border border-gray-100"
+                    />
+                  </div>
+                )}
+                {item.ttdPetugas && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+                    <span className="text-[11px] font-semibold text-gray-500 flex items-center justify-center gap-1 mb-1.5">
+                      <PenTool size={11} /> TTD Petugas
+                    </span>
+                    <img
+                      src={item.ttdPetugas}
+                      alt="Tanda Tangan Petugas"
+                      className="w-full h-20 object-contain rounded bg-gray-50 border border-gray-100"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -284,30 +398,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
               <p className="text-gray-700">{item.catatan}</p>
             </div>
           )}
-        </div>
-
-        {/* Modal Footer Actions */}
-        <div className="p-3.5 sm:px-6 sm:py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-          >
-            Tutup
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onPrintReceipt(item);
-            }}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
-          >
-            <Printer size={15} />
-            <span>Cetak Nota Buyback</span>
-          </button>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };

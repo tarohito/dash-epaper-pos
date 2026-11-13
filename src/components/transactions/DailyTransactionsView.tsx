@@ -22,22 +22,12 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { SearchInput } from '../common/SearchInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
+import { MoneyAmount } from '../common/MoneyAmount';
 import {
-  ShopeeSortBar,
-  ShopeeSortPreset,
   SortableTh,
   SortDirection,
   getNextColumnSort,
 } from '../common/TableSortControls';
-
-const TRANSACTION_SORT_PRESETS: ShopeeSortPreset[] = [
-  { id: 'newest', label: 'Terbaru', sortBy: 'newest', sortDir: 'desc' },
-  { id: 'oldest', label: 'Terlama', sortBy: 'newest', sortDir: 'asc' },
-  { id: 'total-desc', label: 'Total Tertinggi', sortBy: 'grandTotal', sortDir: 'desc' },
-  { id: 'total-asc', label: 'Total Terendah', sortBy: 'grandTotal', sortDir: 'asc' },
-  { id: 'berat-desc', label: 'Berat Terberat', sortBy: 'totalBerat', sortDir: 'desc' },
-  { id: 'cust-asc', label: 'Pelanggan A–Z', sortBy: 'customerName', sortDir: 'asc' },
-];
 
 interface DailyTransactionsViewProps {
   refreshTrigger: number;
@@ -137,11 +127,6 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
     return () => controller.abort();
   }, [currentPage, pageSize, debouncedSearch, txFilterMethod, sortBy, sortDir, refreshTrigger, retryCount, showToast]);
 
-  const handleSortPreset = (nextBy: string, nextDir: SortDirection) => {
-    setSortBy(nextBy);
-    setSortDir(nextDir);
-  };
-
   const handleHeaderSort = (key: string, defaultDir: SortDirection = 'desc') => {
     const next = getNextColumnSort(key, sortBy, sortDir, defaultDir);
     setSortBy(next.sortBy);
@@ -202,7 +187,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
 
       {/* 4 Modern KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
               Total Omzet Penjualan
@@ -211,10 +196,8 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
               <Coins size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
-              {formatIDR(stats?.totalOmzetPenjualan ?? 0)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount value={stats?.totalOmzetPenjualan ?? 0} maxFontPx={24} minFontPx={13} />
             <p className="text-xs text-gray-400 mt-1 truncate">Uang masuk penjualan aktif</p>
           </div>
         </div>
@@ -253,7 +236,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
               Rata-rata / Nota
@@ -262,10 +245,8 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
               <Building2 size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
-              {formatIDR(stats?.avgPerTransaksi ?? 0)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount value={stats?.avgPerTransaksi ?? 0} maxFontPx={24} minFontPx={13} />
             <p className="text-xs text-gray-400 mt-1 truncate">Rata-rata per pelanggan</p>
           </div>
         </div>
@@ -305,13 +286,6 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
             </div>
           </div>
         </div>
-
-        <ShopeeSortBar
-          presets={TRANSACTION_SORT_PRESETS}
-          sortBy={sortBy}
-          sortDir={sortDir}
-          onSelectPreset={handleSortPreset}
-        />
 
         {fetchError && (
           <ErrorBanner
@@ -480,18 +454,18 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
 
                         <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
                           <div className="inline-flex items-center justify-center gap-1.5">
-                            <Tooltip content="Lihat Rincian Lengkap" side="top">
+                            <Tooltip content="Lihat Detail" side="top">
                               <button
                                 type="button"
                                 onClick={() => setSelectedDetailTx(tx)}
                                 className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                aria-label="Lihat Rincian Lengkap"
+                                aria-label="Lihat Detail"
                               >
                                 <Eye size={15} />
                               </button>
                             </Tooltip>
 
-                            <Tooltip content={isVoid ? 'Transaksi sudah di-void' : 'Void / Batalkan Transaksi'} side="top">
+                            <Tooltip content={isVoid ? 'Sudah Di-void' : 'Void Transaksi'} side="top">
                               <button
                                 type="button"
                                 disabled={isVoid}
@@ -503,12 +477,12 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                               </button>
                             </Tooltip>
 
-                            <Tooltip content="Cetak Nota Resmi" side="top">
+                            <Tooltip content="Cetak Nota" side="top">
                               <button
                                 type="button"
                                 onClick={() => onSelectReceipt(tx)}
                                 className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                aria-label="Cetak Nota Resmi"
+                                aria-label="Cetak Nota"
                               >
                                 <Printer size={15} />
                               </button>

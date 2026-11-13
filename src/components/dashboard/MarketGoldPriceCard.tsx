@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, TrendingUp, TrendingDown, Minus, Coins, Scale } from 'lucide-react';
 import { formatIDR } from '../../utils/formatters';
+import { MoneyAmount } from '../common/MoneyAmount';
 
 interface GoldMarketData {
   sellPrice: number; // Harga beli emas oleh konsumen (Antam 1 gr)
@@ -187,7 +188,7 @@ export const MarketGoldPriceCard: React.FC<MarketGoldPriceCardProps> = ({
           {/* Sisi Kiri: 2 Box Utama (Harga Emas & Buyback) */}
           <div className="md:col-span-5 flex flex-col justify-between gap-2.5">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-3 flex-1">
-              <div className="p-4 bg-white rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+              <div className="p-4 bg-white rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs sm:text-sm font-medium text-gray-500">
                     Harga Emas (1 gr)
@@ -196,17 +197,15 @@ export const MarketGoldPriceCard: React.FC<MarketGoldPriceCardProps> = ({
                     <Coins size={16} strokeWidth={2} />
                   </span>
                 </div>
-                <div className="mt-2.5">
-                  <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-gray-900 block tracking-tight">
-                    {formatIDR(data.sellPrice)}
-                  </span>
+                <div className="mt-2.5 min-w-0">
+                  <MoneyAmount value={data.sellPrice} maxFontPx={24} minFontPx={13} />
                   <span className="text-xs text-gray-400 block mt-1">
                     per gram murni
                   </span>
                 </div>
               </div>
 
-              <div className="p-4 bg-white rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+              <div className="p-4 bg-white rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs sm:text-sm font-medium text-gray-500">
                     Harga Buyback
@@ -215,10 +214,8 @@ export const MarketGoldPriceCard: React.FC<MarketGoldPriceCardProps> = ({
                     <Scale size={16} strokeWidth={2} />
                   </span>
                 </div>
-                <div className="mt-2.5">
-                  <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-gray-900 block tracking-tight">
-                    {formatIDR(data.buybackPrice)}
-                  </span>
+                <div className="mt-2.5 min-w-0">
+                  <MoneyAmount value={data.buybackPrice} maxFontPx={24} minFontPx={13} />
                   <span className="text-xs text-gray-400 block mt-1">
                     jual kembali
                   </span>

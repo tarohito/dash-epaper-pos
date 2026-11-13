@@ -1,15 +1,18 @@
 import React from 'react';
 import {
-  X,
   Printer,
-  ReceiptText,
   User,
-  Calendar,
   CreditCard,
   FileText,
 } from 'lucide-react';
 import { Transaction } from '../../types';
 import { formatIDR } from '../../utils/formatters';
+import {
+  ModalShell,
+  MODAL_FOOTER_END_CLASS,
+  MODAL_BTN_PRIMARY_CLASS,
+} from '../common/ModalShell';
+import { MoneyAmount } from '../common/MoneyAmount';
 
 interface TransactionDetailModalProps {
   isOpen: boolean;
@@ -37,47 +40,36 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       : 'QRIS GPN';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl border border-gray-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] shadow-2xl">
-        {/* Header Modal */}
-        <div className="px-4 sm:px-6 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
-              <ReceiptText size={18} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-tight">
-                  Rincian Transaksi Penjualan
-                </h3>
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-gray-200 text-gray-700">
-                  {transaction.invoiceNo}
-                </span>
-                {isVoid && (
-                  <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
-                    VOID
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                <Calendar size={12} />
-                <span>{transaction.dateStr}</span>
-                {transaction.timeStr && <span>&bull; {transaction.timeStr}</span>}
-              </p>
-            </div>
-          </div>
+    <ModalShell
+      isOpen={isOpen && Boolean(transaction)}
+      onClose={onClose}
+      size="xl"
+      title="Rincian Transaksi Penjualan"
+      subtitle={[
+        transaction.invoiceNo,
+        transaction.dateStr,
+        transaction.timeStr,
+        isVoid ? 'Status VOID' : null,
+      ]
+        .filter(Boolean)
+        .join(' • ')}
+      footer={
+        <div className={MODAL_FOOTER_END_CLASS}>
           <button
             type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Tutup"
+            onClick={() => {
+              onClose();
+              onPrintReceipt(transaction);
+            }}
+            className={MODAL_BTN_PRIMARY_CLASS}
           >
-            <X size={18} />
+            <Printer size={15} className="shrink-0" />
+            <span>Cetak Nota Penjualan</span>
           </button>
         </div>
-
-        {/* Modal Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+      }
+    >
+      <div className="space-y-4">
           {isVoid && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
               <strong className="font-bold block">Nota Penjualan Ini Telah Di-VOID (Dibatalkan)</strong>
@@ -87,18 +79,23 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
           {/* Highlight Banner */}
           <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl text-white shadow-xs flex items-center justify-between gap-4">
-            <div>
+            <div className="min-w-0 flex-1">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-100 block">
                 Total Nilai Transaksi (Termasuk PPN 11%)
               </span>
-              <p className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white mt-0.5">
-                {formatIDR(transaction.grandTotal)}
-              </p>
+              <div className="mt-0.5">
+                <MoneyAmount
+                  value={transaction.grandTotal}
+                  maxFontPx={28}
+                  minFontPx={15}
+                  className="font-black font-mono tracking-tight text-white tabular-nums"
+                />
+              </div>
               <p className="text-xs text-orange-100 mt-1">
                 Metode: <strong className="text-white">{methodLabel}</strong>
               </p>
             </div>
-            <div className="hidden sm:flex flex-col items-end text-right">
+            <div className="hidden sm:flex flex-col items-end text-right shrink-0">
               <span className="text-xs text-orange-100">Total Berat Emas</span>
               <span className="text-xl font-bold font-mono text-white">
                 {transaction.totalBerat.toFixed(2)} gr
@@ -275,30 +272,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Modal Footer Actions */}
-        <div className="p-3.5 sm:px-6 sm:py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-          >
-            Tutup
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onPrintReceipt(transaction);
-            }}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
-          >
-            <Printer size={15} />
-            <span>Cetak Nota Penjualan</span>
-          </button>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };

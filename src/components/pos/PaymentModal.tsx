@@ -21,6 +21,12 @@ import { BANK_ACCOUNTS, BankKey } from '../../constants/bankAccounts';
 import { useToast } from '../../contexts/ToastContext';
 import { posApi } from '../../services/api';
 import { CustomerLookupPicker, LinkedCustomerSummary } from '../customer/CustomerLookupPicker';
+import {
+  ModalShell,
+  MODAL_FOOTER_END_CLASS,
+  MODAL_BTN_SECONDARY_CLASS,
+} from '../common/ModalShell';
+import { MoneyAmount } from '../common/MoneyAmount';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -88,8 +94,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       }
     }
   }, [isOpen, grandTotal, customerId, customerName]);
-
-  if (!isOpen) return null;
 
   const copyToClipboard = (text: string, label: string) => {
     try {
@@ -174,26 +178,39 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header Modal */}
-        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
-          <div>
-            <h3 className="font-bold text-gray-900 text-base sm:text-lg leading-tight">Pembayaran Transaksi</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Pilih metode bayar dan selesaikan transaksi kasir</p>
-          </div>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      title="Pembayaran Transaksi"
+      subtitle="Pilih metode bayar dan selesaikan transaksi"
+      disableEscapeClose={isSubmitting}
+      footer={
+        <div className={MODAL_FOOTER_END_CLASS}>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Tutup"
+            disabled={isSubmitting}
+            className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={20} />
+            <X size={15} className="text-gray-500 shrink-0" />
+            <span>Batal</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleConfirm()}
+            disabled={isSubmitting}
+            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? <Loader2 size={15} className="animate-spin shrink-0" /> : <CheckCircle2 size={15} className="shrink-0" />}
+            <span>
+              {isSubmitting ? 'Memproses Pembayaran...' : `Konfirmasi Bayar (${formatIDR(grandTotal)})`}
+            </span>
           </button>
         </div>
-
-        {/* Body Modal */}
-        <div className="p-5 overflow-y-auto space-y-4">
+      }
+    >
+      <div className="space-y-4">
           {errorMsg && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
               <AlertCircle size={15} className="shrink-0" />
@@ -201,12 +218,19 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
           )}
           {/* Total Tagihan Banner */}
-          <div className="bg-gradient-to-br from-orange-400 to-red-500 p-4 sm:p-5 rounded-lg text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-xs">
-            <div>
+          <div className="bg-gradient-to-br from-orange-400 to-red-500 p-4 sm:p-5 rounded-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-xs">
+            <div className="min-w-0 flex-1">
               <span className="text-xs text-orange-100 font-semibold uppercase tracking-wider block">
                 Total Pembayaran
               </span>
-              <div className="text-2xl sm:text-3xl font-bold text-white mt-1 tracking-tight font-mono">{formatIDR(grandTotal)}</div>
+              <div className="mt-1">
+                <MoneyAmount
+                  value={grandTotal}
+                  maxFontPx={28}
+                  minFontPx={15}
+                  className="font-bold text-white tracking-tight font-mono tabular-nums"
+                />
+              </div>
               <div className="text-xs text-white/90 mt-1 font-medium font-mono">
                 {cart.reduce((a, b) => a + b.qty, 0)} Item &bull; Total Berat: {cart.reduce((a, b) => a + b.berat * b.qty, 0).toFixed(2)} g
               </div>
@@ -509,22 +533,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 const change = numCash - grandTotal;
                 return (
                   <div
-                    className={`p-3.5 rounded-md border flex items-center justify-between ${
+                    className={`p-3.5 rounded-md border flex items-center justify-between gap-3 ${
                       change >= 0
                         ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
                         : 'bg-rose-50 border-rose-200 text-rose-950'
                     }`}
                   >
-                    <span className="text-xs sm:text-sm font-semibold text-gray-600">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-600 shrink-0">
                       {change >= 0 ? 'Kembalian' : 'Kekurangan Bayar'}
                     </span>
-                    <span
-                      className={`text-xl font-bold font-mono ${
-                        change >= 0 ? 'text-emerald-700' : 'text-rose-600'
-                      }`}
-                    >
-                      {formatIDR(Math.abs(change))}
-                    </span>
+                    <div className="flex-1 min-w-0 text-right">
+                      <MoneyAmount
+                        value={Math.abs(change)}
+                        maxFontPx={20}
+                        minFontPx={13}
+                        className={`font-bold font-mono tabular-nums ${
+                          change >= 0 ? 'text-emerald-700' : 'text-rose-600'
+                        }`}
+                      />
+                    </div>
                   </div>
                 );
               })()}
@@ -717,32 +744,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer Actions */}
-        <div className="p-3.5 sm:px-5 sm:py-3.5 bg-gray-50/80 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="h-10 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
-          >
-            <X size={16} className="text-gray-500" />
-            <span>Batal</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleConfirm()}
-            disabled={isSubmitting}
-            className="h-10 px-5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:opacity-60 text-white font-bold text-xs sm:text-sm rounded-lg transition-all inline-flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
-          >
-            {isSubmitting ? <Loader2 size={17} className="animate-spin" /> : <CheckCircle2 size={17} />}
-            <span>
-              {isSubmitting ? 'Memproses Pembayaran...' : `Konfirmasi Pembayaran (${formatIDR(grandTotal)})`}
-            </span>
-          </button>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };

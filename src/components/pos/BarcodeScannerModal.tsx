@@ -3,7 +3,6 @@ import {
   Barcode,
   Volume2,
   VolumeX,
-  X,
   Camera,
   CheckCircle2,
   AlertCircle,
@@ -18,6 +17,7 @@ import { formatIDR } from '../../utils/formatters';
 import { posApi } from '../../services/api';
 import { extractBarcodeValue } from '../../utils/barcode';
 import { useToast } from '../../contexts/ToastContext';
+import { ModalShell, MODAL_BTN_PRIMARY_CLASS } from '../common/ModalShell';
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
@@ -210,8 +210,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     };
   }, [isOpen, isCameraActive, handleProcessScan]);
 
-  if (!isOpen) return null;
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -220,51 +218,48 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-none">
-                Scan Barcode Produk
-              </h3>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Code 128 &amp; QR Siap
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Dukung scanner fisik &amp; kamera web (Code 128, QR Code, EAN-13, Code 39)
-            </p>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      title="Scan Barcode Produk"
+      subtitle="Dukung scanner USB & kamera (Code 128, QR, EAN-13)"
+      headerActions={
+        <button
+          type="button"
+          onClick={onToggleSound}
+          className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+            isSoundEnabled
+              ? 'bg-orange-50 text-orange-600 border-orange-200'
+              : 'bg-gray-100 text-gray-400 border-gray-200'
+          }`}
+          title={isSoundEnabled ? 'Suara beep aktif' : 'Suara beep nonaktif'}
+          aria-label={isSoundEnabled ? 'Suara beep aktif' : 'Suara beep nonaktif'}
+        >
+          {isSoundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+        </button>
+      }
+      footer={
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="text-xs sm:text-sm text-gray-600">
+            Keranjang saat ini:{' '}
+            <span className="font-bold text-orange-600 font-mono">{totalCartQty} item</span>
+            {scanCount > 0 && (
+              <span className="text-gray-400 text-xs ml-1.5 font-mono">({scanCount}x di-scan sesi ini)</span>
+            )}
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onToggleSound}
-              className={`p-1.5 rounded-md border transition-colors cursor-pointer ${
-                isSoundEnabled
-                  ? 'bg-orange-50 text-orange-600 border-orange-200'
-                  : 'bg-gray-100 text-gray-400 border-gray-200'
-              }`}
-              title={isSoundEnabled ? 'Suara beep aktif' : 'Suara beep nonaktif'}
-            >
-              {isSoundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-              aria-label="Tutup modal"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={MODAL_BTN_PRIMARY_CLASS}
+          >
+            <Check size={15} className="shrink-0" />
+            <span>Selesai Scan</span>
+          </button>
         </div>
-
-        {/* Modal Body */}
-        <div className="p-5 space-y-4">
+      }
+    >
+      <div className="space-y-4">
           {/* Main Input Field */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1.5">
@@ -433,27 +428,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               </div>
             )}
           </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
-          <div className="text-xs sm:text-sm text-gray-600">
-            Keranjang saat ini:{' '}
-            <span className="font-bold text-orange-600 font-mono">{totalCartQty} item</span>
-            {scanCount > 0 && (
-              <span className="text-gray-400 text-xs ml-1.5 font-mono">({scanCount}x di-scan sesi ini)</span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 active:scale-[0.98]"
-          >
-            <Check size={16} />
-            <span>Selesai Scan</span>
-          </button>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };

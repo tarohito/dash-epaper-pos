@@ -1,7 +1,12 @@
 import React from 'react';
-import { X, Printer, ReceiptText, Plus } from 'lucide-react';
+import { Printer, ReceiptText, Plus } from 'lucide-react';
 import { Transaction } from '../../types';
 import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
+import {
+  ModalShell,
+  MODAL_BTN_SECONDARY_CLASS,
+  MODAL_BTN_PRIMARY_CLASS,
+} from '../common/ModalShell';
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -21,66 +26,50 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   if (!isOpen || !receipt) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[94vh]">
-        {/* Modal Top Bar */}
-        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
-          <div>
-            <h3 className="font-bold text-gray-900 text-base sm:text-lg leading-tight">Nota Resmi Penjualan Emas</h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Surat bukti transaksi perhiasan dan logam mulia resmi
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Tutup"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Invoice Document Screen Preview */}
-        <div className="p-2 sm:p-6 overflow-y-auto overflow-x-auto bg-gray-100/90 flex justify-center">
-          <div className="min-w-0 w-full overflow-x-auto flex justify-center">
-            <GoldInvoiceDocument receipt={receipt} type="sale" />
-          </div>
-        </div>
-
-        {/* Modal Footer Actions */}
-        <div className="p-3.5 sm:p-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+    <ModalShell
+      isOpen={isOpen && Boolean(receipt)}
+      onClose={onClose}
+      size="2xl"
+      title="Nota Penjualan Emas"
+      subtitle={`${receipt.invoiceNo} • ${receipt.customerName || 'Pelanggan Umum'}`}
+      bodyClassName="p-3 sm:p-5 overflow-y-auto overflow-x-auto bg-gray-100/90 flex-1 flex justify-center"
+      footer={
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <button
             type="button"
             onClick={() => {
               onClose();
               onViewDailyTransactions();
             }}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs text-center"
+            className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <ReceiptText size={15} className="mr-1.5 text-gray-500" />
+            <ReceiptText size={15} className="text-gray-500 shrink-0" />
             <span>Lihat Transaksi Harian</span>
           </button>
-          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs text-center"
+              className={MODAL_BTN_SECONDARY_CLASS}
             >
-              <Plus size={15} className="mr-1.5 text-gray-500" />
+              <Plus size={15} className="text-gray-500 shrink-0" />
               <span>Transaksi Baru</span>
             </button>
             <button
               type="button"
               onClick={onPrint}
-              className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
+              className={MODAL_BTN_PRIMARY_CLASS}
             >
-              <Printer size={16} />
-              <span>Cetak Nota Emas (Print)</span>
+              <Printer size={15} className="shrink-0" />
+              <span>Cetak Nota Emas</span>
             </button>
           </div>
         </div>
+      }
+    >
+      <div className="min-w-0 w-full overflow-x-auto flex justify-center">
+        <GoldInvoiceDocument receipt={receipt} type="sale" />
       </div>
-    </div>
+    </ModalShell>
   );
 };

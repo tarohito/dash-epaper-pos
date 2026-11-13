@@ -7,7 +7,7 @@ import {
   Sparkles,
   ShoppingBag,
   Scale,
-  Edit2,
+  Pencil,
   Trash2,
   MapPin,
   CreditCard,
@@ -26,20 +26,13 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { SearchInput } from '../common/SearchInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
+import Tooltip from '../Tooltip';
+import { MoneyAmount } from '../common/MoneyAmount';
 import {
-  ShopeeSortBar,
-  ShopeeSortPreset,
   SortableTh,
   SortDirection,
   getNextColumnSort,
 } from '../common/TableSortControls';
-
-const CUSTOMER_SORT_PRESETS: ShopeeSortPreset[] = [
-  { id: 'newest', label: 'Terbaru', sortBy: 'newest', sortDir: 'desc' },
-  { id: 'spent-desc', label: 'Belanja Tertinggi', sortBy: 'computedSpent', sortDir: 'desc' },
-  { id: 'tx-desc', label: 'Transaksi Terbanyak', sortBy: 'computedTx', sortDir: 'desc' },
-  { id: 'name-asc', label: 'Nama A–Z', sortBy: 'name', sortDir: 'asc' },
-];
 
 interface CustomerViewProps {
   refreshTrigger: number;
@@ -128,11 +121,6 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
 
     return () => controller.abort();
   }, [currentPage, pageSize, debouncedSearch, filterType, sortBy, sortDir, refreshTrigger, retryCount, showToast]);
-
-  const handleSortPreset = (nextBy: string, nextDir: SortDirection) => {
-    setSortBy(nextBy);
-    setSortDir(nextDir);
-  };
 
   const handleHeaderSort = (key: string, defaultDir: SortDirection = 'desc') => {
     const next = getNextColumnSort(key, sortBy, sortDir, defaultDir);
@@ -225,17 +213,20 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">Akumulasi Belanja Member</span>
             <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
               <ShoppingBag size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold text-orange-600 font-mono tabular-nums tracking-tight truncate">
-              {formatIDR(stats.totalAkumulasiBelanja)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount
+              value={stats.totalAkumulasiBelanja}
+              maxFontPx={24}
+              minFontPx={13}
+              className="font-bold text-orange-600 font-mono tabular-nums tracking-tight"
+            />
             <p className="text-xs text-gray-400 mt-1">Total omzet member aktif</p>
           </div>
         </div>
@@ -271,14 +262,6 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
           ))}
         </div>
       </div>
-
-      {/* 3.5 SORT BAR */}
-      <ShopeeSortBar
-        presets={CUSTOMER_SORT_PRESETS}
-        sortBy={sortBy}
-        sortDir={sortDir}
-        onSelectPreset={handleSortPreset}
-      />
 
       {fetchError && (
         <ErrorBanner message={fetchError} onRetry={() => setRetryCount(c => c + 1)} />
@@ -455,60 +438,67 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 align-top text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => onSelectCustomerForPOS({ id: c.id, name: c.name })}
-                              className="h-7 px-2.5 inline-flex items-center justify-center gap-1 text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md transition-colors cursor-pointer"
-                              title="Buka Kasir POS untuk pelanggan ini"
-                            >
-                              <ShoppingCart size={12} />
-                              <span>POS</span>
-                            </button>
+                        <td className="py-3.5 px-4 align-top text-center whitespace-nowrap">
+                          <div className="inline-flex items-center justify-center gap-1.5">
+                            <Tooltip content="Kasir POS" side="top">
+                              <button
+                                type="button"
+                                onClick={() => onSelectCustomerForPOS({ id: c.id, name: c.name })}
+                                className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                aria-label="Kasir POS"
+                              >
+                                <ShoppingCart size={15} />
+                              </button>
+                            </Tooltip>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onSelectCustomerForBuyback({
-                                  id: c.id,
-                                  name: c.name,
-                                  phone: c.phone,
-                                  nik: c.nik,
-                                  address: c.address,
-                                })
-                              }
-                              className="h-7 px-2.5 inline-flex items-center justify-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md transition-colors cursor-pointer"
-                              title="Input Buyback untuk pelanggan ini"
-                            >
-                              <Scale size={12} />
-                              <span>Buyback</span>
-                            </button>
+                            <Tooltip content="Input Buyback" side="top">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onSelectCustomerForBuyback({
+                                    id: c.id,
+                                    name: c.name,
+                                    phone: c.phone,
+                                    nik: c.nik,
+                                    address: c.address,
+                                  })
+                                }
+                                className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                aria-label="Input Buyback"
+                              >
+                                <Scale size={15} />
+                              </button>
+                            </Tooltip>
 
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(c)}
-                              className="h-7 px-2 inline-flex items-center justify-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
-                              title="Edit Data"
-                            >
-                              <Edit2 size={12} />
-                              <span>Edit</span>
-                            </button>
+                            <Tooltip content="Edit Pelanggan" side="top">
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(c)}
+                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                aria-label="Edit Pelanggan"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            </Tooltip>
 
-                            <button
-                              type="button"
-                              disabled={c.computedTx > 0 || c.buybackCount > 0}
-                              onClick={() => handleDelete(c)}
-                              className="h-7 px-2 inline-flex items-center justify-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-red-400"
-                              title={
+                            <Tooltip
+                              content={
                                 c.computedTx > 0 || c.buybackCount > 0
-                                  ? `Tidak dapat dihapus: pelanggan memiliki ${c.computedTx} transaksi penjualan & ${c.buybackCount} buyback`
+                                  ? 'Ada riwayat transaksi'
                                   : 'Hapus Pelanggan'
                               }
+                              side="top"
                             >
-                              <Trash2 size={12} />
-                              <span>Hapus</span>
-                            </button>
+                              <button
+                                type="button"
+                                disabled={c.computedTx > 0 || c.buybackCount > 0}
+                                onClick={() => handleDelete(c)}
+                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
+                                aria-label="Hapus Pelanggan"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </Tooltip>
                           </div>
                         </td>
                       </tr>
@@ -591,56 +581,66 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                     )}
 
                     <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onSelectCustomerForPOS({ id: c.id, name: c.name })}
-                          className="px-2.5 py-1 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded transition-colors cursor-pointer inline-flex items-center gap-1"
-                        >
-                          <ShoppingCart size={12} />
-                          <span>Kasir POS</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onSelectCustomerForBuyback({
-                              id: c.id,
-                              name: c.name,
-                              phone: c.phone,
-                              nik: c.nik,
-                              address: c.address,
-                            })
-                          }
-                          className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded transition-colors cursor-pointer inline-flex items-center gap-1"
-                        >
-                          <Scale size={12} />
-                          <span>Buyback</span>
-                        </button>
+                      <div className="flex items-center gap-1.5">
+                        <Tooltip content="Kasir POS" side="top">
+                          <button
+                            type="button"
+                            onClick={() => onSelectCustomerForPOS({ id: c.id, name: c.name })}
+                            className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                            aria-label="Kasir POS"
+                          >
+                            <ShoppingCart size={15} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Input Buyback" side="top">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onSelectCustomerForBuyback({
+                                id: c.id,
+                                name: c.name,
+                                phone: c.phone,
+                                nik: c.nik,
+                                address: c.address,
+                              })
+                            }
+                            className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white border border-amber-200 hover:border-amber-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                            aria-label="Input Buyback"
+                          >
+                            <Scale size={15} />
+                          </button>
+                        </Tooltip>
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(c)}
-                          className="px-2 py-1 text-xs font-semibold text-gray-600 hover:text-gray-900 rounded cursor-pointer inline-flex items-center gap-1"
-                        >
-                          <Edit2 size={12} />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={c.computedTx > 0 || c.buybackCount > 0}
-                          onClick={() => handleDelete(c)}
-                          className="px-2 py-1 text-xs font-semibold text-red-500 hover:text-red-700 rounded cursor-pointer inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-red-400"
-                          title={
+                        <Tooltip content="Edit Pelanggan" side="top">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(c)}
+                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                            aria-label="Edit Pelanggan"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip
+                          content={
                             c.computedTx > 0 || c.buybackCount > 0
-                              ? `Tidak dapat dihapus: pelanggan memiliki ${c.computedTx} transaksi penjualan & ${c.buybackCount} buyback`
+                              ? 'Ada riwayat transaksi'
                               : 'Hapus Pelanggan'
                           }
+                          side="top"
                         >
-                          <Trash2 size={12} />
-                          <span>Hapus</span>
-                        </button>
+                          <button
+                            type="button"
+                            disabled={c.computedTx > 0 || c.buybackCount > 0}
+                            onClick={() => handleDelete(c)}
+                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
+                            aria-label="Hapus Pelanggan"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>

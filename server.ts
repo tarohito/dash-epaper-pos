@@ -939,7 +939,9 @@ app.get('/api/promos', (req, res) => {
     const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
     const status = String(req.query.status ?? 'all');
-    res.json(queryPromos({ page, pageSize, search, status }));
+    const sortBy = String(req.query.sortBy ?? 'newest');
+    const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
+    res.json(queryPromos({ page, pageSize, search, status, sortBy, sortDir }));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat promo.' });
   }

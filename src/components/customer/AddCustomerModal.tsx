@@ -3,6 +3,12 @@ import { X, User, Phone, CreditCard, Sparkles, MapPin, FileText, Save, AlertCirc
 import { Customer } from '../../types';
 import { CustomSelect } from '../common/CustomSelect';
 import { useToast } from '../../contexts/ToastContext';
+import {
+  ModalShell,
+  MODAL_FOOTER_END_CLASS,
+  MODAL_BTN_SECONDARY_CLASS,
+  MODAL_BTN_PRIMARY_CLASS,
+} from '../common/ModalShell';
 
 interface AddCustomerModalProps {
   isOpen: boolean;
@@ -51,8 +57,6 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       setNotes('');
     }
   }, [initialCustomer, isOpen]);
-
-  if (!isOpen) return null;
 
   const failValidation = (msg: string) => {
     setErrorMsg(msg);
@@ -115,30 +119,39 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh] shadow-2xl">
-        {/* Header Modal */}
-        <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
-              {initialCustomer ? 'Edit Data Pelanggan' : 'Tambah Pelanggan Baru'}
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Registrasi member dan identitas pelanggan perhiasan
-            </p>
-          </div>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      title={initialCustomer ? 'Edit Data Pelanggan' : 'Tambah Pelanggan Baru'}
+      subtitle={initialCustomer ? 'Perbarui profil dan kontak pelanggan' : 'Daftarkan data dan kontak pelanggan baru'}
+      disableEscapeClose={isSubmitting}
+      footer={
+        <div className={MODAL_FOOTER_END_CLASS}>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Tutup"
+            disabled={isSubmitting}
+            className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={20} />
+            <X size={15} className="text-gray-500 shrink-0" />
+            <span>Batal</span>
+          </button>
+          <button
+            type="submit"
+            form="customer-form"
+            disabled={isSubmitting}
+            className={MODAL_BTN_PRIMARY_CLASS}
+          >
+            {isSubmitting ? <Loader2 size={15} className="animate-spin shrink-0" /> : <Save size={15} className="shrink-0" />}
+            <span>
+              {isSubmitting ? 'Menyimpan...' : initialCustomer ? 'Simpan Perubahan' : 'Tambah Pelanggan'}
+            </span>
           </button>
         </div>
-
-        {/* Form Body (Scrollable) */}
-        <form id="customer-form" noValidate onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-4">
+      }
+    >
+      <form id="customer-form" noValidate onSubmit={handleSubmit} className="space-y-4">
           {errorMsg && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
               <AlertCircle size={15} className="shrink-0" />
@@ -301,32 +314,7 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
               </div>
             </div>
           </div>
-        </form>
-
-        {/* Footer Modal */}
-        <div className="p-4 sm:p-5 border-t border-gray-100 flex items-center justify-end gap-2.5 bg-gray-50/70 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs disabled:opacity-50"
-          >
-            <X size={15} className="mr-1.5 text-gray-500" />
-            <span>Batal</span>
-          </button>
-          <button
-            type="submit"
-            form="customer-form"
-            disabled={isSubmitting}
-            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98]"
-          >
-            {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            <span>
-              {isSubmitting ? 'Menyimpan...' : initialCustomer ? 'Simpan Perubahan' : 'Tambah Pelanggan'}
-            </span>
-          </button>
-        </div>
-      </div>
-    </div>
+      </form>
+    </ModalShell>
   );
 };

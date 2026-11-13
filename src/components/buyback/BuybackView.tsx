@@ -23,22 +23,12 @@ import { posApi } from '../../services/api';
 import { SearchInput } from '../common/SearchInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
+import { MoneyAmount } from '../common/MoneyAmount';
 import {
-  ShopeeSortBar,
-  ShopeeSortPreset,
   SortableTh,
   SortDirection,
   getNextColumnSort,
 } from '../common/TableSortControls';
-
-const BUYBACK_SORT_PRESETS: ShopeeSortPreset[] = [
-  { id: 'newest', label: 'Terbaru', sortBy: 'newest', sortDir: 'desc' },
-  { id: 'oldest', label: 'Terlama', sortBy: 'newest', sortDir: 'asc' },
-  { id: 'bayar-desc', label: 'Bayar Tertinggi', sortBy: 'totalBayar', sortDir: 'desc' },
-  { id: 'bayar-asc', label: 'Bayar Terendah', sortBy: 'totalBayar', sortDir: 'asc' },
-  { id: 'berat-desc', label: 'Berat Terberat', sortBy: 'beratBersih', sortDir: 'desc' },
-  { id: 'cust-asc', label: 'Nasabah A–Z', sortBy: 'customerName', sortDir: 'asc' },
-];
 
 interface BuybackViewProps {
   refreshTrigger: number;
@@ -129,11 +119,6 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
     return () => controller.abort();
   }, [viewMode, currentPage, pageSize, debouncedSearch, filterMethod, sortBy, sortDir, refreshTrigger, retryCount, showToast]);
 
-  const handleSortPreset = (nextBy: string, nextDir: SortDirection) => {
-    setSortBy(nextBy);
-    setSortDir(nextDir);
-  };
-
   const handleHeaderSort = (key: string, defaultDir: SortDirection = 'desc') => {
     const next = getNextColumnSort(key, sortBy, sortDir, defaultDir);
     setSortBy(next.sortBy);
@@ -220,7 +205,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
 
       {/* 4 Modern KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
               Total Dana Dicairkan
@@ -229,10 +214,8 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
               <Coins size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
-              {formatIDR(stats.totalDanaDicairkan)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount value={stats.totalDanaDicairkan} maxFontPx={24} minFontPx={13} />
             <p className="text-xs text-gray-400 mt-1 truncate">Uang keluar untuk buyback</p>
           </div>
         </div>
@@ -271,7 +254,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
               Rata-rata / Nota
@@ -280,10 +263,8 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
               <Building2 size={16} strokeWidth={2} />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
-              {formatIDR(stats.avgPerTransaksi)}
-            </div>
+          <div className="mt-3 min-w-0">
+            <MoneyAmount value={stats.avgPerTransaksi} maxFontPx={24} minFontPx={13} />
             <p className="text-xs text-gray-400 mt-1 truncate">Rata-rata per nasabah</p>
           </div>
         </div>
@@ -336,13 +317,6 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
               </div>
             </div>
           </div>
-
-          <ShopeeSortBar
-            presets={BUYBACK_SORT_PRESETS}
-            sortBy={sortBy}
-            sortDir={sortDir}
-            onSelectPreset={handleSortPreset}
-          />
 
           {fetchError && (
             <ErrorBanner
@@ -457,23 +431,15 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                             <span className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                               <Calendar size={12} /> {bb.date}
                             </span>
-                            {isVoid && bb.voidReason && (
-                              <span className="text-xs text-red-600 block mt-0.5 max-w-[200px] truncate" title={bb.voidReason}>
-                                Alasan: {bb.voidReason}
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-3 sm:px-4 min-w-[130px]">
-                            <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
-                              {bb.customerName}
-                            </span>
-                            <span className="text-xs text-gray-500 font-mono block mt-0.5">
-                              {bb.customerPhone || '-'}
-                            </span>
                           </td>
 
                           <td className="py-3.5 px-3 sm:px-4 min-w-[140px]">
+                            <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
+                              {bb.customerName}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-3 sm:px-4 min-w-[150px]">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-semibold text-gray-900 text-xs sm:text-sm">
                                 {bb.itemType}
@@ -482,12 +448,9 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                                 {bb.kadar}
                               </span>
                             </div>
-                            <span className="text-xs text-gray-500 block mt-0.5 truncate max-w-[180px]">
-                              {bb.kondisi}
-                            </span>
                           </td>
 
-                          <td className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap font-mono font-bold text-gray-900 text-xs sm:text-sm">
+                          <td className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap font-mono font-bold text-gray-900 text-xs sm:text-sm tabular-nums">
                             {bb.beratBersih.toFixed(2)} gr
                           </td>
 
@@ -499,50 +462,56 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                             >
                               {formatIDR(bb.totalBayar)}
                             </span>
-                            <span className="inline-block mt-0.5 text-xs font-semibold px-2 py-0.5 rounded capitalize bg-gray-100 text-gray-600">
+                            <span
+                              className={`inline-block mt-0.5 text-xs font-semibold px-2 py-0.5 rounded ${
+                                isVoid
+                                  ? 'bg-red-50 text-red-600'
+                                  : bb.paymentMethod === 'transfer'
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
                               {isVoid
                                 ? 'Dibatalkan'
                                 : bb.paymentMethod === 'transfer'
-                                ? bb.bankName
-                                  ? `Transfer (${bb.bankName})`
-                                  : 'Transfer Bank'
+                                ? 'Transfer Bank'
                                 : 'Tunai'}
                             </span>
                           </td>
 
                           <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
                             <div className="inline-flex items-center justify-center gap-1.5">
-                              <Tooltip content="Lihat Rincian Lengkap" side="top">
+                              <Tooltip content="Lihat Detail" side="top">
                                 <button
                                   type="button"
                                   disabled={isActionBusy}
                                   onClick={() => void handleOpenDetail(bb)}
                                   className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-50"
-                                  aria-label="Lihat Rincian Lengkap"
+                                  aria-label="Lihat Detail"
                                 >
-                                  {isActionBusy ? <Loader2 size={14} className="animate-spin" /> : <Eye size={15} />}
+                                  {isActionBusy ? <Loader2 size={15} className="animate-spin" /> : <Eye size={15} />}
                                 </button>
                               </Tooltip>
 
-                              <Tooltip content={isVoid ? 'Nota buyback sudah di-void' : 'Void / Batalkan Buyback'} side="top">
+                              <Tooltip content={isVoid ? 'Sudah Di-void' : 'Void Buyback'} side="top">
                                 <button
                                   type="button"
                                   disabled={isActionBusy || isVoid}
                                   onClick={() => setVoidingItem(bb)}
                                   className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-amber-50 text-gray-600 hover:text-amber-700 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                                  aria-label="Void Transaksi Buyback"
+                                  aria-label="Void Buyback"
                                 >
                                   <RotateCcw size={15} />
                                 </button>
                               </Tooltip>
 
-                              <Tooltip content="Cetak Nota Resmi" side="top">
+                              <Tooltip content="Cetak Nota" side="top">
                                 <button
                                   type="button"
                                   disabled={isActionBusy}
                                   onClick={() => void handleOpenPrint(bb)}
                                   className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-50"
-                                  aria-label="Cetak Nota Resmi"
+                                  aria-label="Cetak Nota"
                                 >
                                   <Printer size={15} />
                                 </button>

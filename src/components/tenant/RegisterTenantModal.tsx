@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { X, Store, ShieldCheck, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Tenant } from '../../types';
 import { useToast } from '../../contexts/ToastContext';
+import {
+  ModalShell,
+  MODAL_FOOTER_END_CLASS,
+  MODAL_BTN_SECONDARY_CLASS,
+  MODAL_BTN_PRIMARY_CLASS,
+} from '../common/ModalShell';
 
 interface RegisterTenantModalProps {
   isOpen: boolean;
@@ -27,8 +33,6 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
-
-  if (!isOpen) return null;
 
   const failValidation = (msg: string) => {
     setErrorMsg(msg);
@@ -114,74 +118,86 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
-      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-200 bg-gray-50/80 flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
-              Pendaftaran Toko / Cabang Baru
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Registrasi tenant atau cabang outlet baru dalam sistem
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Tutup Modal"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Content */}
-        {isSuccess && createdTenant ? (
-          <div className="p-6 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-              <CheckCircle2 size={36} />
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900">Selamat! Tenant Berhasil Terdaftar</h3>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-                Bisnis Anda telah resmi bergabung ke dalam cloud multi-tenant e.paper POS. Sistem kini aktif untuk tenant ini.
-              </p>
-            </div>
-
-            <div className="bg-orange-50/70 border border-orange-200/80 rounded-lg p-4 text-left space-y-2 text-xs sm:text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500 font-medium">Nama Bisnis:</span>
-                <span className="font-bold text-gray-900">{createdTenant.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500 font-medium">Cabang Utama:</span>
-                <span className="font-semibold text-gray-800">{createdTenant.branchName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500 font-medium">Kode Tenant:</span>
-                <span className="font-mono font-bold text-orange-600">{createdTenant.code}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500 font-medium">Domain POS:</span>
-                <span className="font-mono text-gray-700">{createdTenant.slug}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500 font-medium">Paket Kemitraan:</span>
-                <span className="font-semibold text-emerald-700">{createdTenant.plan}</span>
-              </div>
-            </div>
-
+    <ModalShell
+      isOpen={isOpen}
+      onClose={isSuccess && createdTenant ? handleFinish : onClose}
+      size="md"
+      title="Pendaftaran Outlet Baru"
+      subtitle="Registrasi toko atau cabang baru dalam sistem"
+      disableEscapeClose={isSubmitting}
+      footer={
+        isSuccess && createdTenant ? (
+          <div className={MODAL_FOOTER_END_CLASS}>
             <button
               type="button"
               onClick={handleFinish}
-              className="w-full py-2.5 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
+              className={MODAL_BTN_PRIMARY_CLASS}
             >
-              Mulai Gunakan Tenant Ini Sekarang
+              <CheckCircle2 size={15} className="shrink-0" />
+              <span>Mulai Gunakan Outlet Ini</span>
             </button>
           </div>
         ) : (
-          <form noValidate onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 text-xs sm:text-sm">
+          <div className={MODAL_FOOTER_END_CLASS}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className={MODAL_BTN_SECONDARY_CLASS}
+            >
+              <X size={15} className="text-gray-500 shrink-0" />
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              form="register-tenant-form"
+              disabled={isSubmitting}
+              className={MODAL_BTN_PRIMARY_CLASS}
+            >
+              {isSubmitting ? <Loader2 size={15} className="animate-spin shrink-0" /> : <Store size={15} className="shrink-0" />}
+              <span>{isSubmitting ? 'Mendaftarkan...' : 'Daftarkan Tenant'}</span>
+            </button>
+          </div>
+        )
+      }
+    >
+      {isSuccess && createdTenant ? (
+        <div className="py-2 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 size={36} />
+          </div>
+          <div>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900">Selamat! Tenant Berhasil Terdaftar</h3>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+              Bisnis Anda telah resmi bergabung ke dalam cloud multi-tenant e.paper POS. Sistem kini aktif untuk tenant ini.
+            </p>
+          </div>
+
+          <div className="bg-orange-50/70 border border-orange-200/80 rounded-lg p-4 text-left space-y-2 text-xs sm:text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-medium">Nama Bisnis:</span>
+              <span className="font-bold text-gray-900">{createdTenant.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-medium">Cabang Utama:</span>
+              <span className="font-semibold text-gray-800">{createdTenant.branchName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-medium">Kode Tenant:</span>
+              <span className="font-mono font-bold text-orange-600">{createdTenant.code}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-medium">Domain POS:</span>
+              <span className="font-mono text-gray-700">{createdTenant.slug}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-medium">Paket Kemitraan:</span>
+              <span className="font-semibold text-emerald-700">{createdTenant.plan}</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <form id="register-tenant-form" noValidate onSubmit={handleSubmit} className="space-y-3.5 text-xs sm:text-sm">
             {errorMsg && (
               <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
                 <AlertCircle size={15} className="shrink-0" />
@@ -326,29 +342,8 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
               </div>
             </div>
 
-            {/* Footer Buttons */}
-            <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSubmitting}
-                className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs disabled:opacity-50"
-              >
-                <X size={15} className="mr-1.5 text-gray-500" />
-                <span>Batal</span>
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="h-9 px-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
-              >
-                {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Store size={15} />}
-                <span>{isSubmitting ? 'Mendaftarkan...' : 'Daftarkan Tenant Sekarang'}</span>
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+        </form>
+      )}
+    </ModalShell>
   );
 };

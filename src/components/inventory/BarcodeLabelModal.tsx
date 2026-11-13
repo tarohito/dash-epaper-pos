@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, Printer, Barcode, QrCode, Layers } from 'lucide-react';
+import { Printer, Barcode, QrCode, Layers } from 'lucide-react';
 import { Product } from '../../types';
 import { BarcodeLabelFormat } from '../../utils/barcode';
 import { JewelryBarcodeTag } from '../common/JewelryBarcodeTag';
 import { NumericInput } from '../common/NumericInput';
+import {
+  ModalShell,
+  MODAL_FOOTER_END_CLASS,
+  MODAL_BTN_PRIMARY_CLASS,
+} from '../common/ModalShell';
 
 interface BarcodeLabelModalProps {
   product: Product | null;
@@ -72,31 +77,26 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({ product, o
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/55 backdrop-blur-xs animate-in fade-in duration-150">
-        <div className="bg-white rounded-lg border border-gray-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-          {/* Header */}
-          <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight flex items-center gap-2">
-                <Barcode size={19} className="text-orange-500" />
-                <span>Cetak Label Barcode Perhiasan</span>
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Standar Code 128 &amp; QR Code untuk <strong className="text-gray-800">{product.name}</strong> ({product.sku})
-              </p>
-            </div>
+      <ModalShell
+        isOpen={Boolean(product)}
+        onClose={onClose}
+        size="xl"
+        title="Cetak Label Barcode"
+        subtitle={`${product.name} (${product.sku})`}
+        footer={
+          <div className={MODAL_FOOTER_END_CLASS}>
             <button
               type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-              aria-label="Tutup modal"
+              onClick={handlePrint}
+              className={MODAL_BTN_PRIMARY_CLASS}
             >
-              <X size={20} />
+              <Printer size={15} className="shrink-0" />
+              <span>Cetak {safeCopies} Label</span>
             </button>
           </div>
-
-          {/* Body */}
-          <div className="p-5 overflow-y-auto space-y-5">
+        }
+      >
+        <div className="space-y-5">
             {/* Format Selector */}
             <div>
               <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
@@ -186,28 +186,8 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({ product, o
                 <JewelryBarcodeTag product={product} format={format} />
               </div>
             </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-            >
-              Tutup
-            </button>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-xs active:scale-[0.98]"
-            >
-              <Printer size={15} />
-              <span>Cetak {safeCopies} Label</span>
-            </button>
-          </div>
         </div>
-      </div>
+      </ModalShell>
 
       {/* Hidden Printable Barcode Sheet */}
       <div id="printable-barcode-sheet" className="print-only">
