@@ -23,9 +23,9 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
           : 'border-gray-200 cursor-pointer hover:border-orange-500 shadow-xs hover:shadow-md'
       }`}
     >
-      <div>
-        {/* Product Image */}
-        <div className="w-full h-28 sm:h-36 relative overflow-hidden bg-gray-50 flex items-center justify-center">
+      <div className="flex flex-col flex-1">
+        {/* Product Image (1:1 Aspect Ratio) */}
+        <div className="w-full aspect-square relative overflow-hidden bg-gray-50 flex items-center justify-center">
           <img
             src={product.image}
             alt={product.name}
@@ -51,10 +51,10 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
             <span
               className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs shadow-2xs ${
                 isOutOfStock
-                  ? 'bg-red-500 text-white'
-                  : product.stok <= 3
+                  ? 'bg-red-600 text-white'
+                  : product.stok <= 5
                   ? 'bg-amber-500 text-white'
-                  : 'text-emerald-700 bg-white/95 border border-emerald-100'
+                  : 'bg-emerald-50/95 text-emerald-700 border border-emerald-200'
               }`}
             >
               {isOutOfStock ? 'Habis' : `Stok: ${product.stok}`}

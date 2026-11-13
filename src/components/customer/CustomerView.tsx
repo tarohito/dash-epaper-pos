@@ -1,10 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   UserPlus,
   ShoppingCart,
-  Search,
-  Phone,
   MessageCircle,
   Sparkles,
   ShoppingBag,
@@ -16,109 +14,131 @@ import {
   Crown,
   Building2,
   UserCheck,
+  Loader2,
 } from 'lucide-react';
-import { Customer, Transaction, BuybackItem } from '../../types';
+import { Customer, CustomerStatsSummary, CustomerWithStats } from '../../types';
 import { formatIDR } from '../../utils/formatters';
-import { usePagination } from '../../hooks/usePagination';
 import { PaginationControls } from '../common/PaginationControls';
+import { ConfirmModal } from '../common/ConfirmModal';
 import { AddCustomerModal } from './AddCustomerModal';
+import { posApi } from '../../services/api';
+import { useDebounce } from '../../hooks/useDebounce';
+import { SearchInput } from '../common/SearchInput';
+import { ErrorBanner } from '../common/ErrorBanner';
+import { useToast } from '../../contexts/ToastContext';
+import {
+  ShopeeSortBar,
+  ShopeeSortPreset,
+  SortableTh,
+  SortDirection,
+  getNextColumnSort,
+} from '../common/TableSortControls';
+
+const CUSTOMER_SORT_PRESETS: ShopeeSortPreset[] = [
+  { id: 'newest', label: 'Terbaru', sortBy: 'newest', sortDir: 'desc' },
+  { id: 'spent-desc', label: 'Belanja Tertinggi', sortBy: 'computedSpent', sortDir: 'desc' },
+  { id: 'tx-desc', label: 'Transaksi Terbanyak', sortBy: 'computedTx', sortDir: 'desc' },
+  { id: 'name-asc', label: 'Nama A–Z', sortBy: 'name', sortDir: 'asc' },
+];
 
 interface CustomerViewProps {
-  customers: Customer[];
-  transactions: Transaction[];
-  buybacks: BuybackItem[];
-  onSaveCustomer: (customer: Customer) => void;
-  onDeleteCustomer: (id: string) => void;
-  onSelectCustomerForPOS: (customerName: string) => void;
-  onSelectCustomerForBuyback: (customerName: string, customerPhone: string) => void;
+  refreshTrigger: number;
+  onSaveCustomer: (customer: Customer, isEdit?: boolean) => Promise<void>;
+  onDeleteCustomer: (id: string) => Promise<void>;
+  onSelectCustomerForPOS: (customer: { id: string; name: string }) => void;
+  onSelectCustomerForBuyback: (customer: {
+    id: string;
+    name: string;
+    phone: string;
+    nik?: string;
+    address?: string;
+  }) => void;
 }
 
 export const CustomerView: React.FC<CustomerViewProps> = ({
-  customers,
-  transactions,
-  buybacks,
+  refreshTrigger,
   onSaveCustomer,
   onDeleteCustomer,
   onSelectCustomerForPOS,
   onSelectCustomerForBuyback,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 220);
   const [filterType, setFilterType] = useState<string>('semua');
+  const [sortBy, setSortBy] = useState<string>('newest');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [items, setItems] = useState<CustomerWithStats[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [stats, setStats] = useState<CustomerStatsSummary>({
+    totalPelanggan: 0,
+    totalVip: 0,
+    totalAkumulasiBelanja: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const { showToast } = useToast();
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
+  const [isDeletingCustomer, setIsDeletingCustomer] = useState(false);
 
-  // Perhitungan dinamis akumulasi transaksi per pelanggan di-memoize dengan map lookup O(1)
-  // Menghindari O(N*M) yang lambat saat data transaksi & pelanggan ribuan
-  const customersWithStats = useMemo(() => {
-    const txMap: Record<string, { spent: number; count: number }> = {};
-    for (let i = 0; i < transactions.length; i++) {
-      const tx = transactions[i];
-      const key = tx.customerName.toLowerCase();
-      if (!txMap[key]) txMap[key] = { spent: 0, count: 0 };
-      txMap[key].spent += tx.grandTotal;
-      txMap[key].count += 1;
-    }
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filterType, sortBy, sortDir]);
 
-    const bbMap: Record<string, number> = {};
-    for (let i = 0; i < buybacks.length; i++) {
-      const bb = buybacks[i];
-      const key = bb.customerName.toLowerCase();
-      bbMap[key] = (bbMap[key] || 0) + 1;
-    }
+  useEffect(() => {
+    const controller = new AbortController();
+    setIsLoading(true);
+    setFetchError(null);
 
-    return customers.map(cust => {
-      const key = cust.name.toLowerCase();
-      const txData = txMap[key] || { spent: 0, count: 0 };
-      const bbCount = bbMap[key] || 0;
+    posApi
+      .getCustomers(
+        {
+          page: currentPage,
+          pageSize,
+          search: debouncedSearch,
+          type: filterType,
+          sortBy,
+          sortDir,
+        },
+        controller.signal
+      )
+      .then(res => {
+        setItems(Array.isArray(res.items) ? res.items : []);
+        setTotalItems(res.total ?? 0);
+        setTotalPages(res.totalPages ?? 1);
+        if (res.stats) setStats(res.stats);
+        if (res.page !== currentPage) setCurrentPage(res.page ?? 1);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        if ((err as Error).name !== 'AbortError') {
+          const msg = err instanceof Error ? err.message : 'Gagal memuat data pelanggan.';
+          setFetchError(msg);
+          setIsLoading(false);
+          showToast('error', msg);
+        }
+      });
 
-      const totalSpent = (cust.totalSpent || 0) + txData.spent;
-      const totalTransactions = (cust.totalTransactions || 0) + txData.count + bbCount;
+    return () => controller.abort();
+  }, [currentPage, pageSize, debouncedSearch, filterType, sortBy, sortDir, refreshTrigger, retryCount, showToast]);
 
-      return {
-        ...cust,
-        computedSpent: totalSpent,
-        computedTx: totalTransactions,
-        buybackCount: bbCount,
-      };
-    });
-  }, [customers, transactions, buybacks]);
+  const handleSortPreset = (nextBy: string, nextDir: SortDirection) => {
+    setSortBy(nextBy);
+    setSortDir(nextDir);
+  };
 
-  // Filter pelanggan dengan useMemo
-  const filteredCustomers = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    return customersWithStats.filter(c => {
-      const matchesSearch =
-        !q ||
-        c.name.toLowerCase().includes(q) ||
-        c.phone.toLowerCase().includes(q) ||
-        c.memberCode.toLowerCase().includes(q) ||
-        (c.nik && c.nik.includes(q)) ||
-        (c.address && c.address.toLowerCase().includes(q));
-
-      const matchesType =
-        filterType === 'semua' ||
-        (filterType === 'VIP' && c.type === 'VIP') ||
-        (filterType === 'Reguler' && c.type === 'Reguler') ||
-        (filterType === 'Mitra' && c.type === 'Mitra / Toko');
-
-      return matchesSearch && matchesType;
-    });
-  }, [customersWithStats, searchQuery, filterType]);
-
-  const {
-    currentPage,
-    pageSize,
-    totalItems,
-    totalPages,
-    paginatedItems,
-    goToPage,
-    setPageSize,
-  } = usePagination(filteredCustomers, { initialPageSize: 20 });
-
-  // KPI Ringkasan
-  const totalPelanggan = customers.length;
-  const totalVip = customers.filter(c => c.type === 'VIP').length;
-  const totalAkumulasiBelanja = customersWithStats.reduce((sum, c) => sum + c.computedSpent, 0);
+  const handleHeaderSort = (key: string, defaultDir: SortDirection = 'desc') => {
+    const next = getNextColumnSort(key, sortBy, sortDir, defaultDir);
+    setSortBy(next.sortBy);
+    setSortDir(next.sortDir);
+  };
 
   const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer);
@@ -126,14 +146,23 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
   };
 
   const handleDelete = (c: Customer) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus pelanggan "${c.name}"?`)) {
-      onDeleteCustomer(c.id);
+    setDeletingCustomer(c);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCustomer) return;
+    setIsDeletingCustomer(true);
+    try {
+      await onDeleteCustomer(deletingCustomer.id);
+      setDeletingCustomer(null);
+    } finally {
+      setIsDeletingCustomer(false);
     }
   };
 
   return (
     <div className="space-y-4 w-full pb-10">
-      {/* 1. HEADER SECTION (Clean Brand e.paper) */}
+      {/* 1. HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-lg border border-gray-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2.5">
@@ -164,59 +193,63 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
         </button>
       </div>
 
-      {/* 2. RINGKASAN METRIK TOKO EMAS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
-        {/* Metric 1 */}
-        <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-xs sm:text-sm text-gray-500 font-medium block">Total Pelanggan Terdaftar</span>
-            <div className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tracking-tight mt-1">{totalPelanggan} Orang</div>
+      {/* 2. RINGKASAN METRIK */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">Total Pelanggan Terdaftar</span>
+            <span className="w-8 h-8 rounded-lg bg-gray-50 text-gray-600 border border-gray-200/80 flex items-center justify-center shrink-0">
+              <Users size={16} strokeWidth={2} />
+            </span>
           </div>
-          <span className="p-2.5 bg-gray-50 text-gray-600 rounded-lg border border-gray-100">
-            <Users size={20} />
-          </span>
-        </div>
-
-        {/* Metric 2 */}
-        <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-xs sm:text-sm text-gray-500 font-medium block">Member VIP & Loyal</span>
-            <div className="text-xl sm:text-2xl font-bold text-amber-600 font-mono tracking-tight mt-1">{totalVip} Member</div>
-          </div>
-          <span className="p-2.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
-            <Crown size={20} />
-          </span>
-        </div>
-
-        {/* Metric 3 */}
-        <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-xs sm:text-sm text-gray-500 font-medium block">Akumulasi Belanja Member</span>
-            <div className="text-xl sm:text-2xl font-bold text-orange-600 font-mono tracking-tight mt-1 truncate">
-              {formatIDR(totalAkumulasiBelanja)}
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tabular-nums tracking-tight">
+              {stats.totalPelanggan} Orang
             </div>
+            <p className="text-xs text-gray-400 mt-1">Database member toko</p>
           </div>
-          <span className="p-2.5 bg-orange-50 text-orange-600 rounded-lg border border-orange-100">
-            <ShoppingBag size={20} />
-          </span>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">Member VIP &amp; Loyal</span>
+            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
+              <Crown size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold text-amber-600 font-mono tabular-nums tracking-tight">
+              {stats.totalVip} Member
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Pelanggan prioritas</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">Akumulasi Belanja Member</span>
+            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
+              <ShoppingBag size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold text-orange-600 font-mono tabular-nums tracking-tight truncate">
+              {formatIDR(stats.totalAkumulasiBelanja)}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Total omzet member aktif</p>
+          </div>
         </div>
       </div>
 
       {/* 3. FILTER & SEARCH BAR */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Cari nama, WhatsApp, NIK KTP, atau kode member..."
-            className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium focus:bg-white focus:outline-none focus:border-orange-500 min-h-[38px]"
-          />
-        </div>
+      <div className="bg-white p-3.5 sm:p-4 rounded-lg border border-gray-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Cari nama, WhatsApp, NIK KTP, atau kode member..."
+        />
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 shrink-0">
           {[
             { id: 'semua', label: 'Semua' },
             { id: 'VIP', label: 'Member VIP' },
@@ -239,9 +272,26 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
         </div>
       </div>
 
-      {/* 4. DAFTAR PELANGGAN: TABEL DESKTOP & CARD LIST MOBILE */}
+      {/* 3.5 SORT BAR */}
+      <ShopeeSortBar
+        presets={CUSTOMER_SORT_PRESETS}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        onSelectPreset={handleSortPreset}
+      />
+
+      {fetchError && (
+        <ErrorBanner message={fetchError} onRetry={() => setRetryCount(c => c + 1)} />
+      )}
+
+      {/* 4. DAFTAR PELANGGAN */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        {filteredCustomers.length === 0 ? (
+        {isLoading && items.length === 0 ? (
+          <div className="p-12 text-center text-gray-500 flex items-center justify-center gap-2 text-xs sm:text-sm">
+            <Loader2 size={18} className="animate-spin text-orange-500" />
+            <span>Memuat data pelanggan...</span>
+          </div>
+        ) : items.length === 0 ? (
           <div className="p-10 text-center">
             <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3">
               <Users size={22} />
@@ -264,26 +314,47 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
           </div>
         ) : (
           <>
-            {/* Desktop Table View (lg:block) */}
+            {/* Desktop Table View */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
                   <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 font-semibold uppercase tracking-wider text-xs">
-                    <th className="py-3 px-4">Member & Identitas</th>
-                    <th className="py-3 px-4">Kontak & Alamat</th>
-                    <th className="py-3 px-4">Kadar & Ukuran Jari</th>
-                    <th className="py-3 px-4 text-right">Akumulasi Belanja</th>
+                    <SortableTh
+                      label="Member & Identitas"
+                      sortKey="name"
+                      currentSortBy={sortBy}
+                      currentSortDir={sortDir}
+                      onSort={key => handleHeaderSort(key, 'asc')}
+                      className="py-3 px-4"
+                    />
+                    <th className="py-3 px-4">Kontak &amp; Alamat</th>
+                    <SortableTh
+                      label="Kadar & Ukuran Jari"
+                      sortKey="preferredKadar"
+                      currentSortBy={sortBy}
+                      currentSortDir={sortDir}
+                      onSort={key => handleHeaderSort(key, 'asc')}
+                      className="py-3 px-4"
+                    />
+                    <SortableTh
+                      label="Akumulasi Belanja"
+                      sortKey="computedSpent"
+                      currentSortBy={sortBy}
+                      currentSortDir={sortDir}
+                      onSort={key => handleHeaderSort(key, 'desc')}
+                      align="right"
+                      className="py-3 px-4"
+                    />
                     <th className="py-3 px-4 text-center">Aksi Cepat</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {paginatedItems.map(c => {
+                  {items.map(c => {
                     const cleanPhone = c.phone.replace(/[^0-9]/g, '');
                     const waPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
 
                     return (
                       <tr key={c.id} className="hover:bg-gray-50/80 transition-colors">
-                        {/* Member & Identitas */}
                         <td className="py-3.5 px-4 align-top">
                           <div className="flex items-start gap-2.5">
                             <span
@@ -331,7 +402,6 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                           </div>
                         </td>
 
-                        {/* Kontak & Alamat */}
                         <td className="py-3.5 px-4 align-top">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
@@ -354,14 +424,11 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                               </p>
                             )}
                             {c.notes && (
-                              <p className="text-xs text-gray-400 italic max-w-xs truncate">
-                                "{c.notes}"
-                              </p>
+                              <p className="text-xs text-gray-400 italic max-w-xs truncate">"{c.notes}"</p>
                             )}
                           </div>
                         </td>
 
-                        {/* Kadar & Ukuran Jari */}
                         <td className="py-3.5 px-4 align-top">
                           <div className="space-y-1">
                             <div className="inline-flex items-center gap-1 text-xs text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
@@ -376,7 +443,6 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                           </div>
                         </td>
 
-                        {/* Akumulasi Belanja */}
                         <td className="py-3.5 px-4 align-top text-right">
                           <div>
                             <p className="font-bold text-gray-900 text-xs sm:text-sm">
@@ -389,13 +455,11 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                           </div>
                         </td>
 
-                        {/* Aksi Cepat */}
                         <td className="py-3.5 px-4 align-top text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {/* Tombol Kasir POS */}
                             <button
                               type="button"
-                              onClick={() => onSelectCustomerForPOS(c.name)}
+                              onClick={() => onSelectCustomerForPOS({ id: c.id, name: c.name })}
                               className="h-7 px-2.5 inline-flex items-center justify-center gap-1 text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md transition-colors cursor-pointer"
                               title="Buka Kasir POS untuk pelanggan ini"
                             >
@@ -403,10 +467,17 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                               <span>POS</span>
                             </button>
 
-                            {/* Tombol Buyback */}
                             <button
                               type="button"
-                              onClick={() => onSelectCustomerForBuyback(c.name, c.phone)}
+                              onClick={() =>
+                                onSelectCustomerForBuyback({
+                                  id: c.id,
+                                  name: c.name,
+                                  phone: c.phone,
+                                  nik: c.nik,
+                                  address: c.address,
+                                })
+                              }
                               className="h-7 px-2.5 inline-flex items-center justify-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md transition-colors cursor-pointer"
                               title="Input Buyback untuk pelanggan ini"
                             >
@@ -414,7 +485,6 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                               <span>Buyback</span>
                             </button>
 
-                            {/* Tombol Edit */}
                             <button
                               type="button"
                               onClick={() => handleEdit(c)}
@@ -425,12 +495,16 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                               <span>Edit</span>
                             </button>
 
-                            {/* Tombol Hapus */}
                             <button
                               type="button"
+                              disabled={c.computedTx > 0 || c.buybackCount > 0}
                               onClick={() => handleDelete(c)}
-                              className="h-7 px-2 inline-flex items-center justify-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                              title="Hapus Pelanggan"
+                              className="h-7 px-2 inline-flex items-center justify-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-red-400"
+                              title={
+                                c.computedTx > 0 || c.buybackCount > 0
+                                  ? `Tidak dapat dihapus: pelanggan memiliki ${c.computedTx} transaksi penjualan & ${c.buybackCount} buyback`
+                                  : 'Hapus Pelanggan'
+                              }
                             >
                               <Trash2 size={12} />
                               <span>Hapus</span>
@@ -444,9 +518,9 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
               </table>
             </div>
 
-            {/* Mobile / Tablet Card View (lg:hidden) */}
+            {/* Mobile / Tablet Card View */}
             <div className="lg:hidden divide-y divide-gray-100">
-              {paginatedItems.map(c => {
+              {items.map(c => {
                 const cleanPhone = c.phone.replace(/[^0-9]/g, '');
                 const waPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
 
@@ -479,13 +553,10 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                         <span className="font-bold text-gray-900 text-xs sm:text-sm block">
                           {formatIDR(c.computedSpent)}
                         </span>
-                        <span className="text-xs text-gray-400 block">
-                          {c.computedTx} transaksi
-                        </span>
+                        <span className="text-xs text-gray-400 block">{c.computedTx} transaksi</span>
                       </div>
                     </div>
 
-                    {/* Kontak & Preferensi */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-gray-700 text-xs">{c.phone}</span>
@@ -519,12 +590,11 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                       </p>
                     )}
 
-                    {/* Mobile Action Buttons */}
                     <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => onSelectCustomerForPOS(c.name)}
+                          onClick={() => onSelectCustomerForPOS({ id: c.id, name: c.name })}
                           className="px-2.5 py-1 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded transition-colors cursor-pointer inline-flex items-center gap-1"
                         >
                           <ShoppingCart size={12} />
@@ -532,7 +602,15 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onSelectCustomerForBuyback(c.name, c.phone)}
+                          onClick={() =>
+                            onSelectCustomerForBuyback({
+                              id: c.id,
+                              name: c.name,
+                              phone: c.phone,
+                              nik: c.nik,
+                              address: c.address,
+                            })
+                          }
                           className="px-2.5 py-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded transition-colors cursor-pointer inline-flex items-center gap-1"
                         >
                           <Scale size={12} />
@@ -551,8 +629,14 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                         </button>
                         <button
                           type="button"
+                          disabled={c.computedTx > 0 || c.buybackCount > 0}
                           onClick={() => handleDelete(c)}
-                          className="px-2 py-1 text-xs font-semibold text-red-500 hover:text-red-700 rounded cursor-pointer inline-flex items-center gap-1"
+                          className="px-2 py-1 text-xs font-semibold text-red-500 hover:text-red-700 rounded cursor-pointer inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-red-400"
+                          title={
+                            c.computedTx > 0 || c.buybackCount > 0
+                              ? `Tidak dapat dihapus: pelanggan memiliki ${c.computedTx} transaksi penjualan & ${c.buybackCount} buyback`
+                              : 'Hapus Pelanggan'
+                          }
                         >
                           <Trash2 size={12} />
                           <span>Hapus</span>
@@ -564,28 +648,44 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
               })}
             </div>
 
-            {/* Pagination Controls */}
             <PaginationControls
               currentPage={currentPage}
               totalPages={totalPages}
               totalItems={totalItems}
               pageSize={pageSize}
-              onPageChange={goToPage}
-              onPageSizeChange={setPageSize}
+              isLoading={isLoading}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={size => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
             />
           </>
         )}
       </div>
 
-      {/* Modal Tambah / Edit Pelanggan */}
       <AddCustomerModal
         isOpen={isAddModalOpen}
         onClose={() => {
           setIsAddModalOpen(false);
           setEditingCustomer(null);
         }}
-        onSaveCustomer={onSaveCustomer}
+        onSaveCustomer={saved => onSaveCustomer(saved, Boolean(editingCustomer))}
         initialCustomer={editingCustomer}
+      />
+
+      <ConfirmModal
+        isOpen={!!deletingCustomer}
+        title="Hapus Data Pelanggan"
+        description={
+          deletingCustomer
+            ? `Apakah Anda yakin ingin menghapus pelanggan "${deletingCustomer.name}" dari database?`
+            : ''
+        }
+        confirmLabel="Ya, Hapus Pelanggan"
+        isLoading={isDeletingCustomer}
+        onCancel={() => setDeletingCustomer(null)}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

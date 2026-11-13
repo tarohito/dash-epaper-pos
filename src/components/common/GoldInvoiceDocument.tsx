@@ -30,6 +30,8 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
     : saleData?.subtotal || 0;
   const diskonOrPotongan = isBuyback ? buybackData?.biayaLebur || 0 : 0;
 
+  const isVoid = receipt.status === 'void';
+
   return (
     <div
       id={id}
@@ -59,6 +61,19 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
           </span>
         </div>
       </div>
+
+      {isVoid && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          <div className="border-4 border-red-600/45 text-red-600/45 px-8 py-3 rounded-lg transform -rotate-12 text-center">
+            <span className="text-5xl font-black tracking-[0.25em] uppercase block">VOID</span>
+            {receipt.voidReason && (
+              <span className="text-xs font-bold tracking-wider uppercase block mt-1">
+                {receipt.voidReason}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Content wrapper relative to stay above watermark */}
       <div className="relative z-10 flex flex-col justify-between h-full">

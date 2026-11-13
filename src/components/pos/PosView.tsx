@@ -1,31 +1,40 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Search, Barcode, ShoppingCart, ArrowRight, X, Filter, ChevronDown, Loader2 } from 'lucide-react';
+import { Barcode, ShoppingCart, ArrowRight, X, Filter, ChevronDown, Loader2 } from 'lucide-react';
 import { Product, CartItem } from '../../types';
 import { ProductCard } from './ProductCard';
 import { PromoCard } from './PromoCard';
 import { CartPanel } from './CartPanel';
 import { formatIDR } from '../../utils/formatters';
+import { posApi } from '../../services/api';
+import { useDebounce } from '../../hooks/useDebounce';
+import { SearchInput } from '../common/SearchInput';
+import { ConfirmModal } from '../common/ConfirmModal';
+import { ErrorBanner } from '../common/ErrorBanner';
+import { useToast } from '../../contexts/ToastContext';
 
 interface PosViewProps {
-  products: Product[];
-  filteredProducts: Product[];
+  categories: string[];
+  refreshTrigger: number;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onAutoScanCode: (code: string) => boolean;
+  onAutoScanCode: (code: string) => Promise<Product | null>;
   onOpenScanModal: () => void;
   cart: CartItem[];
   onAddToCart: (product: Product) => void;
   onUpdateQty: (id: number, delta: number) => void;
   onRemoveItem: (id: number) => void;
+  onClearCart?: () => void;
   subtotal: number;
   tax: number;
   grandTotal: number;
   onOpenPaymentModal: () => void;
 }
 
+const POS_PAGE_SIZE = 24;
+
 export const PosView: React.FC<PosViewProps> = ({
-  products,
-  filteredProducts,
+  categories,
+  refreshTrigger,
   searchQuery,
   onSearchChange,
   onAutoScanCode,
@@ -34,6 +43,7 @@ export const PosView: React.FC<PosViewProps> = ({
   onAddToCart,
   onUpdateQty,
   onRemoveItem,
+  onClearCart,
   subtotal,
   tax,
   grandTotal,
@@ -44,6 +54,23 @@ export const PosView: React.FC<PosViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  const debouncedSearch = useDebounce(searchQuery, 200);
+
+  // Server-side paginated catalog state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalFiltered, setTotalFiltered] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [promoCount, setPromoCount] = useState(0);
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [pendingRemoveItem, setPendingRemoveItem] = useState<CartItem | null>(null);
+  const [isConfirmClearCart, setIsConfirmClearCart] = useState(false);
+  const { showToast } = useToast();
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -58,51 +85,84 @@ export const PosView: React.FC<PosViewProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCategoryDropdownOpen]);
 
-  const totalCartQty = useMemo(() => cart.reduce((acc, it) => acc + it.qty, 0), [cart]);
-  const promoCount = useMemo(() => products.filter(p => p.isPromo).length, [products]);
-  const availableCategories = useMemo(() => ['Semua', ...Array.from(new Set(products.map(p => p.category)))], [products]);
-
-  // Hitung jumlah item per kategori dalam 1 kali loop O(N) untuk performa instan
-  const categoryCounts = useMemo(() => {
-    const map: Record<string, number> = { Semua: products.length };
-    for (const p of products) {
-      map[p.category] = (map[p.category] || 0) + 1;
-    }
-    return map;
-  }, [products]);
-
-  // Filter dinamis dengan useMemo agar tidak dihitung ulang saat render yang tidak terkait
-  const displayProducts = useMemo(() => {
-    return filteredProducts.filter(p => {
-      const matchesCategory = selectedCategory === 'Semua' || p.category === selectedCategory;
-      const matchesPromo = !isPromoOnlyFilter || p.isPromo;
-      return matchesCategory && matchesPromo;
-    });
-  }, [filteredProducts, selectedCategory, isPromoOnlyFilter]);
-
-  // Infinite Scroll / Chunked Lazy Loading: Hanya render batch pertama (30 item),
-  // lalu tambah 30 item saat kasir scroll ke bawah. DOM tetap super ringan meski ada 10.000 produk!
-  const [visibleCount, setVisibleCount] = useState(30);
-
-  // Reset visibleCount saat filter atau pencarian berubah
+  // Fetch page 1 whenever filters, search, or refreshTrigger changes
   useEffect(() => {
-    setVisibleCount(30);
-  }, [searchQuery, selectedCategory, isPromoOnlyFilter]);
+    const controller = new AbortController();
+    setIsInitialLoading(true);
+    setFetchError(null);
+    setPage(1);
 
-  const visibleProducts = useMemo(() => {
-    return displayProducts.slice(0, visibleCount);
-  }, [displayProducts, visibleCount]);
+    posApi
+      .getProducts(
+        {
+          page: 1,
+          pageSize: POS_PAGE_SIZE,
+          search: debouncedSearch,
+          category: selectedCategory,
+          promoOnly: isPromoOnlyFilter,
+        },
+        controller.signal
+      )
+      .then(res => {
+        setProducts(res.items);
+        setTotalFiltered(res.total);
+        setTotalPages(res.totalPages);
+        setPromoCount(res.promoCount);
+        setCategoryCounts(res.categoryCounts);
+        setIsInitialLoading(false);
+      })
+      .catch(err => {
+        if ((err as Error).name !== 'AbortError') {
+          const msg = err instanceof Error ? err.message : 'Gagal memuat katalog produk.';
+          setFetchError(msg);
+          setIsInitialLoading(false);
+          showToast('error', msg);
+        }
+      });
+
+    return () => controller.abort();
+  }, [debouncedSearch, selectedCategory, isPromoOnlyFilter, refreshTrigger, retryCount, showToast]);
+
+  const loadNextPage = useCallback(async () => {
+    if (isLoadingMore || isInitialLoading || page >= totalPages) return;
+    const nextPage = page + 1;
+    setIsLoadingMore(true);
+    try {
+      const res = await posApi.getProducts({
+        page: nextPage,
+        pageSize: POS_PAGE_SIZE,
+        search: debouncedSearch,
+        category: selectedCategory,
+        promoOnly: isPromoOnlyFilter,
+      });
+      setProducts(prev => {
+        const seen = new Set(prev.map(p => p.id));
+        const uniqueNext = res.items.filter(p => !seen.has(p.id));
+        return [...prev, ...uniqueNext];
+      });
+      setPage(nextPage);
+      setTotalFiltered(res.total);
+      setTotalPages(res.totalPages);
+      setPromoCount(res.promoCount);
+      setCategoryCounts(res.categoryCounts);
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        showToast('error', err instanceof Error ? err.message : 'Gagal memuat halaman produk berikutnya.');
+      }
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, isInitialLoading, page, totalPages, debouncedSearch, selectedCategory, isPromoOnlyFilter, showToast]);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // IntersectionObserver untuk trigger infinite scroll otomatis tanpa lag
   useEffect(() => {
-    if (visibleCount >= displayProducts.length) return;
+    if (page >= totalPages || isInitialLoading) return;
 
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0].isIntersecting) {
-          setVisibleCount(prev => Math.min(prev + 30, displayProducts.length));
+          loadNextPage();
         }
       },
       { rootMargin: '200px' }
@@ -114,7 +174,13 @@ export const PosView: React.FC<PosViewProps> = ({
     return () => {
       if (el) observer.unobserve(el);
     };
-  }, [visibleCount, displayProducts.length]);
+  }, [page, totalPages, isInitialLoading, loadNextPage]);
+
+  const totalCartQty = useMemo(() => cart.reduce((acc, it) => acc + it.qty, 0), [cart]);
+  const availableCategories = useMemo(
+    () => ['Semua', ...Array.from(new Set([...categories, ...Object.keys(categoryCounts).filter(k => k !== 'Semua')]))],
+    [categories, categoryCounts]
+  );
 
   return (
     <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full gap-2 sm:gap-3 relative overflow-hidden">
@@ -124,26 +190,26 @@ export const PosView: React.FC<PosViewProps> = ({
           type="button"
           onClick={() => setMobileTab('catalog')}
           className={`flex-1 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px] ${
-            mobileTab ==='catalog'
-              ?'bg-white text-gray-900 shadow-xs'
-              :'text-gray-600 hover:text-gray-900'
+            mobileTab === 'catalog'
+              ? 'bg-white text-gray-900 shadow-xs'
+              : 'text-gray-600 hover:text-gray-900'
           }`}
         >
           <span>Katalog Produk</span>
           <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full font-semibold">
-            {filteredProducts.length}
+            {totalFiltered}
           </span>
         </button>
         <button
           type="button"
           onClick={() => setMobileTab('cart')}
           className={`flex-1 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px] ${
-            mobileTab ==='cart'
-              ?'bg-white text-gray-900 shadow-xs'
-              :'text-gray-600 hover:text-gray-900'
+            mobileTab === 'cart'
+              ? 'bg-white text-gray-900 shadow-xs'
+              : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          <ShoppingCart size={15} className={mobileTab ==='cart' ?'text-orange-500' :''} />
+          <ShoppingCart size={15} className={mobileTab === 'cart' ? 'text-orange-500' : ''} />
           <span>Keranjang</span>
           {totalCartQty > 0 && (
             <span className="text-xs px-2 py-0.5 bg-orange-500 text-white rounded-full font-bold font-mono">
@@ -153,15 +219,15 @@ export const PosView: React.FC<PosViewProps> = ({
         </button>
       </div>
 
-      {/* Catalog Panel: visible always on desktop, and on mobile when mobileTab ==='catalog' */}
+      {/* Catalog Panel */}
       <div
         className={`flex-1 min-h-0 flex flex-col min-w-0 bg-white rounded-lg border border-gray-200 overflow-hidden ${
-          mobileTab ==='cart' ?'hidden lg:flex' :'flex'
+          mobileTab === 'cart' ? 'hidden lg:flex' : 'flex'
         }`}
       >
         {/* Search & Action Bar */}
         <div className="p-2.5 sm:p-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2 sm:gap-2.5 shrink-0">
-          {/* Button Simpel Filter Kategori (Di Samping Kiri Pencarian) */}
+          {/* Button Filter Kategori */}
           <div className="relative" ref={categoryDropdownRef}>
             <button
               type="button"
@@ -200,7 +266,7 @@ export const PosView: React.FC<PosViewProps> = ({
                 </div>
                 <div className="max-h-56 overflow-y-auto py-1">
                   {availableCategories.map(cat => {
-                    const count = categoryCounts[cat] || 0;
+                    const count = categoryCounts[cat] ?? 0;
                     const isSelected = selectedCategory === cat;
 
                     return (
@@ -236,32 +302,17 @@ export const PosView: React.FC<PosViewProps> = ({
           </div>
 
           {/* Search Input */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
-            <input
-              type="text"
-              placeholder="Cari perhiasan atau scan barcode..."
-              value={searchQuery}
-              onChange={e => onSearchChange(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  onAutoScanCode(searchQuery);
-                }
-              }}
-              className="h-9 w-full pl-9 sm:pl-10 pr-8 rounded-lg border border-gray-200 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-xs sm:text-sm font-medium bg-white"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => onSearchChange('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
-                title="Hapus kata kunci"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={onSearchChange}
+            placeholder="Cari perhiasan atau scan barcode..."
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void onAutoScanCode(searchQuery);
+              }
+            }}
+          />
 
           {/* Scan Barcode Button */}
           <button
@@ -276,7 +327,7 @@ export const PosView: React.FC<PosViewProps> = ({
           </button>
         </div>
 
-        {/* Active Filters Banner (Category & Promo) */}
+        {/* Active Filters Banner */}
         {(selectedCategory !== 'Semua' || isPromoOnlyFilter) && (
           <div className="bg-orange-50/70 border-b border-orange-100 px-3 py-2 flex items-center justify-between text-xs sm:text-sm text-orange-950 shrink-0 flex-wrap gap-2">
             <div className="flex items-center gap-2 flex-wrap">
@@ -307,9 +358,7 @@ export const PosView: React.FC<PosViewProps> = ({
                   </button>
                 </span>
               )}
-              <span className="text-xs text-gray-500">
-                ({displayProducts.length} produk ditemukan)
-              </span>
+              <span className="text-xs text-gray-500">({totalFiltered} produk ditemukan)</span>
             </div>
 
             <button
@@ -325,7 +374,7 @@ export const PosView: React.FC<PosViewProps> = ({
           </div>
         )}
 
-        {/* Product Grid (Responsive 2 columns on mobile, 3 on tablet, 3-4 on desktop) */}
+        {/* Product Grid */}
         <div
           className={`flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-3.5 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3.5 auto-rows-max ${
             totalCartQty > 0 ? 'pb-20 lg:pb-3.5' : ''
@@ -338,19 +387,34 @@ export const PosView: React.FC<PosViewProps> = ({
             onToggleFilter={() => setIsPromoOnlyFilter(!isPromoOnlyFilter)}
           />
 
-          {visibleProducts.map(product => (
-            <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} />
-          ))}
+          {isInitialLoading && products.length === 0 ? (
+            <div className="col-span-full py-12 flex items-center justify-center text-xs text-gray-400 gap-2">
+              <Loader2 size={18} className="animate-spin text-orange-500" />
+              <span>Memuat katalog perhiasan...</span>
+            </div>
+          ) : (
+            products.map(product => (
+              <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} />
+            ))
+          )}
 
-          {/* Sentinel Element untuk auto-trigger load batch berikutnya saat scrolling */}
-          {visibleCount < displayProducts.length && (
+          {/* Sentinel Element untuk auto-load halaman berikutnya dari server */}
+          {page < totalPages && !isInitialLoading && (
             <div ref={loadMoreRef} className="col-span-full py-6 flex items-center justify-center text-xs text-gray-400 gap-2">
               <Loader2 size={16} className="animate-spin text-orange-500" />
-              <span>Memuat produk lainnya ({visibleProducts.length} dari {displayProducts.length})...</span>
+              <span>
+                Memuat produk lainnya ({products.length} dari {totalFiltered})...
+              </span>
             </div>
           )}
 
-          {displayProducts.length === 0 && (
+          {fetchError && (
+            <div className="col-span-full">
+              <ErrorBanner message={fetchError} onRetry={() => setRetryCount(c => c + 1)} />
+            </div>
+          )}
+
+          {!isInitialLoading && !fetchError && products.length === 0 && (
             <div className="col-span-full py-16 text-center text-gray-400">
               <p className="text-sm font-medium">Tidak ada produk yang cocok dengan pencarian.</p>
             </div>
@@ -358,12 +422,16 @@ export const PosView: React.FC<PosViewProps> = ({
         </div>
       </div>
 
-      {/* Cart Panel: visible always on desktop, and on mobile when mobileTab ==='cart' */}
-      <div className={`min-h-0 ${mobileTab ==='catalog' ?'hidden lg:flex lg:shrink-0 lg:h-full' :'flex-1 min-h-0 flex flex-col'}`}>
+      {/* Cart Panel */}
+      <div className={`min-h-0 ${mobileTab === 'catalog' ? 'hidden lg:flex lg:shrink-0 lg:h-full' : 'flex-1 min-h-0 flex flex-col'}`}>
         <CartPanel
           cart={cart}
           onUpdateQty={onUpdateQty}
-          onRemoveItem={onRemoveItem}
+          onRemoveItem={id => {
+            const target = cart.find(c => c.id === id);
+            if (target) setPendingRemoveItem(target);
+          }}
+          onClearCart={onClearCart ? () => setIsConfirmClearCart(true) : undefined}
           subtotal={subtotal}
           tax={tax}
           grandTotal={grandTotal}
@@ -372,8 +440,8 @@ export const PosView: React.FC<PosViewProps> = ({
         />
       </div>
 
-      {/* Floating Bottom Cart Bar for Tablet & Mobile (when in catalog tab and cart has items) */}
-      {mobileTab ==='catalog' && totalCartQty > 0 && (
+      {/* Floating Bottom Cart Bar for Tablet & Mobile */}
+      {mobileTab === 'catalog' && totalCartQty > 0 && (
         <div className="lg:hidden absolute bottom-2 inset-x-2 z-30 animate-in slide-in-from-bottom duration-200">
           <button
             type="button"
@@ -396,6 +464,36 @@ export const PosView: React.FC<PosViewProps> = ({
           </button>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!pendingRemoveItem}
+        title="Hapus Item dari Keranjang"
+        description={
+          pendingRemoveItem
+            ? `Apakah Anda yakin ingin menghapus "${pendingRemoveItem.name}" (${pendingRemoveItem.qty} pcs) dari keranjang pesanan?`
+            : ''
+        }
+        confirmLabel="Ya, Hapus Item"
+        onCancel={() => setPendingRemoveItem(null)}
+        onConfirm={() => {
+          if (pendingRemoveItem) {
+            onRemoveItem(pendingRemoveItem.id);
+            setPendingRemoveItem(null);
+          }
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={isConfirmClearCart}
+        title="Kosongkan Keranjang Pesanan"
+        description={`Apakah Anda yakin ingin menghapus seluruh ${totalCartQty} item dari keranjang pesanan?`}
+        confirmLabel="Ya, Kosongkan"
+        onCancel={() => setIsConfirmClearCart(false)}
+        onConfirm={() => {
+          onClearCart?.();
+          setIsConfirmClearCart(false);
+        }}
+      />
     </div>
   );
 };

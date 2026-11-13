@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, CreditCard, Sparkles, MapPin, FileText, Save } from 'lucide-react';
+import { X, User, Phone, CreditCard, Sparkles, MapPin, FileText, Save, AlertCircle, Loader2 } from 'lucide-react';
 import { Customer } from '../../types';
 import { CustomSelect } from '../common/CustomSelect';
+import { useToast } from '../../contexts/ToastContext';
 
 interface AddCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveCustomer: (customer: Customer) => void;
+  onSaveCustomer: (customer: Customer) => Promise<void> | void;
   initialCustomer?: Customer | null;
 }
 
@@ -24,8 +25,12 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   const [ringSize, setRingSize] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
+    setErrorMsg(null);
     if (initialCustomer) {
       setName(initialCustomer.name || '');
       setPhone(initialCustomer.phone || '');
@@ -49,14 +54,34 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const failValidation = (msg: string) => {
+    setErrorMsg(msg);
+    showToast('error', msg, 'Validasi Form Pelanggan');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      alert('Nama pelanggan wajib diisi.');
+    setErrorMsg(null);
+
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
+    const phoneDigits = cleanPhone.replace(/[^0-9]/g, '');
+    const cleanNik = nik.trim().replace(/[^0-9]/g, '');
+
+    if (!cleanName || cleanName.length < 2) {
+      failValidation('Nama lengkap pelanggan wajib diisi (minimal 2 karakter).');
       return;
     }
-    if (!phone.trim()) {
-      alert('Nomor telepon / WhatsApp wajib diisi.');
+    if (!cleanPhone) {
+      failValidation('Nomor telepon / WhatsApp wajib diisi.');
+      return;
+    }
+    if (phoneDigits.length < 8 || phoneDigits.length > 15) {
+      failValidation('Format nomor telepon / WhatsApp tidak sesuai (8–15 digit angka).');
+      return;
+    }
+    if (nik.trim() && cleanNik.length !== 16) {
+      failValidation(`Nomor NIK / KTP harus tepat 16 digit angka (saat ini ${cleanNik.length} digit).`);
       return;
     }
 
@@ -65,9 +90,9 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     const saved: Customer = {
       id: initialCustomer?.id || `cust-${Date.now()}`,
       memberCode,
-      name: name.trim(),
-      phone: phone.trim(),
-      nik: nik.trim() || undefined,
+      name: cleanName,
+      phone: cleanPhone,
+      nik: cleanNik || undefined,
       type,
       preferredKadar,
       ringSize: ringSize.trim() || undefined,
@@ -78,8 +103,15 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       totalTransactions: initialCustomer?.totalTransactions || 0,
     };
 
-    onSaveCustomer(saved);
-    onClose();
+    setIsSubmitting(true);
+    try {
+      await onSaveCustomer(saved);
+      onClose();
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Gagal menyimpan data pelanggan.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -106,7 +138,13 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         </div>
 
         {/* Form Body (Scrollable) */}
-        <form id="customer-form" onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-4">
+        <form id="customer-form" noValidate onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-4">
+          {errorMsg && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
           {/* Section 1: Identitas & Kontak */}
           <div>
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2">
@@ -270,7 +308,8 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs"
+            disabled={isSubmitting}
+            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs disabled:opacity-50"
           >
             <X size={15} className="mr-1.5 text-gray-500" />
             <span>Batal</span>
@@ -278,10 +317,13 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
           <button
             type="submit"
             form="customer-form"
-            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98]"
+            disabled={isSubmitting}
+            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
-            <Save size={15} />
-            <span>{initialCustomer ? 'Simpan Perubahan' : 'Tambah Pelanggan'}</span>
+            {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            <span>
+              {isSubmitting ? 'Menyimpan...' : initialCustomer ? 'Simpan Perubahan' : 'Tambah Pelanggan'}
+            </span>
           </button>
         </div>
       </div>

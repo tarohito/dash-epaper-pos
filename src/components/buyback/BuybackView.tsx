@@ -1,213 +1,304 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Search,
   Coins,
   Scale,
   ReceiptText,
   Calendar,
   Building2,
-  FileText,
   Plus,
   Printer,
   Eye,
+  RotateCcw,
+  Loader2,
 } from 'lucide-react';
-import { BuybackItem } from '../../types';
+import { BuybackCreatePayload, BuybackItem, BuybackStatsSummary } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import { BuybackFormPage } from './BuybackFormPage';
 import { BuybackDetailModal } from './BuybackDetailModal';
+import { ConfirmModal } from '../common/ConfirmModal';
 import Tooltip from '../Tooltip';
-import { usePagination } from '../../hooks/usePagination';
 import { PaginationControls } from '../common/PaginationControls';
 import { useDebounce } from '../../hooks/useDebounce';
+import { posApi } from '../../services/api';
+import { SearchInput } from '../common/SearchInput';
+import { ErrorBanner } from '../common/ErrorBanner';
+import { useToast } from '../../contexts/ToastContext';
+import {
+  ShopeeSortBar,
+  ShopeeSortPreset,
+  SortableTh,
+  SortDirection,
+  getNextColumnSort,
+} from '../common/TableSortControls';
+
+const BUYBACK_SORT_PRESETS: ShopeeSortPreset[] = [
+  { id: 'newest', label: 'Terbaru', sortBy: 'newest', sortDir: 'desc' },
+  { id: 'oldest', label: 'Terlama', sortBy: 'newest', sortDir: 'asc' },
+  { id: 'bayar-desc', label: 'Bayar Tertinggi', sortBy: 'totalBayar', sortDir: 'desc' },
+  { id: 'bayar-asc', label: 'Bayar Terendah', sortBy: 'totalBayar', sortDir: 'asc' },
+  { id: 'berat-desc', label: 'Berat Terberat', sortBy: 'beratBersih', sortDir: 'desc' },
+  { id: 'cust-asc', label: 'Nasabah A–Z', sortBy: 'customerName', sortDir: 'asc' },
+];
 
 interface BuybackViewProps {
-  buybacks: BuybackItem[];
-  onSaveBuyback: (newBuyback: Omit<BuybackItem, 'id' | 'invoiceNo' | 'date'>) => void;
+  refreshTrigger: number;
+  onSaveBuyback: (newBuyback: BuybackCreatePayload) => Promise<void>;
+  onVoidBuyback: (id: string, reason: string) => Promise<void>;
   onSelectReceipt: (item: BuybackItem) => void;
   onBackToPos: () => void;
-  initialCustomer?: { name: string; phone: string } | null;
+  initialCustomer?: { id?: string; name: string; phone: string; nik?: string; address?: string } | null;
 }
 
 export const BuybackView: React.FC<BuybackViewProps> = ({
-  buybacks,
+  refreshTrigger,
   onSaveBuyback,
+  onVoidBuyback,
   onSelectReceipt,
-  onBackToPos,
   initialCustomer,
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'form'>(() => {
     return initialCustomer ? 'form' : 'list';
   });
 
+  const [voidingItem, setVoidingItem] = useState<BuybackItem | null>(null);
+  const [isVoiding, setIsVoiding] = useState(false);
+  const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 200);
+  const debouncedSearch = useDebounce(searchQuery, 220);
   const [filterMethod, setFilterMethod] = useState<'all' | 'transfer' | 'cash'>('all');
+  const [sortBy, setSortBy] = useState<string>('newest');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
   const [selectedDetailItem, setSelectedDetailItem] = useState<BuybackItem | null>(null);
 
-  // Filtered Buybacks dengan useMemo & Debounce
-  const filteredBuybacks = useMemo(() => {
-    const q = debouncedSearch.trim().toLowerCase();
-    return buybacks.filter(bb => {
-      const matchesSearch =
-        !q ||
-        bb.invoiceNo.toLowerCase().includes(q) ||
-        bb.customerName.toLowerCase().includes(q) ||
-        bb.customerPhone.toLowerCase().includes(q) ||
-        (bb.customerNik && bb.customerNik.includes(q)) ||
-        bb.itemType.toLowerCase().includes(q) ||
-        bb.kadar.toLowerCase().includes(q);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [items, setItems] = useState<BuybackItem[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [stats, setStats] = useState<BuybackStatsSummary>({
+    totalDanaDicairkan: 0,
+    totalBeratDiterima: 0,
+    totalTransaksi: 0,
+    avgPerTransaksi: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const { showToast } = useToast();
 
-      const matchesMethod = filterMethod === 'all' || bb.paymentMethod === filterMethod;
-      return matchesSearch && matchesMethod;
-    });
-  }, [buybacks, debouncedSearch, filterMethod]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filterMethod, sortBy, sortDir]);
 
-  // Paginasi cerdas untuk menjaga performa DOM tetap ringan
-  const {
-    currentPage,
-    pageSize,
-    totalItems,
-    totalPages,
-    paginatedItems,
-    goToPage,
-    setPageSize,
-  } = usePagination(filteredBuybacks, { initialPageSize: 20 });
+  useEffect(() => {
+    if (viewMode !== 'list') return;
+    const controller = new AbortController();
+    setIsLoading(true);
+    setFetchError(null);
 
-  // KPI Metrics dengan useMemo
-  const { totalDanaDicairkan, totalBeratDiterima, totalTransaksi, avgPerTransaksi } = useMemo(() => {
-    const totalDana = buybacks.reduce((sum, b) => sum + b.totalBayar, 0);
-    const totalBerat = buybacks.reduce((sum, b) => sum + b.beratBersih, 0);
-    const count = buybacks.length;
-    const avg = count > 0 ? Math.round(totalDana / count) : 0;
-    return {
-      totalDanaDicairkan: totalDana,
-      totalBeratDiterima: totalBerat,
-      totalTransaksi: count,
-      avgPerTransaksi: avg,
-    };
-  }, [buybacks]);
+    posApi
+      .getBuybacks(
+        {
+          page: currentPage,
+          pageSize,
+          search: debouncedSearch,
+          method: filterMethod,
+          sortBy,
+          sortDir,
+        },
+        controller.signal
+      )
+      .then(res => {
+        setItems(Array.isArray(res.items) ? res.items : []);
+        setTotalItems(res.total ?? 0);
+        setTotalPages(res.totalPages ?? 1);
+        if (res.stats) setStats(res.stats);
+        if (res.page !== currentPage) setCurrentPage(res.page ?? 1);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        if ((err as Error).name !== 'AbortError') {
+          const msg = err instanceof Error ? err.message : 'Gagal memuat riwayat buyback.';
+          setFetchError(msg);
+          setIsLoading(false);
+          showToast('error', msg);
+        }
+      });
 
-  // Jika sedang membuka Form Buyback Mandiri
+    return () => controller.abort();
+  }, [viewMode, currentPage, pageSize, debouncedSearch, filterMethod, sortBy, sortDir, refreshTrigger, retryCount, showToast]);
+
+  const handleSortPreset = (nextBy: string, nextDir: SortDirection) => {
+    setSortBy(nextBy);
+    setSortDir(nextDir);
+  };
+
+  const handleHeaderSort = (key: string, defaultDir: SortDirection = 'desc') => {
+    const next = getNextColumnSort(key, sortBy, sortDir, defaultDir);
+    setSortBy(next.sortBy);
+    setSortDir(next.sortDir);
+  };
+
+  const handleOpenDetail = async (bb: BuybackItem) => {
+    setLoadingActionId(bb.id);
+    try {
+      const full = await posApi.getBuybackById(bb.id);
+      setSelectedDetailItem(full);
+    } catch {
+      showToast('warning', 'Detail lampiran gagal dimuat dari server, menampilkan data ringkas.');
+      setSelectedDetailItem(bb);
+    } finally {
+      setLoadingActionId(null);
+    }
+  };
+
+  const handleOpenPrint = async (bb: BuybackItem) => {
+    setLoadingActionId(bb.id);
+    try {
+      const full = await posApi.getBuybackById(bb.id);
+      onSelectReceipt(full);
+    } catch {
+      showToast('warning', 'Detail lengkap gagal dimuat dari server, mencetak data ringkas.');
+      onSelectReceipt(bb);
+    } finally {
+      setLoadingActionId(null);
+    }
+  };
+
+  const handleConfirmVoid = async (_checked: boolean, reason: string) => {
+    if (!voidingItem) return;
+    setIsVoiding(true);
+    try {
+      await onVoidBuyback(voidingItem.id, reason);
+      setVoidingItem(null);
+    } finally {
+      setIsVoiding(false);
+    }
+  };
+
   if (viewMode === 'form') {
     return (
       <BuybackFormPage
-        onSaveBuyback={newBuyback => {
-          onSaveBuyback(newBuyback);
+        onSaveBuyback={async payload => {
+          await onSaveBuyback(payload);
           setViewMode('list');
         }}
-        onCancel={() => setViewMode('list')}
+        onCancel={() => {
+          setViewMode('list');
+        }}
         initialCustomer={initialCustomer}
-        existingCount={buybacks.length}
+        existingCount={stats.totalTransaksi}
       />
     );
   }
 
-  // Tampilan Depan: Satu Kesatuan Card Besar Konsisten dengan Halaman Dashboard
   return (
-    <div className="space-y-5 pb-8">
-      {/* 1 CARD BESAR SATU KESATUAN (KONSISTEN DENGAN DASHBOARD) */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
-        {/* Header: Judul, Subtitle, dan CTA Tombol Baru (Garis tidak ngefull, tanpa badge transaksi) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
-          <div>
-            <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
-              Daftar Transaksi Buyback (Pembelian Emas)
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-              Arsip dan riwayat pembelian kembali emas nasabah, leburan, dan logam mulia bersertifikat.
-            </p>
-          </div>
+    <div className="space-y-4 pb-8">
+      {/* Top Header Card */}
+      <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
+            Daftar Transaksi Buyback (Pembelian Emas)
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+            Arsip dan riwayat pembelian kembali emas nasabah, leburan, dan logam mulia bersertifikat.
+          </p>
+        </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setViewMode('form')}
-              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
-            >
-              <Plus size={16} />
-              <span>Transaksi Buyback Baru</span>
-            </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode('form')}
+            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
+          >
+            <Plus size={16} />
+            <span>Transaksi Buyback Baru</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 4 Modern KPI Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
+              Total Dana Dicairkan
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
+              <Coins size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+              {formatIDR(stats.totalDanaDicairkan)}
+            </div>
+            <p className="text-xs text-gray-400 mt-1 truncate">Uang keluar untuk buyback</p>
           </div>
         </div>
 
-        {/* 4 Card Metrik KPI Sub-Cards Grid (Format & Style Persis Sub-Cards Dashboard) */}
-        <div className="pt-4 pb-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* KPI 1: Total Dana Dicairkan */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-center justify-between text-gray-500 mb-1.5">
-                <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                  Total Dana Dicairkan
-                </span>
-                <Coins size={15} className="text-orange-500 shrink-0" />
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {formatIDR(totalDanaDicairkan)}
-              </div>
-              <span className="text-xs text-gray-400 mt-1">Uang keluar untuk buyback</span>
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
+              Total Berat Emas
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
+              <Scale size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+              {stats.totalBeratDiterima.toFixed(2)} gr
             </div>
-
-            {/* KPI 2: Total Berat Emas */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-center justify-between text-gray-500 mb-1.5">
-                <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                  Total Berat Emas
-                </span>
-                <Scale size={15} className="text-amber-500 shrink-0" />
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {totalBeratDiterima.toFixed(2)} gr
-              </div>
-              <span className="text-xs text-gray-400 mt-1">Fisik emas masuk ke toko</span>
-            </div>
-
-            {/* KPI 3: Total Transaksi */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-center justify-between text-gray-500 mb-1.5">
-                <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                  Total Transaksi
-                </span>
-                <ReceiptText size={15} className="text-blue-500 shrink-0" />
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {totalTransaksi} Nota
-              </div>
-              <span className="text-xs text-gray-400 mt-1">Selesai &amp; terverifikasi</span>
-            </div>
-
-            {/* KPI 4: Rata-rata / Nota */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-center justify-between text-gray-500 mb-1.5">
-                <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                  Rata-rata / Nota
-                </span>
-                <Building2 size={15} className="text-emerald-500 shrink-0" />
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {formatIDR(avgPerTransaksi)}
-              </div>
-              <span className="text-xs text-gray-400 mt-1">Rata-rata per nasabah</span>
-            </div>
+            <p className="text-xs text-gray-400 mt-1 truncate">Fisik emas masuk ke toko</p>
           </div>
         </div>
 
-        {/* Section Divider & Table Section */}
-        <div className="pt-4 mt-2 border-t border-gray-100">
-          {/* Controls Bar: Search, Method Filter & Density Toggle */}
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
+              Total Transaksi
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
+              <ReceiptText size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+              {stats.totalTransaksi} Nota
+            </div>
+            <p className="text-xs text-gray-400 mt-1 truncate">Selesai &amp; terverifikasi</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
+              Rata-rata / Nota
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
+              <Building2 size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+              {formatIDR(stats.avgPerTransaksi)}
+            </div>
+            <p className="text-xs text-gray-400 mt-1 truncate">Rata-rata per nasabah</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Table Workspace Card */}
+      <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-4">
-            <div className="relative w-full md:w-80">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cari no nota, nasabah, NIK, jenis emas..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full h-9 pl-9 pr-3 text-xs sm:text-sm bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none leading-normal"
-              />
-            </div>
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Cari no nota, nasabah, NIK, jenis emas..."
+            />
 
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              {/* Filter Metode Pembayaran */}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
               <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center">
                 <button
                   type="button"
@@ -246,22 +337,82 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
             </div>
           </div>
 
-          {/* Table Container dengan border bersih */}
+          <ShopeeSortBar
+            presets={BUYBACK_SORT_PRESETS}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            onSelectPreset={handleSortPreset}
+          />
+
+          {fetchError && (
+            <ErrorBanner
+              message={fetchError}
+              onRetry={() => setRetryCount(c => c + 1)}
+              className="mb-3"
+            />
+          )}
+
           <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-xs sm:text-sm text-left border-collapse">
-                <thead className="bg-gray-50 text-gray-600 uppercase font-semibold text-[11px] sm:text-xs border-b border-gray-200 tracking-wider">
+                <thead className="bg-gray-50/80 text-gray-500 uppercase font-semibold text-xs border-b border-gray-200 tracking-wider">
                   <tr>
-                    <th className="py-3 px-3.5 sm:px-4">No. Transaksi</th>
-                    <th className="py-3 px-3 sm:px-4">Nasabah</th>
-                    <th className="py-3 px-3 sm:px-4">Barang &amp; Kadar</th>
-                    <th className="py-3 px-3 sm:px-4 text-center">Berat</th>
-                    <th className="py-3 px-3 sm:px-4 text-right">Total Bayar</th>
+                    <SortableTh
+                      label="No. Transaksi"
+                      sortKey="newest"
+                      currentSortBy={sortBy}
+                      currentSortDir={sortDir}
+                      onSort={key => handleHeaderSort(key, 'desc')}
+                      className="py-3 px-3.5 sm:px-4"
+                    />
+                    <SortableTh
+                      label="Nasabah"
+                      sortKey="customerName"
+                      currentSortBy={sortBy}
+                      currentSortDir={sortDir}
+                      onSort={key => handleHeaderSort(key, 'asc')}
+                      className="py-3 px-3 sm:px-4"
+                    />
+                    <SortableTh
+                      label="Barang & Kadar"
+                      sortKey="itemType"
+                      currentSortBy={sortBy}
+                      currentSortDir={sortDir}
+                      onSort={key => handleHeaderSort(key, 'asc')}
+                      className="py-3 px-3 sm:px-4"
+                    />
+                    <SortableTh
+                      label="Berat"
+                      sortKey="beratBersih"
+                      currentSortBy={sortBy}
+                      currentSortDir={sortDir}
+                      onSort={key => handleHeaderSort(key, 'desc')}
+                      align="center"
+                      className="py-3 px-3 sm:px-4"
+                    />
+                    <SortableTh
+                      label="Total Bayar"
+                      sortKey="totalBayar"
+                      currentSortBy={sortBy}
+                      currentSortDir={sortDir}
+                      onSort={key => handleHeaderSort(key, 'desc')}
+                      align="right"
+                      className="py-3 px-3 sm:px-4"
+                    />
                     <th className="py-3 px-3 sm:px-4 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                  {filteredBuybacks.length === 0 ? (
+                  {isLoading && items.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-gray-400">
+                        <div className="inline-flex items-center gap-2">
+                          <Loader2 size={18} className="animate-spin text-orange-500" />
+                          <span>Memuat transaksi buyback...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : items.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-gray-400">
                         <ReceiptText size={36} className="mx-auto mb-2 text-gray-300" />
@@ -284,78 +435,113 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    paginatedItems.map(bb => {
+                    items.map(bb => {
+                      const isActionBusy = loadingActionId === bb.id;
+                      const isVoid = bb.status === 'void';
                       return (
-                        <tr key={bb.id} className="hover:bg-orange-50/25 transition-colors">
-                          {/* 1. No Transaksi & Tanggal */}
-                          <td className="py-3 px-3.5 sm:px-4 whitespace-nowrap">
-                            <span className="font-mono font-bold text-gray-900 block text-xs sm:text-sm">
-                              {bb.invoiceNo}
+                        <tr
+                          key={bb.id}
+                          className={`transition-colors ${isVoid ? 'bg-red-50/20 opacity-80' : 'hover:bg-orange-50/25'}`}
+                        >
+                          <td className="py-3.5 px-3.5 sm:px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-gray-900 text-xs sm:text-sm">
+                                {bb.invoiceNo}
+                              </span>
+                              {isVoid && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-bold uppercase bg-red-100 text-red-700 border border-red-200 rounded">
+                                  VOID
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                              <Calendar size={12} /> {bb.date}
                             </span>
-                            <span className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
-                              <Calendar size={11} /> {bb.date}
-                            </span>
+                            {isVoid && bb.voidReason && (
+                              <span className="text-xs text-red-600 block mt-0.5 max-w-[200px] truncate" title={bb.voidReason}>
+                                Alasan: {bb.voidReason}
+                              </span>
+                            )}
                           </td>
 
-                          {/* 2. Nasabah & Kontak */}
-                          <td className="py-3 px-3 sm:px-4 min-w-[130px]">
+                          <td className="py-3.5 px-3 sm:px-4 min-w-[130px]">
                             <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
                               {bb.customerName}
                             </span>
-                            <span className="text-[11px] text-gray-500 font-mono block">
+                            <span className="text-xs text-gray-500 font-mono block mt-0.5">
                               {bb.customerPhone || '-'}
                             </span>
                           </td>
 
-                          {/* 3. Barang & Kadar */}
-                          <td className="py-3 px-3 sm:px-4 min-w-[140px]">
+                          <td className="py-3.5 px-3 sm:px-4 min-w-[140px]">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-semibold text-gray-900 text-xs sm:text-sm">
                                 {bb.itemType}
                               </span>
-                              <span className="text-[10px] sm:text-[11px] bg-amber-50 text-amber-800 font-bold px-1.5 py-0.2 rounded border border-amber-200 font-mono">
+                              <span className="text-xs bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200 font-mono">
                                 {bb.kadar}
                               </span>
                             </div>
-                            <span className="text-[11px] text-gray-400 block mt-0.5 truncate max-w-[160px]">
+                            <span className="text-xs text-gray-500 block mt-0.5 truncate max-w-[180px]">
                               {bb.kondisi}
                             </span>
                           </td>
 
-                          {/* 4. Berat Bersih */}
-                          <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap font-mono font-bold text-gray-900 text-xs sm:text-sm">
+                          <td className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap font-mono font-bold text-gray-900 text-xs sm:text-sm">
                             {bb.beratBersih.toFixed(2)} gr
                           </td>
 
-                          {/* 5. Total Bayar & Metode */}
-                          <td className="py-3 px-3 sm:px-4 text-right whitespace-nowrap">
-                            <span className="font-mono font-black text-xs sm:text-sm text-gray-900 block">
+                          <td className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">
+                            <span
+                              className={`font-mono font-bold text-sm block tabular-nums ${
+                                isVoid ? 'line-through text-gray-400' : 'text-gray-900'
+                              }`}
+                            >
                               {formatIDR(bb.totalBayar)}
                             </span>
-                            <span className="inline-block mt-0.5 text-[10px] font-semibold px-1.5 py-0.2 rounded capitalize bg-gray-100 text-gray-600">
-                              {bb.paymentMethod === 'transfer' ? (bb.bankName ? `Transfer (${bb.bankName})` : 'Transfer Bank') : 'Tunai'}
+                            <span className="inline-block mt-0.5 text-xs font-semibold px-2 py-0.5 rounded capitalize bg-gray-100 text-gray-600">
+                              {isVoid
+                                ? 'Dibatalkan'
+                                : bb.paymentMethod === 'transfer'
+                                ? bb.bankName
+                                  ? `Transfer (${bb.bankName})`
+                                  : 'Transfer Bank'
+                                : 'Tunai'}
                             </span>
                           </td>
 
-                          {/* 6. Aksi (Icon Saja dengan Tooltip) */}
                           <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
                             <div className="inline-flex items-center justify-center gap-1.5">
                               <Tooltip content="Lihat Rincian Lengkap" side="top">
                                 <button
                                   type="button"
-                                  onClick={() => setSelectedDetailItem(bb)}
-                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                  disabled={isActionBusy}
+                                  onClick={() => void handleOpenDetail(bb)}
+                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-50"
                                   aria-label="Lihat Rincian Lengkap"
                                 >
-                                  <Eye size={15} />
+                                  {isActionBusy ? <Loader2 size={14} className="animate-spin" /> : <Eye size={15} />}
+                                </button>
+                              </Tooltip>
+
+                              <Tooltip content={isVoid ? 'Nota buyback sudah di-void' : 'Void / Batalkan Buyback'} side="top">
+                                <button
+                                  type="button"
+                                  disabled={isActionBusy || isVoid}
+                                  onClick={() => setVoidingItem(bb)}
+                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-amber-50 text-gray-600 hover:text-amber-700 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
+                                  aria-label="Void Transaksi Buyback"
+                                >
+                                  <RotateCcw size={15} />
                                 </button>
                               </Tooltip>
 
                               <Tooltip content="Cetak Nota Resmi" side="top">
                                 <button
                                   type="button"
-                                  onClick={() => onSelectReceipt(bb)}
-                                  className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                  disabled={isActionBusy}
+                                  onClick={() => void handleOpenPrint(bb)}
+                                  className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-50"
                                   aria-label="Cetak Nota Resmi"
                                 >
                                   <Printer size={15} />
@@ -371,36 +557,45 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
               </table>
             </div>
 
-            {/* Pagination Controls */}
             <PaginationControls
               currentPage={currentPage}
               totalPages={totalPages}
               totalItems={totalItems}
               pageSize={pageSize}
-              onPageChange={goToPage}
-              onPageSizeChange={setPageSize}
+              isLoading={isLoading}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={size => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
             />
-
-            {/* Footer info count */}
-            <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-              <span>
-                Menampilkan <strong>{filteredBuybacks.length}</strong> dari total{' '}
-                <strong>{buybacks.length}</strong> transaksi buyback
-              </span>
-              <span className="hidden sm:inline text-gray-400">
-                Klik tombol <strong>Detail</strong> pada baris untuk memeriksa rincian potongan, NIK, dan perhitungannya
-              </span>
-            </div>
           </div>
         </div>
-      </div>
 
-      {/* Buyback Detail Modal */}
       <BuybackDetailModal
         isOpen={!!selectedDetailItem}
         item={selectedDetailItem}
         onClose={() => setSelectedDetailItem(null)}
         onPrintReceipt={onSelectReceipt}
+      />
+
+      <ConfirmModal
+        isOpen={!!voidingItem}
+        variant="void"
+        title="Void / Batalkan Transaksi Buyback"
+        description={
+          voidingItem
+            ? `Nota buyback ${voidingItem.invoiceNo} atas nama "${voidingItem.customerName}" senilai ${formatIDR(voidingItem.totalBayar)} akan ditandai sebagai VOID agar tetap tercatat dalam arsip audit kas.`
+            : ''
+        }
+        inputLabel="Alasan Pembatalan / Void"
+        inputPlaceholder="Contoh: Salah timbang berat bersih / nasabah membatalkan buyback"
+        inputRequired
+        confirmLabel="Ya, Void Buyback"
+        loadingLabel="Memproses Void..."
+        isLoading={isVoiding}
+        onCancel={() => setVoidingItem(null)}
+        onConfirm={handleConfirmVoid}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   User,
@@ -6,18 +6,21 @@ import {
   CreditCard,
   Building2,
   QrCode,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   ShieldCheck,
   CheckCheck,
   Copy,
   Gem,
-  Zap,
-} from'lucide-react';
-import { CartItem } from'../../types';
-import { formatIDR, formatNumber } from'../../utils/formatters';
-import { BANK_ACCOUNTS, BankKey } from'../../constants/bankAccounts';
+  Loader2,
+  UserPlus,
+} from 'lucide-react';
+import { CartItem } from '../../types';
+import { formatIDR, formatNumber } from '../../utils/formatters';
+import { BANK_ACCOUNTS, BankKey } from '../../constants/bankAccounts';
+import { useToast } from '../../contexts/ToastContext';
+import { posApi } from '../../services/api';
+import { CustomerLookupPicker, LinkedCustomerSummary } from '../customer/CustomerLookupPicker';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -26,17 +29,19 @@ interface PaymentModalProps {
   subtotal: number;
   tax: number;
   grandTotal: number;
+  customerId?: string;
   customerName: string;
-  onCustomerNameChange: (name: string) => void;
+  onCustomerChange: (customer: { id?: string; name: string }) => void;
+  onCustomerCreated?: () => void;
   onConfirmPayment: (paymentData: {
-    method:'cash' |'debit' |'transfer' |'qris';
+    method: 'cash' | 'debit' | 'transfer' | 'qris';
     cashReceived?: number;
     debitBank?: string;
     debitCardLast4?: string;
     debitApprovalCode?: string;
     transferBank?: string;
     transferRef?: string;
-  }) => void;
+  }) => Promise<void> | void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -46,8 +51,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   subtotal,
   tax,
   grandTotal,
+  customerId,
   customerName,
-  onCustomerNameChange,
+  onCustomerChange,
+  onCustomerCreated,
   onConfirmPayment,
 }) => {
   const [paymentMethod, setPaymentMethod] = useState<'cash' |'debit' |'transfer' |'qris'>('cash');
@@ -59,6 +66,28 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [transferRef, setTransferRef] = useState('');
   const [isQrisConfirmed, setIsQrisConfirmed] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkedCustomer, setLinkedCustomer] = useState<LinkedCustomerSummary | null>(null);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickName, setQuickName] = useState('');
+  const [quickPhone, setQuickPhone] = useState('');
+  const [isSavingMember, setIsSavingMember] = useState(false);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (isOpen) {
+      setCashReceived(grandTotal);
+      setErrorMsg(null);
+      setIsSubmitting(false);
+      setIsQuickAddOpen(false);
+      if (customerId) {
+        setLinkedCustomer({ id: customerId, name: customerName });
+      } else {
+        setLinkedCustomer(null);
+      }
+    }
+  }, [isOpen, grandTotal, customerId, customerName]);
 
   if (!isOpen) return null;
 
@@ -66,26 +95,82 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     try {
       navigator.clipboard.writeText(text);
       setCopyFeedback(label);
+      showToast('success', 'Nomor rekening berhasil disalin.');
       setTimeout(() => setCopyFeedback(null), 2500);
-    } catch {}
+    } catch {
+      showToast('error', 'Gagal menyalin nomor rekening ke clipboard.');
+    }
   };
 
-  const handleConfirm = () => {
-    const numericCash = typeof cashReceived ==='string' ? parseFloat(cashReceived.replace(/[^0-9]/g,'')) || 0 : cashReceived;
-    if (paymentMethod ==='cash' && numericCash < grandTotal) {
-      alert(`Nominal pembayaran tunai kurang dari total tagihan (${formatIDR(grandTotal)}).`);
+  const failValidation = (msg: string) => {
+    setErrorMsg(msg);
+    showToast('error', msg, 'Validasi Pembayaran');
+  };
+
+  const handleConfirm = async () => {
+    if (isSubmitting) return;
+    setErrorMsg(null);
+
+    if (cart.length === 0) {
+      failValidation('Keranjang belanja masih kosong.');
       return;
     }
 
-    onConfirmPayment({
-      method: paymentMethod,
-      cashReceived: paymentMethod ==='cash' ? numericCash : undefined,
-      debitBank: paymentMethod ==='debit' ? debitBank : undefined,
-      debitCardLast4: paymentMethod ==='debit' ? debitCardLast4 ||'4921' : undefined,
-      debitApprovalCode: paymentMethod ==='debit' ? debitApprovalCode ||'AUTH-829104' : undefined,
-      transferBank: paymentMethod ==='transfer' ? transferBank : undefined,
-      transferRef: paymentMethod ==='transfer' ? transferRef || `TRF-${Math.floor(100000 + Math.random() * 900000)}` : undefined,
-    });
+    const numericCash =
+      typeof cashReceived === 'string'
+        ? parseFloat(cashReceived.replace(/[^0-9]/g, '')) || 0
+        : cashReceived;
+
+    if (paymentMethod === 'cash') {
+      if (cashReceived === '' || numericCash <= 0) {
+        failValidation('Masukkan nominal uang tunai yang diterima dari pelanggan.');
+        return;
+      }
+      if (numericCash < grandTotal) {
+        failValidation(
+          `Nominal pembayaran tunai kurang dari total tagihan (${formatIDR(grandTotal)}).`
+        );
+        return;
+      }
+    }
+
+    if (paymentMethod === 'debit') {
+      const cleanLast4 = debitCardLast4.trim();
+      if (cleanLast4 && cleanLast4.length !== 4) {
+        failValidation('4 digit terakhir kartu debit harus tepat 4 angka.');
+        return;
+      }
+      if (!debitApprovalCode.trim()) {
+        failValidation('Nomor Approval EDC (struk fisik) wajib diisi.');
+        return;
+      }
+    }
+
+    if (paymentMethod === 'transfer' && transferRef.trim().length > 0 && transferRef.trim().length < 3) {
+      failValidation('Nomor referensi transfer minimal 3 karakter.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onConfirmPayment({
+        method: paymentMethod,
+        cashReceived: paymentMethod === 'cash' ? numericCash : undefined,
+        debitBank: paymentMethod === 'debit' ? debitBank : undefined,
+        debitCardLast4: paymentMethod === 'debit' ? debitCardLast4.trim() || '4921' : undefined,
+        debitApprovalCode:
+          paymentMethod === 'debit' ? debitApprovalCode.trim() || 'AUTH-829104' : undefined,
+        transferBank: paymentMethod === 'transfer' ? transferBank : undefined,
+        transferRef:
+          paymentMethod === 'transfer'
+            ? transferRef.trim() || `TRF-${Math.floor(100000 + Math.random() * 900000)}`
+            : undefined,
+      });
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Gagal memproses pembayaran.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -109,6 +194,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
         {/* Body Modal */}
         <div className="p-5 overflow-y-auto space-y-4">
+          {errorMsg && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
           {/* Total Tagihan Banner */}
           <div className="bg-gradient-to-br from-orange-400 to-red-500 p-4 sm:p-5 rounded-lg text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-xs">
             <div>
@@ -126,21 +217,144 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
           </div>
 
-          {/* Customer Name Input */}
-          <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
-              Nama Pelanggan
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                value={customerName}
-                onChange={e => onCustomerNameChange(e.target.value)}
-                placeholder="Pelanggan Umum..."
-                className="w-full pl-9 pr-3.5 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white font-medium"
-              />
+          {/* Customer Selector & Quick Member Registration */}
+          <div className="space-y-2.5 p-3.5 rounded-lg bg-gray-50/70 border border-gray-200/80">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs sm:text-sm font-semibold text-gray-800">
+                Pelanggan / Member
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickName(customerName !== 'Pelanggan Umum' ? customerName : '');
+                  setQuickPhone('');
+                  setIsQuickAddOpen(prev => !prev);
+                }}
+                className="text-xs font-semibold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1 cursor-pointer"
+              >
+                <UserPlus size={13} />
+                <span>{isQuickAddOpen ? 'Tutup Form Cepat' : '+ Daftar Member Baru'}</span>
+              </button>
             </div>
+
+            {isQuickAddOpen ? (
+              <div className="p-3 bg-white rounded-lg border border-orange-200 space-y-2.5">
+                <p className="text-[11px] font-semibold text-orange-700">
+                  Simpan ke Master Pelanggan &amp; langsung tautkan ke transaksi ini:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={quickName}
+                    onChange={e => setQuickName(e.target.value)}
+                    placeholder="Nama lengkap pelanggan *"
+                    className="h-9 px-3 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white font-medium"
+                  />
+                  <input
+                    type="tel"
+                    value={quickPhone}
+                    onChange={e => setQuickPhone(e.target.value)}
+                    placeholder="No. HP / WhatsApp *"
+                    className="h-9 px-3 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white font-mono"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickAddOpen(false)}
+                    className="h-8 px-3 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 rounded-md cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSavingMember}
+                    onClick={async () => {
+                      const cleanName = quickName.trim();
+                      const cleanPhone = quickPhone.trim();
+                      const digits = cleanPhone.replace(/[^0-9]/g, '');
+                      if (cleanName.length < 2) {
+                        failValidation('Nama pelanggan minimal 2 karakter.');
+                        return;
+                      }
+                      if (digits.length < 8 || digits.length > 15) {
+                        failValidation('Nomor HP / WhatsApp tidak valid (8–15 digit angka).');
+                        return;
+                      }
+                      setIsSavingMember(true);
+                      setErrorMsg(null);
+                      try {
+                        const created = await posApi.createCustomer({
+                          id: `cust-${Date.now()}`,
+                          memberCode: `MBR-${String(Date.now()).slice(-4)}`,
+                          name: cleanName,
+                          phone: cleanPhone,
+                          type: 'Reguler',
+                          createdAt: new Date().toISOString().slice(0, 10),
+                          totalSpent: 0,
+                          totalTransactions: 0,
+                        });
+                        setLinkedCustomer({
+                          id: created.id,
+                          name: created.name,
+                          memberCode: created.memberCode,
+                          type: created.type,
+                          phone: created.phone,
+                        });
+                        onCustomerChange({ id: created.id, name: created.name });
+                        onCustomerCreated?.();
+                        setIsQuickAddOpen(false);
+                        showToast('success', `Member "${created.name}" disimpan & dipilih.`);
+                      } catch (err) {
+                        failValidation(err instanceof Error ? err.message : 'Gagal mendaftarkan member.');
+                      } finally {
+                        setIsSavingMember(false);
+                      }
+                    }}
+                    className="h-8 px-3 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60 rounded-md cursor-pointer inline-flex items-center gap-1"
+                  >
+                    {isSavingMember && <Loader2 size={12} className="animate-spin" />}
+                    <span>Simpan &amp; Pilih</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <CustomerLookupPicker
+                  compact
+                  label=""
+                  selectedCustomer={linkedCustomer}
+                  placeholder="Cari member terdaftar (nama / HP / kode)..."
+                  onSelectCustomer={cust => {
+                    setLinkedCustomer({
+                      id: cust.id,
+                      name: cust.name,
+                      memberCode: cust.memberCode,
+                      type: cust.type,
+                      phone: cust.phone,
+                    });
+                    onCustomerChange({ id: cust.id, name: cust.name });
+                  }}
+                  onClearSelection={() => {
+                    setLinkedCustomer(null);
+                    onCustomerChange({ id: undefined, name: 'Pelanggan Umum' });
+                  }}
+                />
+
+                {!linkedCustomer && (
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={e => onCustomerChange({ id: undefined, name: e.target.value })}
+                      placeholder="Atau ketik nama tamu (Pelanggan Umum)..."
+                      className="w-full h-9 pl-9 pr-3.5 text-xs sm:text-sm bg-white border border-gray-200 rounded-md outline-none focus:border-orange-500 font-medium"
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* 4 Payment Methods Selector Tabs */}
@@ -510,18 +724,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="h-10 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs"
+            disabled={isSubmitting}
+            className="h-10 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
           >
             <X size={16} className="text-gray-500" />
             <span>Batal</span>
           </button>
           <button
             type="button"
-            onClick={handleConfirm}
-            className="h-10 px-5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold text-xs sm:text-sm rounded-lg transition-all inline-flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
+            onClick={() => void handleConfirm()}
+            disabled={isSubmitting}
+            className="h-10 px-5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:opacity-60 text-white font-bold text-xs sm:text-sm rounded-lg transition-all inline-flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
           >
-            <CheckCircle2 size={17} />
-            Konfirmasi Pembayaran ({formatIDR(grandTotal)})
+            {isSubmitting ? <Loader2 size={17} className="animate-spin" /> : <CheckCircle2 size={17} />}
+            <span>
+              {isSubmitting ? 'Memproses Pembayaran...' : `Konfirmasi Pembayaran (${formatIDR(grandTotal)})`}
+            </span>
           </button>
         </div>
       </div>

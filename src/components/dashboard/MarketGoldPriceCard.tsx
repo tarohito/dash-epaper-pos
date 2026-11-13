@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown, Minus, Coins, Scale } from 'lucide-react';
 import { formatIDR } from '../../utils/formatters';
 
 interface GoldMarketData {
@@ -123,7 +123,7 @@ export const MarketGoldPriceCard: React.FC<MarketGoldPriceCardProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-lg border border-gray-200 p-4 sm:p-5 flex flex-col justify-between ${className}`}
+      className={`bg-white rounded-xl border border-gray-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.03)] p-4 sm:p-5 flex flex-col justify-between ${className}`}
     >
       <div>
         {/* Header Bersih & Indikator Naik / Turun */}
@@ -186,29 +186,43 @@ export const MarketGoldPriceCard: React.FC<MarketGoldPriceCardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 my-3.5">
           {/* Sisi Kiri: 2 Box Utama (Harga Emas & Buyback) */}
           <div className="md:col-span-5 flex flex-col justify-between gap-2.5">
-            <div className="grid grid-cols-2 md:grid-cols-1 gap-2.5 flex-1">
-              <div className="p-3.5 bg-gray-50 rounded-lg border border-gray-200 flex flex-col justify-center">
-                <span className="text-xs sm:text-sm font-medium text-gray-600 block">
-                  Harga Emas (1 gr)
-                </span>
-                <span className="text-xl sm:text-2xl font-bold font-mono text-gray-900 block mt-1 tracking-tight">
-                  {formatIDR(data.sellPrice)}
-                </span>
-                <span className="text-xs text-gray-500 block mt-0.5">
-                  per gram murni
-                </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-3 flex-1">
+              <div className="p-4 bg-white rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs sm:text-sm font-medium text-gray-500">
+                    Harga Emas (1 gr)
+                  </span>
+                  <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
+                    <Coins size={16} strokeWidth={2} />
+                  </span>
+                </div>
+                <div className="mt-2.5">
+                  <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-gray-900 block tracking-tight">
+                    {formatIDR(data.sellPrice)}
+                  </span>
+                  <span className="text-xs text-gray-400 block mt-1">
+                    per gram murni
+                  </span>
+                </div>
               </div>
 
-              <div className="p-3.5 bg-gray-50 rounded-lg border border-gray-200 flex flex-col justify-center">
-                <span className="text-xs sm:text-sm font-medium text-gray-600 block">
-                  Harga Buyback
-                </span>
-                <span className="text-xl sm:text-2xl font-bold font-mono text-gray-900 block mt-1 tracking-tight">
-                  {formatIDR(data.buybackPrice)}
-                </span>
-                <span className="text-xs text-gray-500 block mt-0.5">
-                  jual kembali
-                </span>
+              <div className="p-4 bg-white rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs sm:text-sm font-medium text-gray-500">
+                    Harga Buyback
+                  </span>
+                  <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
+                    <Scale size={16} strokeWidth={2} />
+                  </span>
+                </div>
+                <div className="mt-2.5">
+                  <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-gray-900 block tracking-tight">
+                    {formatIDR(data.buybackPrice)}
+                  </span>
+                  <span className="text-xs text-gray-400 block mt-1">
+                    jual kembali
+                  </span>
+                </div>
               </div>
             </div>
           </div>

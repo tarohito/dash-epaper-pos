@@ -1,69 +1,158 @@
-import React, { useState, useEffect } from'react';
-import { X, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Save, RefreshCw, AlertCircle } from 'lucide-react';
 import { Product } from '../../types';
-import { formatNumber } from '../../utils/formatters';
 import { CustomSelect } from '../common/CustomSelect';
 import { NumericInput } from '../common/NumericInput';
+import { generateJewelrySku, isValidCode128 } from '../../utils/barcode';
+import { JewelryBarcodeTag } from '../common/JewelryBarcodeTag';
+import { useToast } from '../../contexts/ToastContext';
 
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   categories: string[];
-  onSaveProduct: (productData: Omit<Product,'id'>) => void;
+  editingProduct?: Product | null;
+  onSaveProduct: (productData: Omit<Product, 'id'>, editId?: number) => Promise<void> | void;
 }
 
 export const AddProductModal: React.FC<AddProductModalProps> = ({
   isOpen,
   onClose,
   categories,
+  editingProduct,
   onSaveProduct,
 }) => {
   const [formData, setFormData] = useState({
-    sku:'',
-    name:'',
-    category: categories[0] ||'Cincin',
-    berat:'2.50',
-    harga:'3500000',
-    stok:'10',
-    image:'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80',
+    sku: '',
+    name: '',
+    category: categories[0] || 'Cincin',
+    berat: '2.50',
+    harga: '3500000',
+    stok: '10',
+    image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80',
   });
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        sku: `${Math.floor(10 + Math.random() * 90)}-${Math.floor(100 + Math.random() * 900)}`,
-        name:'',
-        category: categories[0] ||'Cincin',
-        berat:'2.50',
-        harga:'3500000',
-        stok:'10',
-        image:'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80',
-      });
+      setErrorMsg(null);
+      const defaultCategory = categories[0] || 'Cincin';
+      if (editingProduct) {
+        setFormData({
+          sku: editingProduct.sku,
+          name: editingProduct.name,
+          category: editingProduct.category || defaultCategory,
+          berat: String(editingProduct.berat),
+          harga: String(editingProduct.harga),
+          stok: String(editingProduct.stok),
+          image: editingProduct.image,
+        });
+      } else {
+        setFormData({
+          sku: generateJewelrySku(defaultCategory, ''),
+          name: '',
+          category: defaultCategory,
+          berat: '2.50',
+          harga: '3500000',
+          stok: '10',
+          image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80',
+        });
+      }
     }
-  }, [isOpen, categories]);
+  }, [isOpen, editingProduct, categories]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleRegenerateSku = () => {
+    setFormData(prev => ({
+      ...prev,
+      sku: generateJewelrySku(prev.category, prev.name),
+    }));
+  };
+
+  const failValidation = (msg: string) => {
+    setErrorMsg(msg);
+    showToast('error', msg, 'Validasi Form Barang');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.sku.trim()) {
-      alert('Harap masukkan SKU dan Nama Barang.');
+    setErrorMsg(null);
+
+    const cleanSku = formData.sku.trim().toUpperCase();
+    const cleanName = formData.name.trim();
+    if (!cleanSku) {
+      failValidation('SKU / Barcode barang wajib diisi.');
       return;
     }
-    const beratNum = parseFloat(formData.berat) || 1.0;
-    const hargaNum = parseFloat(formData.harga.replace(/[^0-9]/g,'')) || 1000000;
-    const stokNum = parseInt(formData.stok) || 1;
+    if (!isValidCode128(cleanSku)) {
+      failValidation('SKU barcode hanya boleh berisi huruf, angka, dan tanda hubung standar ASCII (Code 128).');
+      return;
+    }
+    if (!cleanName || cleanName.length < 2) {
+      failValidation('Nama perhiasan emas wajib diisi (minimal 2 karakter).');
+      return;
+    }
+    if (!formData.category.trim()) {
+      failValidation('Kategori perhiasan wajib dipilih.');
+      return;
+    }
 
-    onSaveProduct({
-      sku: formData.sku.trim().toUpperCase(),
-      name: formData.name.trim(),
-      category: formData.category,
-      berat: beratNum,
-      harga: hargaNum,
-      stok: stokNum,
-      image: formData.image.trim() ||'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80',
-    });
+    const beratNum = parseFloat(formData.berat);
+    const hargaNum = parseFloat(String(formData.harga).replace(/[^0-9]/g, ''));
+    const stokRaw = String(formData.stok).trim();
+    const stokNum = parseInt(stokRaw, 10);
+
+    if (Number.isNaN(beratNum) || beratNum <= 0) {
+      failValidation('Berat barang harus lebih dari 0 gram.');
+      return;
+    }
+    if (Number.isNaN(hargaNum) || hargaNum <= 0) {
+      failValidation('Harga jual harus lebih dari Rp 0.');
+      return;
+    }
+    if (stokRaw === '' || Number.isNaN(stokNum) || stokNum < 0) {
+      failValidation('Jumlah stok tidak valid (minimal 0 pcs).');
+      return;
+    }
+
+    const cleanImage = formData.image.trim();
+    if (
+      cleanImage &&
+      !/^(https?:\/\/|data:image\/|\/)/i.test(cleanImage)
+    ) {
+      failValidation('URL foto produk tidak valid. Gunakan awalan http:// atau https://.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSaveProduct(
+        {
+          sku: cleanSku,
+          name: cleanName,
+          category: formData.category,
+          berat: beratNum,
+          harga: hargaNum,
+          stok: stokNum,
+          image:
+            cleanImage ||
+            'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80',
+        },
+        editingProduct?.id
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan produk.';
+      setErrorMsg(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const previewBerat = parseFloat(formData.berat) || 0;
+  const previewHarga = parseFloat(String(formData.harga).replace(/[^0-9]/g, '')) || 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -71,8 +160,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
         {/* Header */}
         <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
           <div>
-            <h3 className="font-bold text-gray-900 text-base sm:text-lg leading-tight">Tambah Barang Perhiasan</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Daftarkan koleksi emas baru ke inventaris toko</p>
+            <h3 className="font-bold text-gray-900 text-base sm:text-lg leading-tight">
+              {editingProduct ? 'Edit Barang Perhiasan' : 'Tambah Barang Perhiasan'}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {editingProduct
+                ? `Perbarui informasi SKU ${editingProduct.sku} di database`
+                : 'Daftarkan koleksi emas baru ke inventaris toko'}
+            </p>
           </div>
           <button
             type="button"
@@ -85,21 +180,43 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+        <form noValidate onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4">
+          {errorMsg && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">SKU / Kode Barcode</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700">
+                  SKU / Barcode (Code 128)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRegenerateSku}
+                  className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1 cursor-pointer"
+                  title="Generate kode SKU standar toko emas (Kadar-Kategori-Urut)"
+                >
+                  <RefreshCw size={11} />
+                  <span>Auto SKU</span>
+                </button>
+              </div>
               <input
                 type="text"
                 required
                 value={formData.sku}
-                onChange={e => setFormData({ ...formData, sku: e.target.value })}
-                placeholder="Cth: 19-204"
-                className="w-full px-3.5 py-2.5 text-sm font-mono font-bold bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white"
+                onChange={e => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
+                placeholder="Cth: 22K-CN-418"
+                className="w-full px-3.5 py-2.5 text-sm font-mono font-bold bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-orange-500 focus:bg-white uppercase"
               />
             </div>
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Kategori Perhiasan</label>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                Kategori Perhiasan
+              </label>
               <CustomSelect
                 value={formData.category}
                 onChange={val => setFormData({ ...formData, category: val })}
@@ -109,7 +226,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Nama Perhiasan Emas</label>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+              Nama Perhiasan Emas
+            </label>
             <input
               type="text"
               required
@@ -122,7 +241,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Berat (gram)</label>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                Berat (gram)
+              </label>
               <NumericInput
                 value={formData.berat}
                 onChange={val => setFormData({ ...formData, berat: String(val) })}
@@ -134,7 +255,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Harga Jual (Rp)</label>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                Harga Jual (Rp)
+              </label>
               <NumericInput
                 value={formData.harga}
                 onChange={val => setFormData({ ...formData, harga: String(val) })}
@@ -145,7 +268,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Stok Awal (pcs)</label>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                Stok (pcs)
+              </label>
               <NumericInput
                 value={formData.stok}
                 onChange={val => setFormData({ ...formData, stok: String(val) })}
@@ -156,23 +281,71 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             </div>
           </div>
 
+          {/* Live Code 128 + QR Code Preview */}
+          {formData.sku.trim() && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                  Pratinjau Label Barcode (Standar Code 128 + QR)
+                </span>
+                <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                  Siap Cetak &amp; Scan
+                </span>
+              </div>
+              <div className="flex justify-center">
+                <JewelryBarcodeTag
+                  compact
+                  format="hybrid"
+                  product={{
+                    sku: formData.sku.trim().toUpperCase(),
+                    name: formData.name.trim() || 'Nama Perhiasan',
+                    category: formData.category,
+                    berat: previewBerat,
+                    harga: previewHarga,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs sm:text-sm font-semibold text-gray-700">Pilihan Foto Cepat (Preset Gambar Emas)</label>
+              <label className="text-xs sm:text-sm font-semibold text-gray-700">
+                Pilihan Foto Cepat (Preset Gambar Emas)
+              </label>
             </div>
             <div className="grid grid-cols-5 gap-1.5 sm:gap-2 mb-2">
               {[
-                { label: 'Cincin', img: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80' },
-                { label: 'Gelang', img: 'https://images.unsplash.com/photo-1611591475711-d0b16f39e38d?auto=format&fit=crop&w=300&q=80' },
-                { label: 'Kalung', img: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=300&q=80' },
-                { label: 'Anting', img: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=300&q=80' },
-                { label: 'Liontin', img: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=300&q=80' },
+                {
+                  label: 'Cincin',
+                  img: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80',
+                },
+                {
+                  label: 'Gelang',
+                  img: 'https://images.unsplash.com/photo-1611591475711-d0b16f39e38d?auto=format&fit=crop&w=300&q=80',
+                },
+                {
+                  label: 'Kalung',
+                  img: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=300&q=80',
+                },
+                {
+                  label: 'Anting',
+                  img: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=300&q=80',
+                },
+                {
+                  label: 'Liontin',
+                  img: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=300&q=80',
+                },
               ].map((p, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setFormData({ ...formData, image: p.img })}
-                  className={`p-1.5 border rounded-md flex flex-col items-center gap-1 cursor-pointer transition-all ${formData.image === p.img ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-400/20' : 'border-gray-200 hover:border-gray-300'}`}
+                  className={`p-1.5 border rounded-md flex flex-col items-center gap-1 cursor-pointer transition-all ${
+                    formData.image === p.img
+                      ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-400/20'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
                 >
                   <img src={p.img} alt={p.label} className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-lg" />
                   <span className="text-xs font-medium text-gray-700">{p.label}</span>
@@ -192,6 +365,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             <button
               type="button"
               onClick={onClose}
+              disabled={isSubmitting}
               className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs"
             >
               <X size={15} className="mr-1.5 text-gray-500" />
@@ -199,10 +373,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             </button>
             <button
               type="submit"
-              className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs active:scale-[0.98]"
+              disabled={isSubmitting}
+              className="h-9 px-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs active:scale-[0.98]"
             >
               <Save size={15} />
-              <span>Simpan Barang</span>
+              <span>{isSubmitting ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan Barang'}</span>
             </button>
           </div>
         </form>

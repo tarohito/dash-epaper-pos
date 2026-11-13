@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Check, Package, Tag, AlertCircle, Save } from 'lucide-react';
+import { X, Check, Package, AlertCircle, Save, Search, Loader2 } from 'lucide-react';
 import { PromoCampaign, Product } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import { NumericInput } from '../common/NumericInput';
+import { posApi } from '../../services/api';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useToast } from '../../contexts/ToastContext';
 
 interface AddEditPromoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (promo: PromoCampaign) => void;
+  onSave: (promo: PromoCampaign, isEdit?: boolean) => Promise<void> | void;
   editingPromo?: PromoCampaign | null;
-  products: Product[];
 }
 
 export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
@@ -17,7 +19,6 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
   onClose,
   onSave,
   editingPromo,
-  products,
 }) => {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -32,8 +33,19 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
   const [minPurchase, setMinPurchase] = useState<number>(0);
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Server-side searchable product picker inside modal
+  const [productSearch, setProductSearch] = useState('');
+  const debouncedProductSearch = useDebounce(productSearch, 200);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [productLoadError, setProductLoadError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
+    if (!isOpen) return;
     if (editingPromo) {
       setName(editingPromo.name);
       setCode(editingPromo.code);
@@ -57,8 +69,42 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
       setMinPurchase(0);
       setDescription('');
     }
+    setProductSearch('');
     setError('');
+    setProductLoadError(null);
   }, [editingPromo, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const controller = new AbortController();
+    setIsLoadingProducts(true);
+    setProductLoadError(null);
+
+    posApi
+      .getProducts(
+        {
+          page: 1,
+          pageSize: 50,
+          search: debouncedProductSearch || undefined,
+        },
+        controller.signal
+      )
+      .then(res => {
+        setProducts(res.items);
+        setTotalProducts(res.totalAllProducts || res.total);
+        setIsLoadingProducts(false);
+      })
+      .catch(err => {
+        if ((err as Error).name !== 'AbortError') {
+          const msg = err instanceof Error ? err.message : 'Gagal memuat daftar perhiasan.';
+          setProductLoadError(msg);
+          setIsLoadingProducts(false);
+          showToast('error', msg);
+        }
+      });
+
+    return () => controller.abort();
+  }, [isOpen, debouncedProductSearch, showToast]);
 
   if (!isOpen) return null;
 
@@ -68,37 +114,63 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
     );
   };
 
-  const handleSelectAllProducts = () => {
-    if (selectedProductIds.length === products.length) {
-      setSelectedProductIds([]);
+  const allVisibleSelected =
+    products.length > 0 && products.every(p => selectedProductIds.includes(p.id));
+
+  const handleSelectAllVisibleProducts = () => {
+    if (allVisibleSelected) {
+      const visibleIds = new Set(products.map(p => p.id));
+      setSelectedProductIds(prev => prev.filter(id => !visibleIds.has(id)));
     } else {
-      setSelectedProductIds(products.map(p => p.id));
+      setSelectedProductIds(prev => {
+        const merged = new Set(prev);
+        for (const p of products) merged.add(p.id);
+        return Array.from(merged);
+      });
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const failValidation = (msg: string) => {
+    setError(msg);
+    showToast('error', msg, 'Validasi Form Promo');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Nama promo tidak boleh kosong');
+    setError('');
+
+    const cleanName = name.trim();
+    const cleanCode = code.trim().toUpperCase();
+
+    if (!cleanName) {
+      failValidation('Nama promo tidak boleh kosong.');
       return;
     }
-    if (!code.trim()) {
-      setError('Kode promo tidak boleh kosong');
+    if (!cleanCode || cleanCode.length < 3 || !/^[A-Z0-9_-]+$/.test(cleanCode)) {
+      failValidation('Kode promo minimal 3 karakter (hanya huruf, angka, "-" atau "_" tanpa spasi).');
       return;
     }
-    if (discountPercent <= 0 || discountPercent > 100) {
-      setError('Persentase diskon harus antara 1% - 100%');
+    if (Number.isNaN(discountPercent) || discountPercent <= 0 || discountPercent > 100) {
+      failValidation('Persentase diskon harus antara 1% hingga 100%.');
+      return;
+    }
+    if (!startDate || !endDate) {
+      failValidation('Tanggal mulai dan tanggal berakhir promo wajib diisi.');
+      return;
+    }
+    if (endDate < startDate) {
+      failValidation('Tanggal berakhir promo tidak boleh lebih awal dari tanggal mulai.');
       return;
     }
     if (selectedProductIds.length === 0) {
-      setError('Pilih minimal 1 perhiasan yang mendapatkan promo ini');
+      failValidation('Pilih minimal 1 perhiasan yang mendapatkan promo ini.');
       return;
     }
 
     const payload: PromoCampaign = {
       id: editingPromo ? editingPromo.id : `PRM-${Date.now().toString().slice(-4)}`,
-      name: name.trim(),
-      code: code.trim().toUpperCase(),
+      name: cleanName,
+      code: cleanCode,
       discountPercent: Number(discountPercent),
       label: label.trim() || `Diskon ${discountPercent}%`,
       startDate,
@@ -109,8 +181,15 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
       description: description.trim() || undefined,
     };
 
-    onSave(payload);
-    onClose();
+    try {
+      setIsSaving(true);
+      await onSave(payload, Boolean(editingPromo));
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan promo.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -137,7 +216,7 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-xs sm:text-sm flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0" />
@@ -198,7 +277,9 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Label Badge Promo</label>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                Label Badge Promo
+              </label>
               <input
                 type="text"
                 placeholder="Diskon 10%"
@@ -209,7 +290,9 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Status Promo</label>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                Status Promo
+              </label>
               <button
                 type="button"
                 onClick={() => setIsActive(!isActive)}
@@ -228,107 +311,139 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
           {/* Grid 3: Dates */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Tanggal Mulai</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-medium rounded-md border border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none font-mono"
-                />
-              </div>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                Tanggal Mulai
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 text-sm font-medium rounded-md border border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none font-mono"
+              />
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Tanggal Berakhir</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-medium rounded-md border border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none font-mono"
-                />
-              </div>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+                Tanggal Berakhir
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 text-sm font-medium rounded-md border border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none font-mono"
+              />
             </div>
           </div>
 
           {/* Section: Product Selection */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <label className="text-xs sm:text-sm font-semibold text-gray-800 flex items-center gap-1.5">
                 <Package size={16} className="text-orange-500" />
-                Pilih Perhiasan yang Mendapatkan Promo ({selectedProductIds.length}/{products.length})
+                Pilih Perhiasan ({selectedProductIds.length} terpilih dari {totalProducts} katalog)
               </label>
               <button
                 type="button"
-                onClick={handleSelectAllProducts}
+                onClick={handleSelectAllVisibleProducts}
                 className="text-xs sm:text-sm font-semibold text-orange-600 hover:text-orange-700 cursor-pointer"
               >
-                {selectedProductIds.length === products.length ? 'Batalkan Semua' : 'Pilih Semua'}
+                {allVisibleSelected ? 'Batalkan Daftar Ini' : 'Pilih Semua di Daftar'}
               </button>
             </div>
 
+            {/* Search bar inside product picker */}
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+              <input
+                type="text"
+                value={productSearch}
+                onChange={e => setProductSearch(e.target.value)}
+                placeholder="Cari perhiasan berdasarkan nama atau SKU..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm rounded-md border border-gray-200 focus:border-orange-500 outline-none bg-white"
+              />
+            </div>
+
             <div className="max-h-52 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100 bg-gray-50/50">
-              {products.map(product => {
-                const isSelected = selectedProductIds.includes(product.id);
-                const discountedPrice = Math.round(product.harga * (1 - discountPercent / 100));
+              {isLoadingProducts ? (
+                <div className="py-8 flex items-center justify-center gap-2 text-xs text-gray-500">
+                  <Loader2 size={16} className="animate-spin text-orange-500" />
+                  <span>Memuat daftar perhiasan...</span>
+                </div>
+              ) : productLoadError ? (
+                <div className="py-8 px-4 text-center text-xs text-red-600 font-semibold">
+                  {productLoadError}
+                </div>
+              ) : products.length === 0 ? (
+                <div className="py-8 text-center text-xs text-gray-400">
+                  Tidak ada perhiasan yang cocok dengan pencarian
+                </div>
+              ) : (
+                products.map(product => {
+                  const isSelected = selectedProductIds.includes(product.id);
+                  const discountedPrice = Math.round(product.harga * (1 - discountPercent / 100));
 
-                return (
-                  <div
-                    key={product.id}
-                    onClick={() => handleToggleProduct(product.id)}
-                    className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-yellow-50/80 hover:bg-yellow-100/70' : 'hover:bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                          isSelected
-                            ? 'bg-yellow-400 border-yellow-600 text-gray-900'
-                            : 'border-gray-300 bg-white'
-                        }`}
-                      >
-                        {isSelected && <Check size={12} strokeWidth={3} />}
-                      </div>
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-8 h-8 rounded object-cover border border-gray-200 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-semibold text-gray-800 truncate leading-tight">
-                          {product.name}
-                        </p>
-                        <p className="text-xs text-gray-400 font-mono">
-                          {product.sku} • {product.category} • {product.berat.toFixed(2)}g
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      {isSelected ? (
-                        <>
-                          <p className="text-xs sm:text-sm font-bold font-mono text-orange-600 leading-tight">
-                            {formatIDR(discountedPrice)}
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => handleToggleProduct(product.id)}
+                      className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                        isSelected ? 'bg-yellow-50/80 hover:bg-yellow-100/70' : 'hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                            isSelected
+                              ? 'bg-yellow-400 border-yellow-600 text-gray-900'
+                              : 'border-gray-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check size={12} strokeWidth={3} />}
+                        </div>
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          loading="lazy"
+                          className="w-8 h-8 rounded object-cover border border-gray-200 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs sm:text-sm font-semibold text-gray-800 truncate leading-tight">
+                            {product.name}
                           </p>
-                          <p className="text-xs text-gray-400 font-mono line-through">
+                          <p className="text-xs text-gray-400 font-mono">
+                            {product.sku} • {product.category} • {product.berat.toFixed(2)}g
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {isSelected ? (
+                          <>
+                            <p className="text-xs sm:text-sm font-bold font-mono text-orange-600 leading-tight">
+                              {formatIDR(discountedPrice)}
+                            </p>
+                            <p className="text-xs text-gray-400 font-mono line-through">
+                              {formatIDR(product.harga)}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-xs sm:text-sm font-bold font-mono text-gray-700">
                             {formatIDR(product.harga)}
                           </p>
-                        </>
-                      ) : (
-                        <p className="text-xs sm:text-sm font-bold font-mono text-gray-700">{formatIDR(product.harga)}</p>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Catatan / Deskripsi Promo</label>
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">
+              Catatan / Deskripsi Promo
+            </label>
             <textarea
               rows={2}
               placeholder="Deskripsi syarat & ketentuan promo perhiasan..."
@@ -344,7 +459,8 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs"
+            disabled={isSaving}
+            className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs disabled:opacity-50"
           >
             <X size={15} className="mr-1.5 text-gray-500" />
             <span>Batal</span>
@@ -352,9 +468,10 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98]"
+            disabled={isSaving}
+            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50"
           >
-            <Save size={15} />
+            {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
             <span>{editingPromo ? 'Simpan Perubahan' : 'Buat Promo'}</span>
           </button>
         </div>

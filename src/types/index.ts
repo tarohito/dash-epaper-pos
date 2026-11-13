@@ -10,6 +10,7 @@ export interface Product {
   isPromo?: boolean;
   promoDiscountPercent?: number;
   promoLabel?: string;
+  salesCount?: number;
 }
 
 export interface PromoCampaign {
@@ -61,6 +62,7 @@ export interface Transaction {
   dateStr: string;
   timeStr: string;
   cashier: string;
+  customerId?: string;
   customerName: string;
   items: TransactionItem[];
   totalQty: number;
@@ -70,6 +72,9 @@ export interface Transaction {
   grandTotal: number;
   paymentMethod: 'cash' | 'debit' | 'transfer' | 'qris';
   paymentDetails: PaymentDetails;
+  status?: 'completed' | 'void';
+  voidReason?: string;
+  voidedAt?: string;
 }
 
 export interface BuybackGoldItem {
@@ -92,6 +97,7 @@ export interface BuybackItem {
   timeStr?: string;
   branchName?: string;
   cashierName?: string;
+  customerId?: string;
   customerName: string;
   customerPhone: string;
   customerNik?: string;
@@ -121,7 +127,14 @@ export interface BuybackItem {
   ttdPetugas?: string;
   isAgreedLegal?: boolean;
   items?: BuybackGoldItem[];
+  status?: 'completed' | 'void';
+  voidReason?: string;
+  voidedAt?: string;
 }
+
+export type BuybackCreatePayload = Omit<BuybackItem, 'id' | 'invoiceNo' | 'date'> & {
+  saveToCustomerMaster?: boolean;
+};
 
 export interface Tenant {
   id: string;
@@ -157,3 +170,99 @@ export interface Customer {
   totalTransactions?: number;
 }
 
+export interface CustomerWithStats extends Customer {
+  computedSpent: number;
+  computedTx: number;
+  buybackCount: number;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ProductsPageResponse extends PaginatedResponse<Product> {
+  promoCount: number;
+  categoryCounts: Record<string, number>;
+  totalAllProducts: number;
+  totalStockQty?: number;
+  totalWeightGrams?: number;
+  totalInventoryValue?: number;
+}
+
+export interface TransactionStatsSummary {
+  totalOmzetPenjualan: number;
+  totalBeratTerjual: number;
+  totalTransaksi: number;
+  avgPerTransaksi: number;
+}
+
+export interface TransactionsPageResponse extends PaginatedResponse<Transaction> {
+  stats: TransactionStatsSummary;
+}
+
+export interface BuybackStatsSummary {
+  totalDanaDicairkan: number;
+  totalBeratDiterima: number;
+  totalTransaksi: number;
+  avgPerTransaksi: number;
+}
+
+export interface BuybacksPageResponse extends PaginatedResponse<BuybackItem> {
+  stats: BuybackStatsSummary;
+}
+
+export interface CustomerStatsSummary {
+  totalPelanggan: number;
+  totalVip: number;
+  totalAkumulasiBelanja: number;
+}
+
+export interface CustomersPageResponse extends PaginatedResponse<CustomerWithStats> {
+  stats: CustomerStatsSummary;
+}
+
+export interface PromoStatsSummary {
+  totalPromos: number;
+  activeCount: number;
+  totalPromoProducts: number;
+  avgDiscount: number;
+}
+
+export interface PromosPageResponse extends PaginatedResponse<PromoCampaign> {
+  stats: PromoStatsSummary;
+}
+
+export interface CategoryStatsItem {
+  count: number;
+  totalStok: number;
+  totalGram: number;
+}
+
+export interface CategoriesWithStatsResponse {
+  categories: string[];
+  stats: Record<string, CategoryStatsItem>;
+}
+
+export interface DashboardSummaryResponse {
+  period: 'HARI' | 'BULAN';
+  displayTotalPenjualan: number;
+  displayPenjualanKotor: number;
+  displayLabaKotor: number;
+  displayPenerimaan: number;
+  displayTransaksi: number;
+  displayProduk: number;
+  activeLabels: string[];
+  salesData: number[];
+  trxData: number[];
+}
+
+export interface BootstrapPayload {
+  categories: string[];
+  tenants: Tenant[];
+  activeTenantId: string;
+  activePromos: PromoCampaign[];
+}

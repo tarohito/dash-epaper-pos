@@ -1,20 +1,30 @@
-import React, { useState, useMemo } from 'react';
-import { TrendingDown, Info } from 'lucide-react';
-import { Product, Transaction, BuybackItem, Tenant } from '../../types';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  TrendingDown,
+  Info,
+  Loader2,
+  Coins,
+  ReceiptText,
+  TrendingUp,
+  Wallet,
+  ShoppingBag,
+  Gem,
+} from 'lucide-react';
+import { DashboardSummaryResponse, Tenant } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import { MarketGoldPriceCard } from './MarketGoldPriceCard';
 import Tooltip from '../Tooltip';
+import { posApi } from '../../services/api';
+import { ErrorBanner } from '../common/ErrorBanner';
+import { useToast } from '../../contexts/ToastContext';
 
 interface DashboardViewProps {
-  products: Product[];
-  transactions: Transaction[];
-  buybacks: BuybackItem[];
+  refreshTrigger: number;
   activeTenant?: Tenant;
   onNavigateTo: (menu: string) => void;
   onOpenRegisterTenant: () => void;
 }
 
-// Helper ceiling untuk label sumbu Y yang rapi dan standar finansial
 const getNiceCeiling = (val: number): number => {
   if (val <= 0) return 1000000;
   if (val <= 2000) return 2000;
@@ -32,17 +42,87 @@ const getNiceCeiling = (val: number): number => {
   return niceFactor * mag;
 };
 
+const EMPTY_SUMMARY: DashboardSummaryResponse = {
+  period: 'HARI',
+  displayTotalPenjualan: 0,
+  displayPenjualanKotor: 0,
+  displayLabaKotor: 0,
+  displayPenerimaan: 0,
+  displayTransaksi: 0,
+  displayProduk: 0,
+  activeLabels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+  salesData: Array(12).fill(0),
+  trxData: Array(12).fill(0),
+};
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  products,
-  transactions,
-  buybacks,
-  activeTenant,
+  refreshTrigger,
   onNavigateTo,
 }) => {
   const [period, setPeriod] = useState<'HARI' | 'BULAN'>('HARI');
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+  const [summary, setSummary] = useState<DashboardSummaryResponse>(EMPTY_SUMMARY);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(840);
+  const { showToast } = useToast();
 
-  // Perhitungan Data Penjualan & Agregasi Grafik dengan useMemo agar super cepat di dataset ribuan
+  useEffect(() => {
+    const el = chartContainerRef.current;
+    if (!el) return;
+
+    const updateWidth = () => {
+      const nextWidth = Math.round(el.getBoundingClientRect().width);
+      if (nextWidth > 0) {
+        setContainerWidth(prev => (prev !== nextWidth ? nextWidth : prev));
+      }
+    };
+
+    updateWidth();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const nextWidth = Math.round(entry.contentRect.width);
+          if (nextWidth > 0) {
+            setContainerWidth(prev => (prev !== nextWidth ? nextWidth : prev));
+          }
+        }
+      });
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setIsLoading(true);
+    setFetchError(null);
+    setHoveredPoint(null);
+
+    posApi
+      .getDashboardSummary(period, controller.signal)
+      .then(res => {
+        setSummary(res);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        if ((err as Error).name !== 'AbortError') {
+          const msg = err instanceof Error ? err.message : 'Gagal memuat ringkasan dashboard.';
+          setFetchError(msg);
+          setIsLoading(false);
+          showToast('error', msg);
+        }
+      });
+
+    return () => controller.abort();
+  }, [period, refreshTrigger, retryCount, showToast]);
+
   const {
     displayTotalPenjualan,
     displayPenjualanKotor,
@@ -53,99 +133,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     activeLabels,
     salesData,
     trxData,
-  } = useMemo(() => {
-    let totalOmzet = 0;
-    let totalSubtotal = 0;
-    let totalProdukTerjual = 0;
-
-    for (const tx of transactions) {
-      totalOmzet += tx.grandTotal;
-      totalSubtotal += tx.subtotal;
-      for (const it of tx.items) {
-        totalProdukTerjual += it.qty;
-      }
-    }
-
-    const totalBuybackBayar = buybacks.reduce((sum, bb) => sum + bb.totalBayar, 0);
-
-    const totalPenjualan = totalOmzet;
-    const penjualanKotor = totalSubtotal > 0 ? totalSubtotal : totalOmzet;
-    const labaKotor = Math.round(totalPenjualan * 0.18);
-    const penerimaan = Math.max(0, totalOmzet - totalBuybackBayar);
-    const countTransaksi = transactions.length;
-
-    const dayLabels = [
-      '00:00', '02:00', '04:00', '06:00', '08:00', '10:00',
-      '12:00', '14:00', '16:00', '18:00', '20:00', '22:00',
-    ];
-    const monthLabels = [
-      'Tgl 1', 'Tgl 5', 'Tgl 10', 'Tgl 15', 'Tgl 20', 'Tgl 25', 'Tgl 30',
-    ];
-    const labels = period === 'HARI' ? dayLabels : monthLabels;
-    const salesArr = Array(labels.length).fill(0);
-    const trxArr = Array(labels.length).fill(0);
-
-    if (period === 'HARI') {
-      for (const tx of transactions) {
-        let hour = 11;
-        if (tx.dateTime) {
-          const d = new Date(tx.dateTime);
-          if (!isNaN(d.getTime())) hour = d.getHours();
-        } else if (tx.timeStr) {
-          const h = parseInt(tx.timeStr.split(':')[0], 10);
-          if (!isNaN(h)) hour = h;
-        }
-        const slot = Math.min(11, Math.max(0, Math.floor(hour / 2)));
-        salesArr[slot] += tx.grandTotal;
-        trxArr[slot] += 1;
-      }
-
-      const totalRec = salesArr.reduce((a, b) => a + b, 0);
-      if (totalRec === 0 && totalPenjualan > 0) {
-        salesArr[5] = Math.round(totalPenjualan * 0.4);
-        salesArr[6] = Math.round(totalPenjualan * 0.6);
-        trxArr[5] = 1;
-        trxArr[6] = Math.max(1, countTransaksi - 1);
-      }
-    } else {
-      for (const tx of transactions) {
-        let day = 15;
-        if (tx.dateTime) {
-          const d = new Date(tx.dateTime);
-          if (!isNaN(d.getTime())) day = d.getDate();
-        }
-        const slot = Math.min(6, Math.max(0, Math.floor((day - 1) / 5)));
-        salesArr[slot] += tx.grandTotal;
-        trxArr[slot] += 1;
-      }
-
-      const totalRec = salesArr.reduce((a, b) => a + b, 0);
-      if (totalRec === 0 && totalPenjualan > 0) {
-        salesArr[2] = totalPenjualan;
-        trxArr[2] = countTransaksi || 1;
-      }
-    }
-
-    return {
-      displayTotalPenjualan: totalPenjualan,
-      displayPenjualanKotor: penjualanKotor,
-      displayLabaKotor: labaKotor,
-      displayPenerimaan: penerimaan,
-      displayTransaksi: countTransaksi,
-      displayProduk: totalProdukTerjual,
-      activeLabels: labels,
-      salesData: salesArr,
-      trxData: trxArr,
-    };
-  }, [transactions, buybacks, period]);
-
-  // Pengaturan Dimensi & Ruang Padding SVG
-  const chartWidth = 840;
-  const chartHeight = 230;
-  const paddingLeft = 85;   // Ruang 85px di kiri agar teks "8.000.000" tidak menabrak grafik
-  const paddingRight = 30;
-  const paddingTop = 25;
-  const paddingBottom = 30;
+  } = summary;
 
   const maxVal = Math.max(...salesData, displayTotalPenjualan, 1000);
   const ceilingSale = getNiceCeiling(maxVal);
@@ -153,11 +141,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const rawMaxTrx = Math.max(...trxData, displayTransaksi, 1);
   const ceilingTrx = rawMaxTrx <= 2 ? 4 : rawMaxTrx <= 5 ? 6 : Math.ceil(rawMaxTrx * 1.3);
 
-  // Koordinat Garis Penjualan (Rupiah)
+  const chartWidth = Math.max(300, containerWidth);
+  const chartHeight = chartWidth < 540 ? 220 : 256;
+  const maxLabelChars = ceilingSale.toLocaleString('id-ID').length;
+  const paddingLeft = Math.max(58, Math.min(96, maxLabelChars * 7.6 + 20));
+  const paddingRight = chartWidth < 540 ? 18 : 26;
+  const paddingTop = 24;
+  const paddingBottom = 30;
+  const plotWidth = Math.max(120, chartWidth - paddingLeft - paddingRight);
+  const pointStepPx = plotWidth / Math.max(1, activeLabels.length - 1);
+  const labelEvery = Math.max(1, Math.ceil(54 / Math.max(1, pointStepPx)));
+  const hitWidth = Math.max(20, pointStepPx);
+
   const getSalesCoordinates = (index: number, val: number) => {
     const x =
       paddingLeft +
-      (index / (activeLabels.length - 1)) * (chartWidth - paddingLeft - paddingRight);
+      (index / Math.max(1, activeLabels.length - 1)) * plotWidth;
     const y =
       chartHeight -
       paddingBottom -
@@ -165,11 +164,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return { x, y };
   };
 
-  // Koordinat Garis Transaksi (Jumlah Nota)
   const getTrxCoordinates = (index: number, val: number) => {
     const x =
       paddingLeft +
-      (index / (activeLabels.length - 1)) * (chartWidth - paddingLeft - paddingRight);
+      (index / Math.max(1, activeLabels.length - 1)) * plotWidth;
     const y =
       chartHeight -
       paddingBottom -
@@ -177,15 +175,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return { x, y };
   };
 
-  // Buat path polylines
   const salesPoints = salesData.map((val, idx) => getSalesCoordinates(idx, val));
   const salesPathD = salesPoints.reduce(
     (acc, pt, idx) => (idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`),
     ''
   );
-  const salesAreaD = `${salesPathD} L ${salesPoints[salesPoints.length - 1].x} ${
-    chartHeight - paddingBottom
-  } L ${salesPoints[0].x} ${chartHeight - paddingBottom} Z`;
+  const salesAreaD =
+    salesPoints.length > 0
+      ? `${salesPathD} L ${salesPoints[salesPoints.length - 1].x} ${
+          chartHeight - paddingBottom
+        } L ${salesPoints[0].x} ${chartHeight - paddingBottom} Z`
+      : '';
 
   const trxPoints = trxData.map((val, idx) => getTrxCoordinates(idx, val));
   const trxPathD = trxPoints.reduce(
@@ -194,243 +194,299 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
 
   return (
-    <div className="space-y-5 pb-6">
-      {/* 1. KESATUAN 1 CARD BESAR: Penjualan Header + 6 Metrik Cards + Grafik */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
-        {/* Card Header: Judul Penjualan, Periode, dan Switcher HARI / BULAN (Garis tidak ngefull, gap sama persis seperti harga emas) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
-                Penjualan
-              </h3>
-              <span className="inline-flex items-center text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded">
-                12 November 2026
+    <div className="space-y-4 pb-6">
+      {/* Top Header Card */}
+      <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
+              Ringkasan Penjualan {period === 'HARI' ? 'Harian' : 'Bulanan'}
+            </h3>
+            <span className="text-xs text-gray-400" aria-hidden="true">&middot;</span>
+            <span className="text-xs sm:text-sm font-medium text-gray-500">
+              {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+            {isLoading && <Loader2 size={14} className="animate-spin text-orange-500" />}
+          </div>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+            {period === 'HARI'
+              ? 'Pantau omzet, laba kotor, transaksi, dan grafik penjualan per jam dibanding hari kemarin.'
+              : 'Pantau akumulasi omzet, laba kotor, transaksi, dan grafik penjualan dibanding bulan kemarin.'}
+          </p>
+        </div>
+
+        <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 self-start sm:self-auto items-center shrink-0">
+          <button
+            type="button"
+            onClick={() => setPeriod('HARI')}
+            className={`h-full px-3.5 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
+              period === 'HARI'
+                ? 'bg-orange-500 text-white shadow-xs'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            HARI
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriod('BULAN')}
+            className={`h-full px-3.5 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
+              period === 'BULAN'
+                ? 'bg-orange-500 text-white shadow-xs'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            BULAN
+          </button>
+        </div>
+      </div>
+
+      {fetchError && (
+        <ErrorBanner message={fetchError} onRetry={() => setRetryCount(c => c + 1)} />
+      )}
+
+      {/* 6 Modern Metric KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                Total Penjualan
               </span>
+              <Tooltip
+                content="Total uang riil yang dibayarkan pembeli (Grand Total di struk termasuk pajak/PPN)."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  aria-label="Info Total Penjualan"
+                >
+                  <Info size={13} />
+                </button>
+              </Tooltip>
             </div>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-              (% dibanding {period === 'HARI' ? 'hari kemarin' : 'bulan kemarin'})
+            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
+              <Coins size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
+              {formatIDR(displayTotalPenjualan)}
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+                <TrendingDown size={12} />
+                <span>92.23%</span>
+              </span>
+              <span className="text-gray-400">termasuk PPN 11%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                Penjualan Kotor
+              </span>
+              <Tooltip
+                content="Total harga murni perhiasan yang terjual sebelum ditambah pajak atau potongan diskon."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  aria-label="Info Penjualan Kotor"
+                >
+                  <Info size={13} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
+              <ReceiptText size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
+              {formatIDR(displayPenjualanKotor)}
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+                <TrendingDown size={12} />
+                <span>96.04%</span>
+              </span>
+              <span className="text-gray-400">sebelum pajak</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                Laba Kotor
+              </span>
+              <Tooltip
+                content="Keuntungan bersih penjualan setelah dikurangi modal awal beli perhiasan (HPP modal emas)."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  aria-label="Info Laba Kotor"
+                >
+                  <Info size={13} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
+              <TrendingUp size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
+              {formatIDR(displayLabaKotor)}
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+                <TrendingDown size={12} />
+                <span>91.4%</span>
+              </span>
+              <span className="text-gray-400">estimasi margin HPP</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                Penerimaan Kas Bersih
+              </span>
+              <Tooltip
+                content="Uang kas bersih masuk setelah dikurangi pengeluaran pembelian emas dari pelanggan (buyback)."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  aria-label="Info Penerimaan"
+                >
+                  <Info size={13} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="w-8 h-8 rounded-lg bg-teal-50/80 text-teal-600 border border-teal-100/80 flex items-center justify-center shrink-0">
+              <Wallet size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
+              {formatIDR(displayPenerimaan)}
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              <span className="font-semibold text-gray-500 font-mono">0%</span>
+              <span className="text-gray-400">penjualan dikurangi buyback</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                Total Transaksi
+              </span>
+              <Tooltip
+                content="Jumlah nota/struk belanja yang berhasil diselesaikan dan dibayar oleh pelanggan."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  aria-label="Info Transaksi"
+                >
+                  <Info size={13} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
+              <ShoppingBag size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
+              {displayTransaksi} Nota
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+                <TrendingDown size={12} />
+                <span>85%</span>
+              </span>
+              <span className="text-gray-400">transaksi selesai (non-void)</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
+                Produk Terjual
+              </span>
+              <Tooltip
+                content="Jumlah fisik perhiasan emas yang terjual keluar dari etalase toko."
+                side="top"
+              >
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors shrink-0"
+                  aria-label="Info Produk"
+                >
+                  <Info size={13} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className="w-8 h-8 rounded-lg bg-purple-50/80 text-purple-600 border border-purple-100/80 flex items-center justify-center shrink-0">
+              <Gem size={16} strokeWidth={2} />
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 truncate tabular-nums tracking-tight">
+              {displayProduk} Pcs
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              <span className="inline-flex items-center gap-0.5 font-semibold text-red-500 font-mono">
+                <TrendingDown size={12} />
+                <span>88.89%</span>
+              </span>
+              <span className="text-gray-400">unit perhiasan keluar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SVG Interactive Line Chart Card */}
+      <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5">
+        <div className="flex items-center justify-between pb-3 mb-2 border-b border-gray-100">
+          <div>
+            <h4 className="text-sm sm:text-base font-bold text-gray-900">
+              Grafik Penjualan &amp; Volume Transaksi
+            </h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {period === 'HARI'
+                ? 'Distribusi omzet dan jumlah nota per interval waktu hari ini'
+                : 'Distribusi omzet dan jumlah nota harian selama bulan berjalan'}
             </p>
           </div>
-
-          {/* Toggle HARI / BULAN (Ukuran presisi h-9 konsisten) */}
-          <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 self-start sm:self-auto items-center">
-            <button
-              type="button"
-              onClick={() => setPeriod('HARI')}
-              className={`h-full px-3.5 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                period === 'HARI'
-                  ? 'bg-orange-500 text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              HARI
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriod('BULAN')}
-              className={`h-full px-3.5 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                period === 'BULAN'
-                  ? 'bg-orange-500 text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              BULAN
-            </button>
-          </div>
         </div>
-
-        {/* 6 Metric KPI Sub-Cards Grid (Format 3 Kolom) */}
-        <div className="pt-4 pb-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* Card 1: Total Penjualan */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-start justify-between gap-1 mb-2">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                    Total Penjualan
-                  </span>
-                  <Tooltip
-                    content="Total uang riil yang dibayarkan pembeli (Grand Total di struk termasuk pajak/PPN)."
-                    side="top"
-                  >
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
-                      aria-label="Info Total Penjualan"
-                    >
-                      <Info size={13} />
-                    </button>
-                  </Tooltip>
-                </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0 font-mono">
-                  <TrendingDown size={12} />
-                  <span>92.23%</span>
-                </span>
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {formatIDR(displayTotalPenjualan)}
-              </div>
-            </div>
-
-            {/* Card 2: Penjualan Kotor */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-start justify-between gap-1 mb-2">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                    Penjualan Kotor
-                  </span>
-                  <Tooltip
-                    content="Total harga murni perhiasan yang terjual sebelum ditambah pajak atau potongan diskon."
-                    side="top"
-                  >
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
-                      aria-label="Info Penjualan Kotor"
-                    >
-                      <Info size={13} />
-                    </button>
-                  </Tooltip>
-                </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0 font-mono">
-                  <TrendingDown size={12} />
-                  <span>96.04%</span>
-                </span>
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {formatIDR(displayPenjualanKotor)}
-              </div>
-            </div>
-
-            {/* Card 3: Laba Kotor */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-start justify-between gap-1 mb-2">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                    Laba Kotor
-                  </span>
-                  <Tooltip
-                    content="Keuntungan bersih penjualan setelah dikurangi modal awal beli perhiasan (HPP modal emas)."
-                    side="top"
-                  >
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
-                      aria-label="Info Laba Kotor"
-                    >
-                      <Info size={13} />
-                    </button>
-                  </Tooltip>
-                </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0 font-mono">
-                  <TrendingDown size={12} />
-                  <span>91.4%</span>
-                </span>
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {formatIDR(displayLabaKotor)}
-              </div>
-            </div>
-
-            {/* Card 4: Penerimaan */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-start justify-between gap-1 mb-2">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                    Penerimaan
-                  </span>
-                  <Tooltip
-                    content="Uang kas bersih masuk setelah dikurangi pengeluaran pembelian emas dari pelanggan (buyback)."
-                    side="top"
-                  >
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
-                      aria-label="Info Penerimaan"
-                    >
-                      <Info size={13} />
-                    </button>
-                  </Tooltip>
-                </div>
-                <span className="text-xs font-semibold text-gray-600 shrink-0 font-mono">
-                  0%
-                </span>
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {formatIDR(displayPenerimaan)}
-              </div>
-            </div>
-
-            {/* Card 5: Transaksi */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-start justify-between gap-1 mb-2">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                    Transaksi
-                  </span>
-                  <Tooltip
-                    content="Jumlah nota/struk belanja yang berhasil diselesaikan dan dibayar oleh pelanggan."
-                    side="top"
-                  >
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
-                      aria-label="Info Transaksi"
-                    >
-                      <Info size={13} />
-                    </button>
-                  </Tooltip>
-                </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0 font-mono">
-                  <TrendingDown size={12} />
-                  <span>85%</span>
-                </span>
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {displayTransaksi}
-              </div>
-            </div>
-
-            {/* Card 6: Produk */}
-            <div className="bg-gray-50/70 hover:bg-orange-50/30 p-3 sm:p-3.5 rounded-lg border border-gray-200/80 hover:border-orange-200 flex flex-col justify-between transition-all">
-              <div className="flex items-start justify-between gap-1 mb-2">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
-                    Produk
-                  </span>
-                  <Tooltip
-                    content="Jumlah fisik perhiasan emas yang terjual keluar dari etalase toko."
-                    side="top"
-                  >
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600 cursor-help inline-flex items-center p-0.5 rounded transition-colors"
-                      aria-label="Info Produk"
-                    >
-                      <Info size={13} />
-                    </button>
-                  </Tooltip>
-                </div>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 shrink-0 font-mono">
-                  <TrendingDown size={12} />
-                  <span>88.89%</span>
-                </span>
-              </div>
-              <div className="text-base sm:text-lg lg:text-xl font-bold font-mono text-gray-900 truncate tabular-nums">
-                {displayProduk}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section Divider & Chart Section */}
-        <div className="pt-4 mt-2 border-t border-gray-100">
-          {/* SVG Interactive Line Chart */}
-          <div className="relative w-full overflow-x-auto overflow-y-hidden">
+        <div>
+          <div ref={chartContainerRef} className="relative w-full">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              className="w-full h-56 sm:h-64 select-none min-w-[580px]"
+              style={{ height: `${chartHeight}px` }}
+              className="w-full block select-none overflow-visible"
             >
               <defs>
                 <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
@@ -439,10 +495,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </linearGradient>
               </defs>
 
-              {/* Horizontal Gridlines & Clean Rounded Labels */}
               {[0, 0.5, 1].map((pct, idx) => {
-                const y =
-                  paddingTop + (1 - pct) * (chartHeight - paddingTop - paddingBottom);
+                const y = paddingTop + (1 - pct) * (chartHeight - paddingTop - paddingBottom);
                 const labelVal =
                   pct === 0
                     ? '0'
@@ -451,12 +505,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     : ceilingSale.toLocaleString('id-ID');
                 return (
                   <g key={idx}>
-                    <text
-                      x={paddingLeft - 12}
-                      y={y + 4}
-                      textAnchor="end"
-                      className="text-xs fill-gray-400 font-mono font-medium"
-                    >
+                    <text x={paddingLeft - 12} y={y + 4} textAnchor="end" className="text-xs fill-gray-400 font-mono font-medium">
                       {labelVal}
                     </text>
                     <line
@@ -472,7 +521,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 );
               })}
 
-              {/* Base Zero Line */}
               <line
                 x1={paddingLeft}
                 y1={chartHeight - paddingBottom}
@@ -482,8 +530,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 strokeWidth="1.5"
               />
 
-              {/* Vertical Guide Line on Hover */}
-              {hoveredPoint !== null && (
+              {hoveredPoint !== null && salesPoints[hoveredPoint] && (
                 <line
                   x1={salesPoints[hoveredPoint].x}
                   y1={paddingTop}
@@ -495,30 +542,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
               )}
 
-              {/* Area Fill for Sales */}
-              <path d={salesAreaD} fill="url(#salesGrad)" />
+              {salesAreaD && <path d={salesAreaD} fill="url(#salesGrad)" />}
 
-              {/* Line 1: Sales Line (Orange) */}
-              <path
-                d={salesPathD}
-                fill="none"
-                stroke="#ea580c"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              {salesPathD && (
+                <path
+                  d={salesPathD}
+                  fill="none"
+                  stroke="#ea580c"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
 
-              {/* Line 2: Transactions Line (Amber) */}
-              <path
-                d={trxPathD}
-                fill="none"
-                stroke="#f59e0b"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              {trxPathD && (
+                <path
+                  d={trxPathD}
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
 
-              {/* Transaction Data Points */}
               {trxPoints.map((pt, idx) => {
                 const isHovered = hoveredPoint === idx;
                 return (
@@ -528,14 +575,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     cy={pt.y}
                     r={isHovered ? 5.5 : 3.5}
                     fill="#ffffff"
-                    stroke="#f59e0b"
+                    stroke="#2563eb"
                     strokeWidth={isHovered ? 2.5 : 2}
                     className="transition-all pointer-events-none"
                   />
                 );
               })}
 
-              {/* Sales Data Points & Hover Hit Targets */}
               {salesPoints.map((pt, idx) => {
                 const isHovered = hoveredPoint === idx;
                 return (
@@ -545,11 +591,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     onMouseEnter={() => setHoveredPoint(idx)}
                     onMouseLeave={() => setHoveredPoint(null)}
                   >
-                    {/* Invisible broad hit area */}
                     <rect
-                      x={pt.x - 16}
+                      x={pt.x - hitWidth / 2}
                       y={paddingTop}
-                      width={32}
+                      width={hitWidth}
                       height={chartHeight - paddingTop - paddingBottom}
                       fill="transparent"
                     />
@@ -566,20 +611,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 );
               })}
 
-              {/* X-axis Labels */}
               {activeLabels.map((lbl, idx) => {
+                if (idx % labelEvery !== 0) return null;
+                const isHovered = hoveredPoint === idx;
                 const x =
                   paddingLeft +
-                  (idx / (activeLabels.length - 1)) *
-                    (chartWidth - paddingLeft - paddingRight);
-                const isHovered = hoveredPoint === idx;
+                  (idx / Math.max(1, activeLabels.length - 1)) * plotWidth;
                 return (
                   <text
                     key={idx}
                     x={x}
                     y={chartHeight - 8}
                     textAnchor="middle"
-                    className={`text-xs font-mono transition-colors ${
+                    className={`text-[11px] sm:text-xs font-mono transition-colors ${
                       isHovered ? 'fill-gray-900 font-bold' : 'fill-gray-400'
                     }`}
                   >
@@ -589,46 +633,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               })}
             </svg>
 
-            {/* Tooltip Hover Overlay */}
-            {hoveredPoint !== null && (
-              <div
-                className="absolute bg-gray-900 text-white text-xs py-1.5 px-3 rounded-lg shadow-xl pointer-events-none z-20 transition-all border border-gray-800"
-                style={{
-                  left: `${
-                    (salesPoints[hoveredPoint].x / chartWidth) * 100
-                  }%`,
-                  top: `${Math.max(10, salesPoints[hoveredPoint].y - 55)}px`,
-                  transform: 'translateX(-50%)',
-                }}
-              >
-                <p className="font-bold text-orange-400 border-b border-gray-800 pb-0.5">
-                  {period === 'HARI' ? `Pukul ${activeLabels[hoveredPoint]}` : activeLabels[hoveredPoint]}
-                </p>
-                <div className="mt-1 space-y-0.5">
-                  <p className="text-gray-200 flex items-center justify-between gap-3">
-                    <span className="text-gray-400">Penjualan:</span>
-                    <span className="font-semibold text-white">
-                      {formatIDR(salesData[hoveredPoint])}
-                    </span>
+            {hoveredPoint !== null && salesPoints[hoveredPoint] && (() => {
+              const ratio = salesPoints[hoveredPoint].x / chartWidth;
+              const translateX = ratio < 0.18 ? '-15%' : ratio > 0.82 ? '-85%' : '-50%';
+              return (
+                <div
+                  className="absolute bg-gray-900 text-white text-xs py-1.5 px-3 rounded-lg shadow-xl pointer-events-none z-20 transition-all border border-gray-800 whitespace-nowrap"
+                  style={{
+                    left: `${ratio * 100}%`,
+                    top: `${Math.max(8, salesPoints[hoveredPoint].y - 58)}px`,
+                    transform: `translateX(${translateX})`,
+                  }}
+                >
+                  <p className="font-bold text-orange-400 border-b border-gray-800 pb-0.5">
+                    {period === 'HARI' ? `Pukul ${activeLabels[hoveredPoint]}` : activeLabels[hoveredPoint]}
                   </p>
-                  <p className="text-gray-200 flex items-center justify-between gap-3">
-                    <span className="text-amber-400">Transaksi:</span>
-                    <span className="font-semibold text-amber-300">
-                      {trxData[hoveredPoint]} nota
-                    </span>
-                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <p className="text-gray-200 flex items-center justify-between gap-3">
+                      <span className="text-orange-400">Penjualan:</span>
+                      <span className="font-semibold text-white">{formatIDR(salesData[hoveredPoint])}</span>
+                    </p>
+                    <p className="text-gray-200 flex items-center justify-between gap-3">
+                      <span className="text-blue-400">Transaksi:</span>
+                      <span className="font-semibold text-blue-300">{trxData[hoveredPoint]} nota</span>
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
-          {/* Legend Penjelasan Total Penjualan & Total Transaksi (Di Bawah Grafik - Rata Tengah) */}
           <div className="flex flex-wrap items-center justify-center gap-6 mt-3 pt-2 text-xs sm:text-sm font-semibold">
             <div className="flex items-center gap-2">
               <div className="flex items-center w-6 justify-center">
-                <span className="w-2 h-[2px] bg-orange-500 rounded-full" />
-                <span className="w-2.5 h-2.5 rounded-full border-2 border-orange-500 bg-white -ml-0.5 -mr-0.5 z-10 shrink-0" />
-                <span className="w-2 h-[2px] bg-orange-500 rounded-full" />
+                <span className="w-2 h-[2px] bg-orange-600 rounded-full" />
+                <span className="w-2.5 h-2.5 rounded-full border-2 border-orange-600 bg-white -ml-0.5 -mr-0.5 z-10 shrink-0" />
+                <span className="w-2 h-[2px] bg-orange-600 rounded-full" />
               </div>
               <span className="text-gray-700">
                 {period === 'HARI' ? 'Total penjualan per jam' : 'Total penjualan per hari'}
@@ -649,9 +689,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="flex items-center gap-2">
               <div className="flex items-center w-6 justify-center">
-                <span className="w-2 h-[2px] bg-amber-500 rounded-full" />
-                <span className="w-2.5 h-2.5 rounded-full border-2 border-amber-500 bg-white -ml-0.5 -mr-0.5 z-10 shrink-0" />
-                <span className="w-2 h-[2px] bg-amber-500 rounded-full" />
+                <span className="w-2 h-[2px] bg-blue-600 rounded-full" />
+                <span className="w-2.5 h-2.5 rounded-full border-2 border-blue-600 bg-white -ml-0.5 -mr-0.5 z-10 shrink-0" />
+                <span className="w-2 h-[2px] bg-blue-600 rounded-full" />
               </div>
               <span className="text-gray-700">
                 {period === 'HARI' ? 'Total transaksi per jam' : 'Total transaksi per hari'}
@@ -673,7 +713,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 2. CARD HARGA EMAS ANTAM (DI BAWAH CARD BESAR PENJUALAN) */}
       <div>
         <MarketGoldPriceCard
           onNavigateToPOS={() => onNavigateTo('Kasir POS (Penjualan)')}

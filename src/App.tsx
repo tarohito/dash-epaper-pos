@@ -1,34 +1,83 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Scale, ReceiptText, Gem, Menu } from'lucide-react';
-import { TooltipProvider } from'./components/Tooltip';
-import { Header } from'./components/layout/Header';
-import { Sidebar } from'./components/layout/Sidebar';
-import { PosView } from'./components/pos/PosView';
-import { BarcodeScannerModal } from'./components/pos/BarcodeScannerModal';
-import { PaymentModal } from'./components/pos/PaymentModal';
-import { ReceiptModal } from'./components/pos/ReceiptModal';
-import { PrintableReceipt } from'./components/pos/PrintableReceipt';
-import { ScanFeedbackToast } from'./components/pos/ScanFeedbackToast';
-import { BuybackView } from'./components/buyback/BuybackView';
-import { BuybackReceiptModal } from'./components/buyback/BuybackReceiptModal';
-import { PrintableBuybackReceipt } from'./components/buyback/PrintableBuybackReceipt';
-import { DailyTransactionsView } from'./components/transactions/DailyTransactionsView';
-import { ProductListView } from'./components/inventory/ProductListView';
-import { CategoryListView } from'./components/inventory/CategoryListView';
-import { AddProductModal } from'./components/inventory/AddProductModal';
-import { AddCategoryModal } from'./components/inventory/AddCategoryModal';
-import { DashboardView } from './components/dashboard/DashboardView';
-import { CustomerView } from './components/customer/CustomerView';
-import { PromoManagementView } from './components/promo/PromoManagementView';
-import { TenantManagementView } from './components/tenant/TenantManagementView';
-import { RegisterTenantModal } from './components/tenant/RegisterTenantModal';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { ShoppingCart, Scale, ReceiptText, Gem, Menu, AlertCircle, Loader2 } from 'lucide-react';
+import { TooltipProvider } from './components/Tooltip';
+import { useToast } from './contexts/ToastContext';
+import { Header } from './components/layout/Header';
+import { Sidebar } from './components/layout/Sidebar';
+import { PosView } from './components/pos/PosView';
+import { PrintableReceipt } from './components/pos/PrintableReceipt';
+import { ScanFeedbackToast } from './components/pos/ScanFeedbackToast';
+import { PrintableBuybackReceipt } from './components/buyback/PrintableBuybackReceipt';
 import { FallbackView } from './components/common/FallbackView';
 
-import { Product, CartItem, Transaction, BuybackItem, PromoCampaign, Tenant, Customer } from './types';
-import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, INITIAL_BUYBACKS, INITIAL_PROMOS, INITIAL_CUSTOMERS } from './data/initialData';
-import { INITIAL_TENANTS } from './data/initialTenants';
-import { DEFAULT_CATEGORIES } from './constants/kadar';
+import {
+  Product,
+  CartItem,
+  Transaction,
+  BuybackItem,
+  BuybackCreatePayload,
+  PromoCampaign,
+  Tenant,
+  Customer,
+} from './types';
 import { playScannerBeep, playCashRegisterChime } from './utils/audio';
+import { extractBarcodeValue } from './utils/barcode';
+import { posApi } from './services/api';
+
+// Code splitting (Lazy load secondary views & modals so Kasir POS initial load is fast & lightweight)
+const DashboardView = lazy(() =>
+  import('./components/dashboard/DashboardView').then(m => ({ default: m.DashboardView }))
+);
+const DailyTransactionsView = lazy(() =>
+  import('./components/transactions/DailyTransactionsView').then(m => ({ default: m.DailyTransactionsView }))
+);
+const PromoManagementView = lazy(() =>
+  import('./components/promo/PromoManagementView').then(m => ({ default: m.PromoManagementView }))
+);
+const ProductListView = lazy(() =>
+  import('./components/inventory/ProductListView').then(m => ({ default: m.ProductListView }))
+);
+const CategoryListView = lazy(() =>
+  import('./components/inventory/CategoryListView').then(m => ({ default: m.CategoryListView }))
+);
+const BuybackView = lazy(() =>
+  import('./components/buyback/BuybackView').then(m => ({ default: m.BuybackView }))
+);
+const CustomerView = lazy(() =>
+  import('./components/customer/CustomerView').then(m => ({ default: m.CustomerView }))
+);
+const TenantManagementView = lazy(() =>
+  import('./components/tenant/TenantManagementView').then(m => ({ default: m.TenantManagementView }))
+);
+
+const BarcodeScannerModal = lazy(() =>
+  import('./components/pos/BarcodeScannerModal').then(m => ({ default: m.BarcodeScannerModal }))
+);
+const PaymentModal = lazy(() =>
+  import('./components/pos/PaymentModal').then(m => ({ default: m.PaymentModal }))
+);
+const ReceiptModal = lazy(() =>
+  import('./components/pos/ReceiptModal').then(m => ({ default: m.ReceiptModal }))
+);
+const BuybackReceiptModal = lazy(() =>
+  import('./components/buyback/BuybackReceiptModal').then(m => ({ default: m.BuybackReceiptModal }))
+);
+const AddProductModal = lazy(() =>
+  import('./components/inventory/AddProductModal').then(m => ({ default: m.AddProductModal }))
+);
+const AddCategoryModal = lazy(() =>
+  import('./components/inventory/AddCategoryModal').then(m => ({ default: m.AddCategoryModal }))
+);
+const RegisterTenantModal = lazy(() =>
+  import('./components/tenant/RegisterTenantModal').then(m => ({ default: m.RegisterTenantModal }))
+);
+
+const ViewLoadingFallback: React.FC = () => (
+  <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-lg border border-gray-200 p-8 text-gray-500 min-h-[280px]">
+    <Loader2 size={24} className="animate-spin text-orange-500 mb-2" />
+    <p className="text-xs font-medium text-gray-500">Memuat tampilan...</p>
+  </div>
+);
 
 const App: React.FC = () => {
   // Navigation & Layout State
@@ -38,197 +87,157 @@ const App: React.FC = () => {
   const [hasNotification, setHasNotification] = useState(true);
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
 
-  // Products & Categories State (Persisted)
-  const [products, setProducts] = useState<Product[]>(() => {
-    try {
-      const saved = localStorage.getItem('epaper_pos_products');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_PRODUCTS;
-  });
+  // Lightweight bootstrap metadata state (full tables are paginated per-view)
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [activeTenantId, setActiveTenantId] = useState<string>('tenant-tms-001');
 
-  const [categories, setCategories] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('epaper_pos_categories');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_CATEGORIES;
-  });
+  // View-level invalidation counters so only active/affected views refresh from SQLite
+  const [productsRefreshKey, setProductsRefreshKey] = useState(0);
+  const [categoriesRefreshKey, setCategoriesRefreshKey] = useState(0);
+  const [transactionsRefreshKey, setTransactionsRefreshKey] = useState(0);
+  const [buybacksRefreshKey, setBuybacksRefreshKey] = useState(0);
+  const [customersRefreshKey, setCustomersRefreshKey] = useState(0);
+  const [promosRefreshKey, setPromosRefreshKey] = useState(0);
+  const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
 
-  // Transactions State (Persisted)
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      const saved = localStorage.getItem('epaper_pos_transactions');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_TRANSACTIONS;
-  });
+  // Toast feedback state from global ToastContext
+  const { showToast } = useToast();
 
-  // Buyback State (Persisted)
-  const [buybacks, setBuybacks] = useState<BuybackItem[]>(() => {
+  // Load lightweight bootstrap metadata (categories, tenants, active tenant)
+  const fetchBootstrapData = useCallback(async () => {
+    setIsLoadingData(true);
+    setLoadError(null);
     try {
-      const saved = localStorage.getItem('epaper_pos_buybacks');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_BUYBACKS;
-  });
-
-  // Promos State (Persisted)
-  const [promos, setPromos] = useState<PromoCampaign[]>(() => {
-    try {
-      const saved = localStorage.getItem('epaper_pos_promos');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_PROMOS;
-  });
+      const data = await posApi.bootstrap();
+      setCategories(data.categories);
+      setTenants(data.tenants);
+      setActiveTenantId(data.activeTenantId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal memuat data dari database SQLite.';
+      setLoadError(msg);
+      showToast('error', msg);
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, [showToast]);
 
   useEffect(() => {
-    localStorage.setItem('epaper_pos_promos', JSON.stringify(promos));
-  }, [promos]);
-
-  // Customers State (Persisted)
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    try {
-      const saved = localStorage.getItem('epaper_pos_customers');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_CUSTOMERS;
-  });
+    fetchBootstrapData();
+  }, [fetchBootstrapData]);
 
   const [buybackInitialCustomer, setBuybackInitialCustomer] = useState<{
+    id?: string;
     name: string;
     phone: string;
+    nik?: string;
+    address?: string;
   } | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem('epaper_pos_customers', JSON.stringify(customers));
-  }, [customers]);
-
-  const handleSaveCustomer = (savedCustomer: Customer) => {
-    setCustomers(prev => {
-      const index = prev.findIndex(c => c.id === savedCustomer.id);
-      if (index >= 0) {
-        const next = [...prev];
-        next[index] = savedCustomer;
-        return next;
+  // Customer CRUD
+  const handleSaveCustomer = async (savedCustomer: Customer, isEdit?: boolean) => {
+    try {
+      if (isEdit) {
+        const updated = await posApi.updateCustomer(savedCustomer.id, savedCustomer);
+        showToast('success', `Data pelanggan "${updated.name}" diperbarui.`);
+      } else {
+        const created = await posApi.createCustomer(savedCustomer);
+        showToast('success', `Pelanggan "${created.name}" ditambahkan ke database.`);
       }
-      return [savedCustomer, ...prev];
-    });
+      setCustomersRefreshKey(k => k + 1);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menyimpan pelanggan.');
+      throw err;
+    }
   };
 
-  const handleDeleteCustomer = (id: string) => {
-    setCustomers(prev => prev.filter(c => c.id !== id));
+  const handleDeleteCustomer = async (id: string) => {
+    try {
+      await posApi.deleteCustomer(id);
+      setCustomersRefreshKey(k => k + 1);
+      showToast('success', 'Data pelanggan berhasil dihapus.');
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menghapus pelanggan.');
+      throw err;
+    }
   };
 
-  // Multi-Tenant State (Persisted)
-  const [tenants, setTenants] = useState<Tenant[]>(() => {
-    try {
-      const saved = localStorage.getItem('epaper_pos_tenants');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_TENANTS;
-  });
-
-  const [activeTenantId, setActiveTenantId] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('epaper_pos_active_tenant_id');
-      if (saved) return saved;
-    } catch {}
-    return INITIAL_TENANTS[0]?.id || 'tenant-tms-001';
-  });
-
+  // Multi-Tenant CRUD
   const [isRegisterTenantOpen, setIsRegisterTenantOpen] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('epaper_pos_tenants', JSON.stringify(tenants));
-  }, [tenants]);
-
-  useEffect(() => {
-    localStorage.setItem('epaper_pos_active_tenant_id', activeTenantId);
-  }, [activeTenantId]);
-
   const activeTenant = tenants.find(t => t.id === activeTenantId) || tenants[0];
 
-  const handleRegisterTenant = (newTenant: Tenant) => {
-    setTenants(prev => [newTenant, ...prev]);
-    setActiveTenantId(newTenant.id);
+  const handleSelectTenant = async (tenantId: string) => {
+    const prevId = activeTenantId;
+    setActiveTenantId(tenantId);
+    try {
+      await posApi.setActiveTenant(tenantId);
+      const selected = tenants.find(t => t.id === tenantId);
+      showToast('success', `Berhasil beralih ke outlet "${selected?.name || tenantId}".`);
+    } catch (err) {
+      setActiveTenantId(prevId);
+      showToast('error', err instanceof Error ? err.message : 'Gagal memilih outlet aktif.');
+    }
   };
 
-  // Synchronize product promo flags dynamically with active promos (O(1) Map Lookup & Memoized)
-  const productsWithPromo = useMemo(() => {
-    const activePromos = promos.filter(p => p.isActive);
-    if (activePromos.length === 0) {
-      return products.map(product => ({
-        ...product,
-        isPromo: false,
-        promoDiscountPercent: undefined,
-        promoLabel: undefined,
-      }));
+  const handleRegisterTenant = async (newTenant: Tenant) => {
+    try {
+      const created = await posApi.registerTenant(newTenant);
+      setTenants(prev => [created, ...prev]);
+      setActiveTenantId(created.id);
+      setIsRegisterTenantOpen(false);
+      showToast('success', `Outlet "${created.name}" berhasil didaftarkan.`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal mendaftarkan outlet.');
+      throw err;
     }
-
-    const promoMap = new Map<number, PromoCampaign>();
-    for (const promo of activePromos) {
-      for (const prodId of promo.productIds) {
-        if (!promoMap.has(prodId)) {
-          promoMap.set(prodId, promo);
-        }
-      }
-    }
-
-    return products.map(product => {
-      const applicablePromo = promoMap.get(product.id);
-      if (applicablePromo) {
-        return {
-          ...product,
-          isPromo: true,
-          promoDiscountPercent: applicablePromo.discountPercent,
-          promoLabel: applicablePromo.label,
-        };
-      }
-      return {
-        ...product,
-        isPromo: false,
-        promoDiscountPercent: undefined,
-        promoLabel: undefined,
-      };
-    });
-  }, [products, promos]);
-
-  // Index map SKU & ID produk untuk O(1) scanner & lookup super instan
-  const productLookupMap = useMemo(() => {
-    const map = new Map<string, Product>();
-    for (const p of productsWithPromo) {
-      map.set(p.sku.toLowerCase(), p);
-      map.set(p.name.toLowerCase(), p);
-      map.set(p.id.toString(), p);
-      const alphaNum = p.sku.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (alphaNum.length >= 3) {
-        map.set(alphaNum, p);
-      }
-    }
-    return map;
-  }, [productsWithPromo]);
-
-  const handleSavePromo = (savedPromo: PromoCampaign) => {
-    setPromos(prev => {
-      const index = prev.findIndex(p => p.id === savedPromo.id);
-      if (index >= 0) {
-        const next = [...prev];
-        next[index] = savedPromo;
-        return next;
-      }
-      return [savedPromo, ...prev];
-    });
   };
 
-  const handleDeletePromo = (id: string) => {
-    setPromos(prev => prev.filter(p => p.id !== id));
+  // Promo CRUD
+  const handleSavePromo = async (savedPromo: PromoCampaign, isEdit?: boolean) => {
+    try {
+      if (isEdit) {
+        const updated = await posApi.updatePromo(savedPromo.id, savedPromo);
+        showToast('success', `Promo "${updated.name}" diperbarui.`);
+      } else {
+        const created = await posApi.createPromo(savedPromo);
+        showToast('success', `Promo "${created.name}" ditambahkan.`);
+      }
+      setPromosRefreshKey(k => k + 1);
+      setProductsRefreshKey(k => k + 1);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menyimpan promo.');
+      throw err;
+    }
   };
 
-  const handleTogglePromoStatus = (id: string) => {
-    setPromos(prev =>
-      prev.map(p => (p.id === id ? { ...p, isActive: !p.isActive } : p))
-    );
+  const handleDeletePromo = async (id: string) => {
+    try {
+      await posApi.deletePromo(id);
+      setPromosRefreshKey(k => k + 1);
+      setProductsRefreshKey(k => k + 1);
+      showToast('success', 'Promo berhasil dihapus.');
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menghapus promo.');
+      throw err;
+    }
+  };
+
+  const handleTogglePromoStatus = async (id: string) => {
+    try {
+      const updated = await posApi.togglePromoStatus(id);
+      setPromosRefreshKey(k => k + 1);
+      setProductsRefreshKey(k => k + 1);
+      showToast(
+        'success',
+        updated.isActive
+          ? `Promo "${updated.name}" diaktifkan.`
+          : `Promo "${updated.name}" dinonaktifkan.`
+      );
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal mengubah status promo.');
+    }
   };
 
   // Cart & POS State
@@ -241,6 +250,7 @@ const App: React.FC = () => {
 
   // Payment & Receipts Modals State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [customerId, setCustomerId] = useState<string | undefined>(undefined);
   const [customerName, setCustomerName] = useState('Pelanggan Umum');
   const [selectedReceipt, setSelectedReceipt] = useState<Transaction | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -249,11 +259,12 @@ const App: React.FC = () => {
   const [selectedBuybackReceipt, setSelectedBuybackReceipt] = useState<BuybackItem | null>(null);
   const [isBuybackReceiptModalOpen, setIsBuybackReceiptModalOpen] = useState(false);
 
-  // Inventory Modals State
+  // Inventory Modals State (Create & Edit)
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
 
-  // Responsive sidebar collapsing on tablet & mobile (< 1024px)
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
@@ -265,62 +276,42 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Cart Totals Calculation
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.harga * item.qty, 0), [cart]);
   const tax = useMemo(() => Math.round(subtotal * 0.11), [subtotal]);
   const grandTotal = useMemo(() => subtotal + tax, [subtotal, tax]);
 
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-
-  // Debounce search query 200ms agar UI tidak freeze saat mengetik di dataset ribuan produk
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 200);
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
-
-  const filteredProducts = useMemo(() => {
-    const q = debouncedSearchQuery.trim().toLowerCase();
-    if (!q) return productsWithPromo;
-    return productsWithPromo.filter(
-      p =>
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-    );
-  }, [productsWithPromo, debouncedSearchQuery]);
-
   // Cart Handlers
-  const handleAddToCart = (product: Product) => {
-    if (product.stok <= 0) {
-      alert(`Stok produk ${product.name} habis.`);
-      return;
-    }
-
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        if (existing.qty >= product.stok) {
-          alert(`Jumlah melebihi stok yang tersedia (${product.stok} pcs).`);
-          return prev;
-        }
-        return prev.map(item => (item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+  const handleAddToCart = useCallback(
+    (product: Product) => {
+      if (product.stok <= 0) {
+        showToast('error', `Stok produk ${product.name} habis.`);
+        return;
       }
-      return [...prev, { ...product, qty: 1 }];
-    });
-  };
+
+      setCart(prev => {
+        const existing = prev.find(item => item.id === product.id);
+        if (existing) {
+          if (existing.qty >= product.stok) {
+            showToast('error', `Jumlah melebihi stok yang tersedia (${product.stok} pcs).`);
+            return prev;
+          }
+          return prev.map(item => (item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+        }
+        return [...prev, { ...product, qty: 1 }];
+      });
+    },
+    [showToast]
+  );
 
   const handleUpdateQty = (id: number, delta: number) => {
     setCart(prev =>
       prev
         .map(item => {
           if (item.id === id) {
-            const product = products.find(p => p.id === id);
-            const maxStok = product ? product.stok : item.stok;
+            const maxStok = item.stok;
             const newQty = item.qty + delta;
             if (delta > 0 && newQty > maxStok) {
-              alert(`Jumlah maksimal sesuai stok adalah ${maxStok} pcs.`);
+              showToast('error', `Jumlah maksimal sesuai stok adalah ${maxStok} pcs.`);
               return item;
             }
             return newQty > 0 ? { ...item, qty: newQty } : item;
@@ -332,40 +323,61 @@ const App: React.FC = () => {
   };
 
   const handleRemoveItem = (id: number) => {
+    const removed = cart.find(c => c.id === id);
     setCart(prev => prev.filter(item => item.id !== id));
+    if (removed) {
+      showToast('success', `"${removed.name}" dihapus dari keranjang.`);
+    }
   };
 
-  // Barcode Auto-Scan Logic dengan O(1) Map Lookup
-  const handleAutoScanCode = (code: string): boolean => {
-    const clean = code.trim().toLowerCase();
-    if (!clean) return false;
+  const handleClearCart = () => {
+    setCart([]);
+    showToast('success', 'Keranjang pesanan berhasil dikosongkan.');
+  };
 
-    let found = productLookupMap.get(clean);
-    if (!found) {
-      const alphaNum = clean.replace(/[^a-z0-9]/g, '');
-      if (alphaNum.length >= 3) {
-        found = productLookupMap.get(alphaNum);
+  // Indexed SQLite Lookup for Barcode / SKU / QR / Name Scan
+  const handleAutoScanCode = useCallback(
+    async (code: string): Promise<Product | null> => {
+      const clean = extractBarcodeValue(code);
+      if (!clean) {
+        showToast('warning', 'Masukkan kode barcode atau SKU produk terlebih dahulu.');
+        return null;
       }
-    }
 
-    if (found) {
-      handleAddToCart(found);
-      playScannerBeep(isSoundEnabled);
-      setScanCount(prev => prev + 1);
-      setScanFeedback({
-        product: found,
-        time: new Date().toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
-      });
-      setTimeout(() => setScanFeedback(null), 3000);
-      setSearchQuery('');
-      return true;
-    }
-    return false;
-  };
+      try {
+        const found = await posApi.lookupProductByCode(clean);
+        if (found.stok <= 0) {
+          showToast('error', `Stok produk "${found.name}" (${found.sku}) sedang habis.`);
+          return null;
+        }
+        handleAddToCart(found);
+        playScannerBeep(isSoundEnabled);
+        setScanCount(prev => prev + 1);
+        setScanFeedback({
+          product: found,
+          time: new Date().toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }),
+        });
+        setTimeout(() => setScanFeedback(null), 3000);
+        setSearchQuery('');
+        return found;
+      } catch (err) {
+        showToast(
+          'error',
+          err instanceof Error ? err.message : `Kode barcode / SKU "${clean}" tidak ditemukan.`
+        );
+        return null;
+      }
+    },
+    [handleAddToCart, isSoundEnabled, showToast]
+  );
 
-  // Global Hardware Barcode Scanner Listener (Keystrokes with Enter)
+  // Global Hardware Barcode Scanner Listener
   useEffect(() => {
-    let scanBuffer ='';
+    let scanBuffer = '';
     let lastKeyTime = Date.now();
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -374,15 +386,18 @@ const App: React.FC = () => {
       const interval = now - lastKeyTime;
       lastKeyTime = now;
 
-      if (e.key ==='Enter') {
-        const queryToScan = (scanBuffer.length >= 3 ? scanBuffer : searchQuery).trim();
-        if (queryToScan) {
-          const success = handleAutoScanCode(queryToScan);
-          if (success) {
-            e.preventDefault();
-          }
+      const targetTag = (e.target as HTMLElement | null)?.tagName;
+      const isInputFocused =
+        targetTag === 'INPUT' || targetTag === 'TEXTAREA' || targetTag === 'SELECT';
+
+      if (e.key === 'Enter') {
+        if (scanBuffer.length >= 3) {
+          e.preventDefault();
+          void handleAutoScanCode(scanBuffer.trim());
+        } else if (!isInputFocused && searchQuery.trim()) {
+          void handleAutoScanCode(searchQuery.trim());
         }
-        scanBuffer ='';
+        scanBuffer = '';
       } else if (e.key.length === 1) {
         if (interval > 80) {
           scanBuffer = e.key;
@@ -394,11 +409,11 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchQuery, products, isSoundEnabled]);
+  }, [searchQuery, handleAutoScanCode]);
 
-  // Payment Confirmation Handler
-  const handleConfirmPayment = (paymentData: {
-    method:'cash' |'debit' |'transfer' |'qris';
+  // Payment Confirmation Handler (SQLite Atomic Checkout + Stock Deduction)
+  const handleConfirmPayment = async (paymentData: {
+    method: 'cash' | 'debit' | 'transfer' | 'qris';
     cashReceived?: number;
     debitBank?: string;
     debitCardLast4?: string;
@@ -406,135 +421,172 @@ const App: React.FC = () => {
     transferBank?: string;
     transferRef?: string;
   }) => {
-    const now = new Date();
-    const dateNum = now.toISOString().slice(0, 10).replace(/-/g,'');
-    const invoiceNo = `TRX-${dateNum}-${String(transactions.length + 1).padStart(3,'0')}`;
-
-    const txItems = cart.map(item => ({
-      id: item.id,
-      sku: item.sku,
-      name: item.name,
-      berat: item.berat,
-      harga: item.harga,
-      qty: item.qty,
-      subtotal: item.harga * item.qty,
-      image: item.image,
-    }));
-
-    const totalQty = txItems.reduce((acc, item) => acc + item.qty, 0);
-    const totalBerat = parseFloat(txItems.reduce((acc, item) => acc + item.berat * item.qty, 0).toFixed(2));
-
-    const newTransaction: Transaction = {
-      id: invoiceNo,
-      invoiceNo,
-      dateTime: now.toISOString(),
-      dateStr: now.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }),
-      timeStr: now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
-      cashier:'Administrator Kasir (Shift 1)',
-      customerName: customerName.trim() ||'Pelanggan Umum',
-      items: txItems,
-      totalQty,
-      totalBerat,
-      subtotal,
-      tax,
-      grandTotal,
-      paymentMethod: paymentData.method,
-      paymentDetails: {
-        cashReceived: paymentData.cashReceived,
-        cashChange: paymentData.cashReceived ? Math.max(0, paymentData.cashReceived - grandTotal) : undefined,
-        debitBank: paymentData.debitBank,
-        debitCardLast4: paymentData.debitCardLast4,
-        debitApprovalCode: paymentData.debitApprovalCode,
-        transferBank: paymentData.transferBank,
-        transferRef: paymentData.transferRef,
-        qrisNmid: paymentData.method ==='qris' ?'ID102003928192' : undefined,
-        qrisRrn: paymentData.method ==='qris' ? `RRN${Date.now().toString().slice(-8)}` : undefined,
-      },
-    };
-
-    // Deduct stock in products
-    setProducts(prevProducts => {
-      const updated = prevProducts.map(p => {
-        const cartMatch = cart.find(c => c.id === p.id);
-        if (cartMatch) {
-          return { ...p, stok: Math.max(0, p.stok - cartMatch.qty) };
-        }
-        return p;
+    try {
+      const result = await posApi.createTransaction({
+        cashier: 'Administrator Kasir (Shift 1)',
+        customerId,
+        customerName: customerName.trim() || 'Pelanggan Umum',
+        items: cart.map(item => ({ id: item.id, qty: item.qty })),
+        paymentMethod: paymentData.method,
+        paymentDetails: {
+          cashReceived: paymentData.cashReceived,
+          debitBank: paymentData.debitBank,
+          debitCardLast4: paymentData.debitCardLast4,
+          debitApprovalCode: paymentData.debitApprovalCode,
+          transferBank: paymentData.transferBank,
+          transferRef: paymentData.transferRef,
+        },
       });
-      try {
-        localStorage.setItem('epaper_pos_products', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
 
-    // Save transaction
-    setTransactions(prev => {
-      const updated = [newTransaction, ...prev];
-      try {
-        localStorage.setItem('epaper_pos_transactions', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
-    setCart([]);
-    playCashRegisterChime(isSoundEnabled);
-    setIsPaymentModalOpen(false);
-    setSelectedReceipt(newTransaction);
-    setIsReceiptModalOpen(true);
-  };
-
-  // Buyback Creation Handler
-  const handleSaveBuyback = (newBuybackData: Omit<BuybackItem,'id' |'invoiceNo' |'date'>) => {
-    const now = new Date();
-    const dateStr =
-      now.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) +
-',' +
-      now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
-    const invoiceNo = `BB-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2,'0')}${now .getDate() .toString() .padStart(2,'0')}-${(buybacks.length + 1).toString().padStart(3,'0')}`;
-
-    const createdBuyback: BuybackItem = {
-      ...newBuybackData,
-      id: `bb-${Date.now()}`,
-      invoiceNo,
-      date: dateStr,
-    };
-
-    const updated = [createdBuyback, ...buybacks];
-    setBuybacks(updated);
-    try {
-      localStorage.setItem('epaper_pos_buybacks', JSON.stringify(updated));
-    } catch {}
-
-    setSelectedBuybackReceipt(createdBuyback);
-    setIsBuybackReceiptModalOpen(true);
-  };
-
-  // Inventory Save Product Handler
-  const handleSaveProduct = (newProductData: Omit<Product,'id'>) => {
-    const created: Product = {
-      ...newProductData,
-      id: Date.now(),
-    };
-    const updated = [created, ...products];
-    setProducts(updated);
-    try {
-      localStorage.setItem('epaper_pos_products', JSON.stringify(updated));
-    } catch {}
-    setIsAddProductModalOpen(false);
-  };
-
-  // Inventory Save Category Handler
-  const handleSaveCategory = (categoryName: string) => {
-    if (categories.includes(categoryName)) {
-      alert('Kategori tersebut sudah ada.');
-      return;
+      setCart([]);
+      setCustomerId(undefined);
+      setCustomerName('Pelanggan Umum');
+      setProductsRefreshKey(k => k + 1);
+      setTransactionsRefreshKey(k => k + 1);
+      setCustomersRefreshKey(k => k + 1);
+      setDashboardRefreshKey(k => k + 1);
+      playCashRegisterChime(isSoundEnabled);
+      setIsPaymentModalOpen(false);
+      setSelectedReceipt(result.transaction);
+      setIsReceiptModalOpen(true);
+      showToast('success', `Transaksi ${result.transaction.invoiceNo} berhasil disimpan.`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal memproses pembayaran.');
+      throw err;
     }
-    const updated = [...categories, categoryName];
-    setCategories(updated);
+  };
+
+  // Transaction Void (Immutable Financial Ledger — Edit & Hard Delete Prohibited)
+  const handleVoidTransaction = async (id: string, reason: string, restoreStock: boolean) => {
     try {
-      localStorage.setItem('epaper_pos_categories', JSON.stringify(updated));
-    } catch {}
-    setIsAddCategoryModalOpen(false);
+      const voided = await posApi.voidTransaction(id, { reason, restoreStock });
+      setTransactionsRefreshKey(k => k + 1);
+      if (restoreStock) {
+        setProductsRefreshKey(k => k + 1);
+      }
+      setDashboardRefreshKey(k => k + 1);
+      setCustomersRefreshKey(k => k + 1);
+      showToast(
+        'success',
+        restoreStock
+          ? `Transaksi ${voided.invoiceNo} di-void & stok barang dikembalikan ke inventaris.`
+          : `Transaksi ${voided.invoiceNo} berhasil di-void.`
+      );
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal mem-void transaksi.');
+      throw err;
+    }
+  };
+
+  // Buyback Create & Void (Immutable Financial Payout & KYC Voucher)
+  const handleSaveBuyback = async (buybackData: BuybackCreatePayload) => {
+    try {
+      const created = await posApi.createBuyback(buybackData);
+      setBuybackInitialCustomer(null);
+      setBuybacksRefreshKey(k => k + 1);
+      setDashboardRefreshKey(k => k + 1);
+      setCustomersRefreshKey(k => k + 1);
+      setSelectedBuybackReceipt(created);
+      setIsBuybackReceiptModalOpen(true);
+      showToast('success', `Nota buyback ${created.invoiceNo} berhasil disimpan.`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menyimpan transaksi buyback.');
+      throw err;
+    }
+  };
+
+  const handleVoidBuyback = async (id: string, reason: string) => {
+    try {
+      const voided = await posApi.voidBuyback(id, { reason });
+      setBuybacksRefreshKey(k => k + 1);
+      setDashboardRefreshKey(k => k + 1);
+      setCustomersRefreshKey(k => k + 1);
+      showToast('success', `Nota buyback ${voided.invoiceNo} berhasil di-void.`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal mem-void transaksi buyback.');
+      throw err;
+    }
+  };
+
+  // Inventory Product CRUD
+  const handleSaveProduct = async (productData: Omit<Product, 'id'>, editId?: number) => {
+    try {
+      if (editId !== undefined) {
+        const updated = await posApi.updateProduct(editId, productData);
+        if (!categories.includes(updated.category)) {
+          setCategories(prev => [...prev, updated.category]);
+        }
+        setProductsRefreshKey(k => k + 1);
+        setCategoriesRefreshKey(k => k + 1);
+        setDashboardRefreshKey(k => k + 1);
+        setEditingProduct(null);
+        setIsAddProductModalOpen(false);
+        showToast('success', `Barang "${updated.name}" berhasil diperbarui.`);
+      } else {
+        const created = await posApi.createProduct(productData);
+        if (!categories.includes(created.category)) {
+          setCategories(prev => [...prev, created.category]);
+        }
+        setProductsRefreshKey(k => k + 1);
+        setCategoriesRefreshKey(k => k + 1);
+        setDashboardRefreshKey(k => k + 1);
+        setIsAddProductModalOpen(false);
+        showToast('success', `Barang "${created.name}" ditambahkan ke inventaris.`);
+      }
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menyimpan data barang.');
+      throw err;
+    }
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    try {
+      await posApi.deleteProduct(id);
+      setCart(prev => prev.filter(c => c.id !== id));
+      setProductsRefreshKey(k => k + 1);
+      setCategoriesRefreshKey(k => k + 1);
+      setDashboardRefreshKey(k => k + 1);
+      showToast('success', 'Barang berhasil dihapus dari inventaris.');
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menghapus barang.');
+      throw err;
+    }
+  };
+
+  // Inventory Category CRUD
+  const handleSaveCategory = async (categoryName: string, oldName?: string) => {
+    try {
+      if (oldName) {
+        const res = await posApi.renameCategory(oldName, categoryName);
+        setCategories(res.categories);
+        setCategoriesRefreshKey(k => k + 1);
+        setProductsRefreshKey(k => k + 1);
+        setEditingCategory(null);
+        setIsAddCategoryModalOpen(false);
+        showToast('success', `Kategori "${oldName}" diubah menjadi "${res.newName}".`);
+      } else {
+        const res = await posApi.createCategory(categoryName);
+        setCategories(res.categories);
+        setCategoriesRefreshKey(k => k + 1);
+        setIsAddCategoryModalOpen(false);
+        showToast('success', `Kategori "${res.name}" berhasil ditambahkan.`);
+      }
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menyimpan kategori.');
+      throw err;
+    }
+  };
+
+  const handleDeleteCategory = async (categoryName: string) => {
+    try {
+      const res = await posApi.deleteCategory(categoryName);
+      setCategories(res.categories);
+      setCategoriesRefreshKey(k => k + 1);
+      showToast('success', `Kategori "${categoryName}" berhasil dihapus.`);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Gagal menghapus kategori.');
+      throw err;
+    }
   };
 
   return (
@@ -572,7 +624,7 @@ const App: React.FC = () => {
             }}
             tenants={tenants}
             activeTenantId={activeTenantId}
-            onSelectTenant={setActiveTenantId}
+            onSelectTenant={handleSelectTenant}
             onOpenRegisterModal={() => setIsRegisterTenantOpen(true)}
           />
 
@@ -585,10 +637,28 @@ const App: React.FC = () => {
                   : 'p-2 sm:p-4 pb-20 md:pb-4 overflow-y-auto'
               }`}
             >
-              {activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS' ? (
+              {isLoadingData ? (
+                <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-lg border border-gray-200 p-8 text-gray-500">
+                  <Loader2 size={28} className="animate-spin text-orange-500 mb-3" />
+                  <p className="text-sm font-semibold text-gray-700">Memuat data dari database SQLite...</p>
+                </div>
+              ) : loadError ? (
+                <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-lg border border-red-200 p-8 text-center">
+                  <AlertCircle size={32} className="text-red-500 mb-2" />
+                  <p className="text-sm font-bold text-gray-900">Gagal terhubung ke database SQLite</p>
+                  <p className="text-xs text-gray-500 mt-1 mb-4">{loadError}</p>
+                  <button
+                    type="button"
+                    onClick={fetchBootstrapData}
+                    className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg cursor-pointer"
+                  >
+                    Coba Muat Ulang
+                  </button>
+                </div>
+              ) : activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS' ? (
                 <PosView
-                  products={productsWithPromo}
-                  filteredProducts={filteredProducts}
+                  categories={categories}
+                  refreshTrigger={productsRefreshKey}
                   searchQuery={searchQuery}
                   onSearchChange={setSearchQuery}
                   onAutoScanCode={handleAutoScanCode}
@@ -597,97 +667,112 @@ const App: React.FC = () => {
                   onAddToCart={handleAddToCart}
                   onUpdateQty={handleUpdateQty}
                   onRemoveItem={handleRemoveItem}
+                  onClearCart={handleClearCart}
                   subtotal={subtotal}
                   tax={tax}
                   grandTotal={grandTotal}
                   onOpenPaymentModal={() => setIsPaymentModalOpen(true)}
                 />
-              ) : activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian' ? (
-                <DailyTransactionsView
-                  transactions={transactions}
-                  onSelectReceipt={tx => {
-                    setSelectedReceipt(tx);
-                    setIsReceiptModalOpen(true);
-                  }}
-                  onNavigateToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
-                />
-              ) : activeMenu === 'Promo' ? (
-                <PromoManagementView
-                  promos={promos}
-                  products={productsWithPromo}
-                  onSavePromo={handleSavePromo}
-                  onDeletePromo={handleDeletePromo}
-                  onTogglePromoStatus={handleTogglePromoStatus}
-                  onNavigateToPosWithPromo={() => setActiveMenu('Kasir POS (Penjualan)')}
-                />
-              ) : activeMenu === 'Daftar Barang' ? (
-                <ProductListView
-                  products={productsWithPromo}
-                  onOpenAddModal={() => setIsAddProductModalOpen(true)}
-                  onAddToCartAndOpenPos={p => {
-                    handleAddToCart(p);
-                    setActiveMenu('Kasir POS (Penjualan)');
-                  }}
-                />
-              ) : activeMenu === 'Daftar Kategori' ? (
-                <CategoryListView
-                  categories={categories}
-                  products={productsWithPromo}
-                  onOpenAddCategoryModal={() => setIsAddCategoryModalOpen(true)}
-                />
-              ) : activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? (
-                <BuybackView
-                  buybacks={buybacks}
-                  onSaveBuyback={handleSaveBuyback}
-                  onSelectReceipt={bb => {
-                    setSelectedBuybackReceipt(bb);
-                    setIsBuybackReceiptModalOpen(true);
-                  }}
-                  onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
-                  initialCustomer={buybackInitialCustomer}
-                />
-              ) : activeMenu === 'Pelanggan' ? (
-                <CustomerView
-                  customers={customers}
-                  transactions={transactions}
-                  buybacks={buybacks}
-                  onSaveCustomer={handleSaveCustomer}
-                  onDeleteCustomer={handleDeleteCustomer}
-                  onSelectCustomerForPOS={name => {
-                    setCustomerName(name);
-                    setActiveMenu('Kasir POS (Penjualan)');
-                  }}
-                  onSelectCustomerForBuyback={(name, phone) => {
-                    setBuybackInitialCustomer({ name, phone });
-                    setActiveMenu('Buyback (Pembelian)');
-                  }}
-                />
-              ) : activeMenu === 'Dashboard' ? (
-                <DashboardView
-                  products={productsWithPromo}
-                  transactions={transactions}
-                  buybacks={buybacks}
-                  activeTenant={activeTenant}
-                  onNavigateTo={setActiveMenu}
-                  onOpenRegisterTenant={() => setIsRegisterTenantOpen(true)}
-                />
-              ) : activeMenu === 'Multi-Tenant & Outlet' || activeMenu === 'Multi-Outlet' || activeMenu === 'Multi-Tenant' ? (
-                <TenantManagementView
-                  tenants={tenants}
-                  activeTenantId={activeTenantId}
-                  onSelectTenant={setActiveTenantId}
-                  onOpenRegisterModal={() => setIsRegisterTenantOpen(true)}
-                  onNavigateToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
-                />
               ) : (
-                <FallbackView title={activeMenu} onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')} />
+                <Suspense fallback={<ViewLoadingFallback />}>
+                  {activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian' ? (
+                    <DailyTransactionsView
+                      refreshTrigger={transactionsRefreshKey}
+                      onSelectReceipt={tx => {
+                        setSelectedReceipt(tx);
+                        setIsReceiptModalOpen(true);
+                      }}
+                      onVoidTransaction={handleVoidTransaction}
+                      onNavigateToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
+                    />
+                  ) : activeMenu === 'Promo' ? (
+                    <PromoManagementView
+                      refreshTrigger={promosRefreshKey}
+                      onSavePromo={handleSavePromo}
+                      onDeletePromo={handleDeletePromo}
+                      onTogglePromoStatus={handleTogglePromoStatus}
+                      onNavigateToPosWithPromo={() => setActiveMenu('Kasir POS (Penjualan)')}
+                    />
+                  ) : activeMenu === 'Daftar Barang' ? (
+                    <ProductListView
+                      refreshTrigger={productsRefreshKey}
+                      onOpenAddModal={() => {
+                        setEditingProduct(null);
+                        setIsAddProductModalOpen(true);
+                      }}
+                      onEditProduct={product => {
+                        setEditingProduct(product);
+                        setIsAddProductModalOpen(true);
+                      }}
+                      onDeleteProduct={handleDeleteProduct}
+                    />
+                  ) : activeMenu === 'Daftar Kategori' ? (
+                    <CategoryListView
+                      refreshTrigger={categoriesRefreshKey}
+                      onOpenAddCategoryModal={() => {
+                        setEditingCategory(null);
+                        setIsAddCategoryModalOpen(true);
+                      }}
+                      onEditCategory={cat => {
+                        setEditingCategory(cat);
+                        setIsAddCategoryModalOpen(true);
+                      }}
+                      onDeleteCategory={handleDeleteCategory}
+                    />
+                  ) : activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? (
+                    <BuybackView
+                      refreshTrigger={buybacksRefreshKey}
+                      onSaveBuyback={handleSaveBuyback}
+                      onVoidBuyback={handleVoidBuyback}
+                      onSelectReceipt={bb => {
+                        setSelectedBuybackReceipt(bb);
+                        setIsBuybackReceiptModalOpen(true);
+                      }}
+                      onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
+                      initialCustomer={buybackInitialCustomer}
+                    />
+                  ) : activeMenu === 'Pelanggan' ? (
+                    <CustomerView
+                      refreshTrigger={customersRefreshKey}
+                      onSaveCustomer={handleSaveCustomer}
+                      onDeleteCustomer={handleDeleteCustomer}
+                      onSelectCustomerForPOS={cust => {
+                        setCustomerId(cust.id);
+                        setCustomerName(cust.name);
+                        setActiveMenu('Kasir POS (Penjualan)');
+                      }}
+                      onSelectCustomerForBuyback={cust => {
+                        setBuybackInitialCustomer(cust);
+                        setActiveMenu('Buyback (Pembelian)');
+                      }}
+                    />
+                  ) : activeMenu === 'Dashboard' ? (
+                    <DashboardView
+                      refreshTrigger={dashboardRefreshKey}
+                      activeTenant={activeTenant}
+                      onNavigateTo={setActiveMenu}
+                      onOpenRegisterTenant={() => setIsRegisterTenantOpen(true)}
+                    />
+                  ) : activeMenu === 'Multi-Tenant & Outlet' ||
+                    activeMenu === 'Multi-Outlet' ||
+                    activeMenu === 'Multi-Tenant' ? (
+                    <TenantManagementView
+                      tenants={tenants}
+                      activeTenantId={activeTenantId}
+                      onSelectTenant={handleSelectTenant}
+                      onOpenRegisterModal={() => setIsRegisterTenantOpen(true)}
+                      onNavigateToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
+                    />
+                  ) : (
+                    <FallbackView title={activeMenu} onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')} />
+                  )}
+                </Suspense>
               )}
             </main>
-
           </div>
         </div>
 
-        {/* Bottom Navigation for Tablet & Mobile (lg:hidden) - menus moved from top to bottom */}
+        {/* Bottom Navigation for Tablet & Mobile (lg:hidden) */}
         <nav className="lg:hidden shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1.5 sm:px-3 py-0.5 flex items-center justify-around z-30 min-h-[48px]">
           <button
             type="button"
@@ -699,7 +784,14 @@ const App: React.FC = () => {
             }`}
           >
             <div className="relative">
-              <ShoppingCart size={18} className={activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS' ? 'text-orange-600' : 'text-gray-500'} />
+              <ShoppingCart
+                size={18}
+                className={
+                  activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS'
+                    ? 'text-orange-600'
+                    : 'text-gray-500'
+                }
+              />
               {cart.reduce((a, b) => a + b.qty, 0) > 0 && (
                 <span className="absolute -top-1 -right-2.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center font-mono">
                   {cart.reduce((a, b) => a + b.qty, 0)}
@@ -718,7 +810,14 @@ const App: React.FC = () => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            <Scale size={18} className={activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? 'text-orange-600' : 'text-gray-500'} />
+            <Scale
+              size={18}
+              className={
+                activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)'
+                  ? 'text-orange-600'
+                  : 'text-gray-500'
+              }
+            />
             <span className="text-[11px] font-semibold mt-0.5 leading-none">Buyback</span>
           </button>
 
@@ -731,7 +830,14 @@ const App: React.FC = () => {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            <ReceiptText size={18} className={activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian' ? 'text-orange-600' : 'text-gray-500'} />
+            <ReceiptText
+              size={18}
+              className={
+                activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian'
+                  ? 'text-orange-600'
+                  : 'text-gray-500'
+              }
+            />
             <span className="text-[11px] font-semibold mt-0.5 leading-none">Transaksi</span>
           </button>
 
@@ -758,63 +864,91 @@ const App: React.FC = () => {
           </button>
         </nav>
 
-        {/* Global Modals & Print Elements */}
-        <BarcodeScannerModal
-          isOpen={isScanModalOpen}
-          onClose={() => setIsScanModalOpen(false)}
-          products={productsWithPromo}
-          onScanCode={handleAutoScanCode}
-          isSoundEnabled={isSoundEnabled}
-          onToggleSound={() => setIsSoundEnabled(!isSoundEnabled)}
-          scanCount={scanCount}
-          totalCartQty={cart.reduce((acc, it) => acc + it.qty, 0)}
-        />
+        {/* Lazy Global Modals (only loaded on demand when opened) */}
+        <Suspense fallback={null}>
+          {isScanModalOpen && (
+            <BarcodeScannerModal
+              isOpen={isScanModalOpen}
+              onClose={() => setIsScanModalOpen(false)}
+              onScanCode={handleAutoScanCode}
+              isSoundEnabled={isSoundEnabled}
+              onToggleSound={() => setIsSoundEnabled(!isSoundEnabled)}
+              scanCount={scanCount}
+              totalCartQty={cart.reduce((acc, it) => acc + it.qty, 0)}
+            />
+          )}
 
-        <PaymentModal
-          isOpen={isPaymentModalOpen}
-          onClose={() => setIsPaymentModalOpen(false)}
-          cart={cart}
-          subtotal={subtotal}
-          tax={tax}
-          grandTotal={grandTotal}
-          customerName={customerName}
-          onCustomerNameChange={setCustomerName}
-          onConfirmPayment={handleConfirmPayment}
-        />
+          {isPaymentModalOpen && (
+            <PaymentModal
+              isOpen={isPaymentModalOpen}
+              onClose={() => setIsPaymentModalOpen(false)}
+              cart={cart}
+              subtotal={subtotal}
+              tax={tax}
+              grandTotal={grandTotal}
+              customerId={customerId}
+              customerName={customerName}
+              onCustomerChange={cust => {
+                setCustomerId(cust.id);
+                setCustomerName(cust.name);
+              }}
+              onCustomerCreated={() => setCustomersRefreshKey(k => k + 1)}
+              onConfirmPayment={handleConfirmPayment}
+            />
+          )}
 
-        <ReceiptModal
-          isOpen={isReceiptModalOpen}
-          onClose={() => setIsReceiptModalOpen(false)}
-          receipt={selectedReceipt}
-          onPrint={() => window.print()}
-          onViewDailyTransactions={() => setActiveMenu('Transaksi')}
-        />
+          {isReceiptModalOpen && (
+            <ReceiptModal
+              isOpen={isReceiptModalOpen}
+              onClose={() => setIsReceiptModalOpen(false)}
+              receipt={selectedReceipt}
+              onPrint={() => window.print()}
+              onViewDailyTransactions={() => setActiveMenu('Transaksi')}
+            />
+          )}
 
-        <BuybackReceiptModal
-          isOpen={isBuybackReceiptModalOpen}
-          onClose={() => setIsBuybackReceiptModalOpen(false)}
-          receipt={selectedBuybackReceipt}
-          onPrint={() => window.print()}
-        />
+          {isBuybackReceiptModalOpen && (
+            <BuybackReceiptModal
+              isOpen={isBuybackReceiptModalOpen}
+              onClose={() => setIsBuybackReceiptModalOpen(false)}
+              receipt={selectedBuybackReceipt}
+              onPrint={() => window.print()}
+            />
+          )}
 
-        <AddProductModal
-          isOpen={isAddProductModalOpen}
-          onClose={() => setIsAddProductModalOpen(false)}
-          categories={categories}
-          onSaveProduct={handleSaveProduct}
-        />
+          {isAddProductModalOpen && (
+            <AddProductModal
+              isOpen={isAddProductModalOpen}
+              onClose={() => {
+                setIsAddProductModalOpen(false);
+                setEditingProduct(null);
+              }}
+              categories={categories}
+              editingProduct={editingProduct}
+              onSaveProduct={handleSaveProduct}
+            />
+          )}
 
-        <AddCategoryModal
-          isOpen={isAddCategoryModalOpen}
-          onClose={() => setIsAddCategoryModalOpen(false)}
-          onSaveCategory={handleSaveCategory}
-        />
+          {isAddCategoryModalOpen && (
+            <AddCategoryModal
+              isOpen={isAddCategoryModalOpen}
+              onClose={() => {
+                setIsAddCategoryModalOpen(false);
+                setEditingCategory(null);
+              }}
+              editingCategory={editingCategory}
+              onSaveCategory={handleSaveCategory}
+            />
+          )}
 
-        <RegisterTenantModal
-          isOpen={isRegisterTenantOpen}
-          onClose={() => setIsRegisterTenantOpen(false)}
-          onSaveTenant={handleRegisterTenant}
-        />
+          {isRegisterTenantOpen && (
+            <RegisterTenantModal
+              isOpen={isRegisterTenantOpen}
+              onClose={() => setIsRegisterTenantOpen(false)}
+              onSaveTenant={handleRegisterTenant}
+            />
+          )}
+        </Suspense>
 
         <ScanFeedbackToast feedback={scanFeedback} />
 

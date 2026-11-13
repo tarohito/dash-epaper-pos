@@ -159,6 +159,20 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  body.printing-barcode #printable-receipt,
+  body.printing-barcode #printable-receipt *,
+  body.printing-barcode #printable-buyback-receipt,
+  body.printing-barcode #printable-buyback-receipt * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body:not(.printing-barcode) #printable-barcode-sheet,
+  body:not(.printing-barcode) #printable-barcode-sheet * {
+    display: none !important;
+    visibility: hidden !important;
+  }
 }
 
 

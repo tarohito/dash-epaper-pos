@@ -19,16 +19,20 @@ import {
   ArrowLeft,
   Printer,
 } from 'lucide-react';
-import { BuybackGoldItem, BuybackItem } from '../../types';
+import { BuybackCreatePayload, BuybackGoldItem, BuybackItem } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import { KADAR_PRESETS } from '../../constants/kadar';
 import { CustomSelect } from '../common/CustomSelect';
 import { NumericInput } from '../common/NumericInput';
+import { ConfirmModal } from '../common/ConfirmModal';
+import { useToast } from '../../contexts/ToastContext';
+import { CustomerLookupPicker, LinkedCustomerSummary } from '../customer/CustomerLookupPicker';
 
 interface BuybackFormPageProps {
-  onSaveBuyback: (newBuyback: Omit<BuybackItem, 'id' | 'invoiceNo' | 'date'>) => void;
+  onSaveBuyback: (newBuyback: BuybackCreatePayload, editId?: string) => Promise<void> | void;
   onCancel: () => void;
-  initialCustomer?: { name: string; phone: string } | null;
+  editingItem?: BuybackItem | null;
+  initialCustomer?: { id?: string; name: string; phone: string; nik?: string; address?: string } | null;
   existingCount?: number;
   branchName?: string;
   cashierName?: string;
@@ -37,16 +41,27 @@ interface BuybackFormPageProps {
 export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
   onSaveBuyback,
   onCancel,
+  editingItem,
   initialCustomer,
   existingCount = 0,
   branchName = 'e.paper Flagship Store - G-Walk Citraland',
   cashierName = 'Admin Kasir (Gold Advisor)',
 }) => {
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<BuybackGoldItem | null>(null);
+  const { showToast } = useToast();
+
   // Generate Live Transaction Info
   const [currentDateTime, setCurrentDateTime] = useState('');
   const [invoiceNoCode, setInvoiceNoCode] = useState('');
 
   useEffect(() => {
+    if (editingItem) {
+      setCurrentDateTime(editingItem.date);
+      setInvoiceNoCode(editingItem.invoiceNo);
+      return;
+    }
     const now = new Date();
     const dateFormatted = now.toLocaleDateString('id-ID', {
       day: '2-digit',
@@ -62,43 +77,89 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
     const pad = (n: number) => n.toString().padStart(2, '0');
     const code = `BB-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${(existingCount + 1).toString().padStart(3, '0')}`;
     setInvoiceNoCode(code);
-  }, [existingCount]);
+  }, [existingCount, editingItem]);
 
   // Bagian A: Data Penjual (Nasabah)
-  const [customerName, setCustomerName] = useState(initialCustomer?.name || '');
-  const [customerNik, setCustomerNik] = useState('');
-  const [customerNpwp, setCustomerNpwp] = useState('');
-  const [customerPhone, setCustomerPhone] = useState(initialCustomer?.phone || '');
-  const [customerAddress, setCustomerAddress] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<LinkedCustomerSummary | null>(() => {
+    if (editingItem?.customerId) {
+      return {
+        id: editingItem.customerId,
+        name: editingItem.customerName,
+        phone: editingItem.customerPhone,
+      };
+    }
+    if (initialCustomer?.id) {
+      return {
+        id: initialCustomer.id,
+        name: initialCustomer.name,
+        phone: initialCustomer.phone,
+      };
+    }
+    return null;
+  });
+  const [saveToCustomerMaster, setSaveToCustomerMaster] = useState<boolean>(true);
+  const [customerName, setCustomerName] = useState(editingItem?.customerName || initialCustomer?.name || '');
+  const [customerNik, setCustomerNik] = useState(editingItem?.customerNik || initialCustomer?.nik || '');
+  const [customerNpwp, setCustomerNpwp] = useState(editingItem?.customerNpwp || '');
+  const [customerPhone, setCustomerPhone] = useState(editingItem?.customerPhone || initialCustomer?.phone || '');
+  const [customerAddress, setCustomerAddress] = useState(editingItem?.customerAddress || initialCustomer?.address || '');
 
   // Bagian B: Detail Item Emas (Repeater)
-  const [items, setItems] = useState<BuybackGoldItem[]>([
-    {
-      id: `item-${Date.now()}-1`,
-      category: 'Logam Mulia Batangan',
-      brandType: 'Antam CertiEye',
-      kadar: '24K (99.99%)',
-      berat: 10,
-      serialNumber: '',
-      certYear: '2024',
-      kondisi: 'Baik / Utuh',
-      hargaPerGram: KADAR_PRESETS['24K (99.9%)'] || 1250000,
-      subtotal: 10 * (KADAR_PRESETS['24K (99.9%)'] || 1250000),
-    },
-  ]);
+  const [items, setItems] = useState<BuybackGoldItem[]>(() => {
+    if (editingItem?.items && editingItem.items.length > 0) {
+      return editingItem.items;
+    }
+    if (editingItem) {
+      return [
+        {
+          id: `item-${Date.now()}-1`,
+          category: editingItem.itemType.toLowerCase().includes('antam') || editingItem.itemType.toLowerCase().includes('batang')
+            ? 'Logam Mulia Batangan'
+            : 'Perhiasan',
+          brandType: editingItem.itemType,
+          kadar: editingItem.kadar,
+          berat: editingItem.beratBersih,
+          serialNumber: editingItem.sourceNote !== '-' ? editingItem.sourceNote : '',
+          kondisi: (editingItem.kondisi as BuybackGoldItem['kondisi']) || 'Baik / Utuh',
+          hargaPerGram: editingItem.hargaPerGram,
+          subtotal: Math.round(editingItem.beratBersih * editingItem.hargaPerGram),
+        },
+      ];
+    }
+    return [
+      {
+        id: `item-${Date.now()}-1`,
+        category: 'Logam Mulia Batangan',
+        brandType: 'Antam CertiEye',
+        kadar: '24K (99.99%)',
+        berat: 10,
+        serialNumber: '',
+        certYear: '2024',
+        kondisi: 'Baik / Utuh',
+        hargaPerGram: KADAR_PRESETS['24K (99.9%)'] || 1250000,
+        subtotal: 10 * (KADAR_PRESETS['24K (99.9%)'] || 1250000),
+      },
+    ];
+  });
 
   // Bagian C: Ringkasan & Pembayaran
-  const [potonganBiaya, setPotonganBiaya] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'cash'>('transfer');
-  const [bankName, setBankName] = useState('BCA');
-  const [accountNo, setAccountNo] = useState('');
-  const [accountHolder, setAccountHolder] = useState(initialCustomer?.name || '');
-  const [catatan, setCatatan] = useState('');
+  const [potonganBiaya, setPotonganBiaya] = useState<number>(
+    editingItem ? (editingItem.potonganBiaya ?? editingItem.biayaLebur ?? 0) : 0
+  );
+  const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'cash'>(
+    editingItem?.paymentMethod || 'transfer'
+  );
+  const [bankName, setBankName] = useState(editingItem?.bankName || 'BCA');
+  const [accountNo, setAccountNo] = useState(editingItem?.accountNo || '');
+  const [accountHolder, setAccountHolder] = useState(
+    editingItem?.accountHolder || editingItem?.customerName || initialCustomer?.name || ''
+  );
+  const [catatan, setCatatan] = useState(editingItem?.catatan || '');
 
   // Bagian D: Unggah Dokumen & Persetujuan
-  const [fotoKtp, setFotoKtp] = useState<string | null>(null);
-  const [fotoEmas, setFotoEmas] = useState<string | null>(null);
-  const [isAgreedLegal, setIsAgreedLegal] = useState(false);
+  const [fotoKtp, setFotoKtp] = useState<string | null>(editingItem?.fotoKtp || null);
+  const [fotoEmas, setFotoEmas] = useState<string | null>(editingItem?.fotoEmas || null);
+  const [isAgreedLegal, setIsAgreedLegal] = useState<boolean>(editingItem ? true : false);
 
   // Sync account holder with customer name initially if empty
   useEffect(() => {
@@ -129,12 +190,21 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
     setItems(prev => [...prev, newItem]);
   };
 
-  const handleRemoveItem = (id: string) => {
+  const handleRemoveItem = (item: BuybackGoldItem) => {
     if (items.length <= 1) {
-      alert('Minimal harus ada 1 item emas dalam transaksi buyback.');
+      const msg = 'Minimal harus ada 1 item emas dalam transaksi buyback.';
+      setFormError(msg);
+      showToast('warning', msg);
       return;
     }
-    setItems(prev => prev.filter(it => it.id !== id));
+    setPendingDeleteItem(item);
+  };
+
+  const handleConfirmRemoveItem = () => {
+    if (!pendingDeleteItem) return;
+    setItems(prev => prev.filter(it => it.id !== pendingDeleteItem.id));
+    showToast('success', `Item "${pendingDeleteItem.brandType}" dihapus dari daftar buyback.`);
+    setPendingDeleteItem(null);
   };
 
   const handleUpdateItem = (id: string, field: keyof BuybackGoldItem, value: any) => {
@@ -193,16 +263,36 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      const msg = 'Format file harus berupa gambar (JPG, PNG, atau WEBP).';
+      setFormError(msg);
+      showToast('error', msg, 'Validasi Unggah Foto');
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
-      alert('Ukuran file maksimal 5MB.');
+      const msg = 'Ukuran file foto maksimal 5MB.';
+      setFormError(msg);
+      showToast('error', msg, 'Validasi Unggah Foto');
       return;
     }
 
     const reader = new FileReader();
     reader.onload = event => {
       const result = event.target?.result as string;
-      if (target === 'ktp') setFotoKtp(result);
-      if (target === 'emas') setFotoEmas(result);
+      if (target === 'ktp') {
+        setFotoKtp(result);
+        showToast('success', 'Foto KTP nasabah berhasil diunggah.');
+      }
+      if (target === 'emas') {
+        setFotoEmas(result);
+        showToast('success', 'Foto fisik emas & sertifikat berhasil diunggah.');
+      }
+    };
+    reader.onerror = () => {
+      const msg = 'Gagal membaca file gambar. Silakan coba pilih file lain.';
+      setFormError(msg);
+      showToast('error', msg);
     };
     reader.readAsDataURL(file);
   };
@@ -219,111 +309,152 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
     );
   };
 
+  const failValidation = (msg: string) => {
+    setFormError(msg);
+    showToast('error', msg, 'Validasi Form Buyback');
+  };
+
   // Submit Handler
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
 
     // Validasi Bagian A
-    if (!customerName.trim()) {
-      alert('Harap isi Nama Lengkap nasabah sesuai KTP.');
+    if (!customerName.trim() || customerName.trim().length < 2) {
+      failValidation('Harap isi Nama Lengkap nasabah sesuai KTP (minimal 2 karakter).');
       return;
     }
     const cleanNik = customerNik.replace(/[^0-9]/g, '');
     if (cleanNik.length !== 16) {
-      alert(`Nomor NIK/KTP harus tepat 16 digit. (Saat ini: ${cleanNik.length} digit)`);
+      failValidation(`Nomor NIK/KTP harus tepat 16 digit angka (saat ini: ${cleanNik.length} digit).`);
       return;
     }
-    if (!customerPhone.trim()) {
-      alert('Harap isi Nomor HP / WhatsApp nasabah.');
+    const cleanPhoneDigits = customerPhone.replace(/[^0-9]/g, '');
+    if (!customerPhone.trim() || cleanPhoneDigits.length < 8 || cleanPhoneDigits.length > 15) {
+      failValidation('Nomor HP / WhatsApp nasabah tidak valid (minimal 8–15 digit angka).');
+      return;
+    }
+    const cleanNpwpDigits = customerNpwp.trim().replace(/[^0-9]/g, '');
+    if (customerNpwp.trim() && cleanNpwpDigits.length < 15) {
+      failValidation('Format Nomor NPWP tidak valid (minimal 15 digit angka jika diisi).');
       return;
     }
 
     // Validasi Bagian B
     if (items.length === 0) {
-      alert('Harap tambahkan minimal 1 item emas.');
+      failValidation('Harap tambahkan minimal 1 item emas.');
       return;
     }
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      if (it.berat <= 0) {
-        alert(`Berat item ke-${i + 1} (${it.brandType}) harus lebih dari 0 gram.`);
+      if (!it.brandType.trim()) {
+        failValidation(`Merek / jenis barang pada Item #${i + 1} wajib diisi.`);
         return;
       }
-      if (it.hargaPerGram <= 0) {
-        alert(`Harga per gram item ke-${i + 1} harus lebih dari Rp 0.`);
+      if (Number.isNaN(it.berat) || it.berat <= 0) {
+        failValidation(`Berat Item #${i + 1} (${it.brandType}) harus lebih dari 0 gram.`);
+        return;
+      }
+      if (Number.isNaN(it.hargaPerGram) || it.hargaPerGram <= 0) {
+        failValidation(`Harga beli per gram Item #${i + 1} harus lebih dari Rp 0.`);
         return;
       }
     }
 
     // Validasi Bagian C
+    if (potonganBiaya < 0) {
+      failValidation('Potongan biaya admin tidak boleh bernilai negatif.');
+      return;
+    }
+    if (potonganBiaya > totalNilaiKotor) {
+      failValidation('Potongan biaya admin tidak boleh melebihi total nilai kotor buyback.');
+      return;
+    }
     if (paymentMethod === 'transfer') {
-      if (!accountNo.trim()) {
-        alert('Harap isi Nomor Rekening tujuan pencairan.');
+      const cleanRek = accountNo.replace(/[^0-9]/g, '');
+      if (!cleanRek || cleanRek.length < 6) {
+        failValidation('Nomor Rekening tujuan wajib diisi minimal 6 digit angka.');
         return;
       }
       if (!accountHolder.trim()) {
-        alert('Harap isi Nama Pemilik Rekening.');
+        failValidation('Harap isi Nama Pemilik Rekening tujuan.');
         return;
       }
     }
 
     // Validasi Bagian D
-    if (!fotoKtp) {
-      alert('Harap unggah Foto KTP nasabah.');
+    if (!editingItem && !fotoKtp) {
+      failValidation('Harap unggah Foto KTP nasabah atau gunakan sample KTP.');
       return;
     }
-    if (!fotoEmas) {
-      alert('Harap unggah Foto Fisik Emas & Sertifikat/Nota.');
+    if (!editingItem && !fotoEmas) {
+      failValidation('Harap unggah Foto Fisik Emas & Sertifikat/Nota atau gunakan sample foto.');
       return;
     }
     if (!isAgreedLegal) {
-      alert('Nasabah wajib menyetujui pernyataan keabsahan kepemilikan emas.');
+      failValidation('Nasabah wajib mencentang pernyataan keabsahan kepemilikan emas.');
       return;
     }
 
-    // Siapkan summary untuk backward compatibility
     const itemTypeSummary = items.map(it => `${it.brandType} ${it.berat}g`).join(', ');
     const primaryKadar = items[0]?.kadar || '24K (99.9%)';
     const primaryKondisi = items[0]?.kondisi || 'Baik / Utuh';
     const avgHargaPerGram = Math.round(totalNilaiKotor / (totalBerat || 1));
 
-    // Kirim data ke parent
-    onSaveBuyback({
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
-      customerNik: cleanNik,
-      customerNpwp: customerNpwp.trim() || undefined,
-      customerAddress: customerAddress.trim() || undefined,
-      branchName,
-      cashierName,
-      sourceNote: items[0]?.serialNumber ? `Seri: ${items[0].serialNumber}` : 'Buyback Toko',
-      itemType: itemTypeSummary,
-      kadar: primaryKadar,
-      beratKotor: +totalBerat.toFixed(2),
-      potonganBatu: 0,
-      beratBersih: +totalBerat.toFixed(2),
-      hargaPerGram: avgHargaPerGram,
-      biayaLebur: potonganBiaya,
-      kondisi: primaryKondisi,
-      totalKotor: totalNilaiKotor,
-      potonganBiaya,
-      pph22: pph22Amount,
-      totalBayar: totalDiterimaBersih,
-      paymentMethod,
-      bankName: paymentMethod === 'transfer' ? bankName : undefined,
-      accountNo: paymentMethod === 'transfer' ? accountNo : undefined,
-      accountHolder: paymentMethod === 'transfer' ? accountHolder : undefined,
-      catatan: catatan.trim() || undefined,
-      fotoKtp: fotoKtp || undefined,
-      fotoEmas: fotoEmas || undefined,
-      isAgreedLegal: true,
-      items,
-    });
+    setIsSubmitting(true);
+    try {
+      await onSaveBuyback(
+        {
+          customerId: selectedCustomer?.id,
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          customerNik: cleanNik,
+          customerNpwp: customerNpwp.trim() || undefined,
+          customerAddress: customerAddress.trim() || undefined,
+          branchName: editingItem?.branchName || branchName,
+          cashierName: editingItem?.cashierName || cashierName,
+          sourceNote: items[0]?.serialNumber ? `Seri: ${items[0].serialNumber}` : 'Buyback Toko',
+          itemType: itemTypeSummary,
+          kadar: primaryKadar,
+          beratKotor: +totalBerat.toFixed(2),
+          potonganBatu: 0,
+          beratBersih: +totalBerat.toFixed(2),
+          hargaPerGram: avgHargaPerGram,
+          biayaLebur: potonganBiaya,
+          kondisi: primaryKondisi,
+          totalKotor: totalNilaiKotor,
+          potonganBiaya,
+          pph22: pph22Amount,
+          totalBayar: totalDiterimaBersih,
+          paymentMethod,
+          bankName: paymentMethod === 'transfer' ? bankName : undefined,
+          accountNo: paymentMethod === 'transfer' ? accountNo : undefined,
+          accountHolder: paymentMethod === 'transfer' ? accountHolder : undefined,
+          catatan: catatan.trim() || undefined,
+          fotoKtp: fotoKtp || undefined,
+          fotoEmas: fotoEmas || undefined,
+          isAgreedLegal: true,
+          items,
+          saveToCustomerMaster: !selectedCustomer && saveToCustomerMaster,
+        },
+        editingItem?.id
+      );
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Gagal menyimpan data buyback.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="space-y-6 pb-16 max-w-5xl mx-auto px-2 sm:px-4 pt-2">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form noValidate onSubmit={handleSubmit} className="space-y-6">
+        {formError && (
+          <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs sm:text-sm font-semibold text-red-700 flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
         {/* ========================================================= */}
         {/* 1. INFORMASI HEADER TRANSAKSI                             */}
         {/* ========================================================= */}
@@ -397,6 +528,33 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="mb-5 p-3.5 rounded-xl bg-gray-50/80 border border-gray-200/80">
+            <CustomerLookupPicker
+              selectedCustomer={selectedCustomer}
+              label="Pilih dari Master Pelanggan (Opsional — Isi Otomatis)"
+              placeholder="Cari nama, no. HP/WA, NIK KTP, atau kode member..."
+              helperText="Jika nasabah sudah pernah terdaftar, pilih dari daftar agar Nama, HP, NIK, dan Alamat terisi otomatis."
+              onSelectCustomer={cust => {
+                setSelectedCustomer({
+                  id: cust.id,
+                  name: cust.name,
+                  memberCode: cust.memberCode,
+                  type: cust.type,
+                  phone: cust.phone,
+                });
+                setCustomerName(cust.name);
+                setCustomerPhone(cust.phone);
+                if (cust.nik) setCustomerNik(cust.nik);
+                if (cust.address) setCustomerAddress(cust.address);
+                setAccountHolder(cust.name);
+                showToast('info', `Data nasabah "${cust.name}" dimuat dari Master Pelanggan.`);
+              }}
+              onClearSelection={() => {
+                setSelectedCustomer(null);
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
@@ -505,6 +663,25 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
               </div>
             </div>
           </div>
+
+          {!selectedCustomer && !editingItem && (
+            <div className="mt-4 pt-3.5 border-t border-gray-100">
+              <label className="inline-flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={saveToCustomerMaster}
+                  onChange={e => setSaveToCustomerMaster(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer shrink-0"
+                />
+                <span className="text-xs text-gray-700 leading-relaxed">
+                  <strong className="font-semibold text-gray-900">
+                    Simpan otomatis ke Master Pelanggan
+                  </strong>{' '}
+                  &mdash; Data Nama, No. HP, NIK, dan Alamat nasabah akan otomatis terdaftar di halaman Pelanggan jika belum ada, sehingga kunjungan berikutnya tidak perlu input ulang.
+                </span>
+              </label>
+            </div>
+          )}
         </div>
 
         {/* ========================================================= */}
@@ -570,7 +747,7 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                     {items.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => handleRemoveItem(item.id)}
+                        onClick={() => handleRemoveItem(item)}
                         className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-md transition-colors cursor-pointer border border-transparent hover:border-red-200"
                       >
                         <Trash2 size={13} />
@@ -1093,14 +1270,34 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
             </button>
             <button
               type="submit"
-              className="flex-1 sm:flex-none h-11 px-6 text-xs sm:text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-2 active:scale-[0.98]"
+              disabled={isSubmitting}
+              className="flex-1 sm:flex-none h-11 px-6 text-xs sm:text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               <Printer size={16} />
-              <span>Simpan &amp; Cetak Struk Buyback</span>
+              <span>
+                {isSubmitting
+                  ? 'Menyimpan...'
+                  : editingItem
+                  ? 'Simpan Perubahan Buyback'
+                  : 'Simpan & Cetak Struk Buyback'}
+              </span>
             </button>
           </div>
         </div>
       </form>
+
+      <ConfirmModal
+        isOpen={!!pendingDeleteItem}
+        title="Hapus Item Emas Buyback"
+        description={
+          pendingDeleteItem
+            ? `Apakah Anda yakin ingin menghapus item "${pendingDeleteItem.brandType}" (${pendingDeleteItem.berat} gr) dari daftar formulir buyback ini?`
+            : ''
+        }
+        confirmLabel="Ya, Hapus Item"
+        onCancel={() => setPendingDeleteItem(null)}
+        onConfirm={handleConfirmRemoveItem}
+      />
     </div>
   );
 };

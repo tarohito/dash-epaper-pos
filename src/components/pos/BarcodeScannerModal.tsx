@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   Barcode,
   Volume2,
@@ -9,15 +9,20 @@ import {
   AlertCircle,
   Sparkles,
   Check,
+  Loader2,
 } from 'lucide-react';
+import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
+import { BarcodeFormat, DecodeHintType } from '@zxing/library';
 import { Product } from '../../types';
 import { formatIDR } from '../../utils/formatters';
+import { posApi } from '../../services/api';
+import { extractBarcodeValue } from '../../utils/barcode';
+import { useToast } from '../../contexts/ToastContext';
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  products: Product[];
-  onScanCode: (code: string) => boolean;
+  onScanCode: (code: string) => Promise<Product | null>;
   isSoundEnabled: boolean;
   onToggleSound: () => void;
   scanCount: number;
@@ -27,7 +32,6 @@ interface BarcodeScannerModalProps {
 export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   isOpen,
   onClose,
-  products,
   onScanCode,
   isSoundEnabled,
   onToggleSound,
@@ -35,116 +39,190 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   totalCartQty,
 }) => {
   const [inputVal, setInputVal] = useState('');
+  const [sampleProducts, setSampleProducts] = useState<Product[]>([]);
+  const [totalAvailable, setTotalAvailable] = useState(0);
+  const [isLoadingSamples, setIsLoadingSamples] = useState(false);
   const [lastScannedProduct, setLastScannedProduct] = useState<Product | null>(null);
   const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'not-found'>('idle');
+  const [isScanning, setIsScanning] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const { showToast } = useToast();
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scannerControlsRef = useRef<IScannerControls | null>(null);
+  const lastDecodedRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
 
-  // Auto-focus input whenever modal opens or scanner receives focus
   useEffect(() => {
     if (isOpen) {
       setInputVal('');
       setScanStatus('idle');
+      setCameraError(null);
       const timer = setTimeout(() => inputRef.current?.focus(), 80);
-      return () => clearTimeout(timer);
+
+      const controller = new AbortController();
+      setIsLoadingSamples(true);
+      posApi
+        .getProducts({ page: 1, pageSize: 24 }, controller.signal)
+        .then(res => {
+          setSampleProducts(res.items);
+          setTotalAvailable(res.totalAllProducts);
+          setIsLoadingSamples(false);
+        })
+        .catch(err => {
+          if ((err as Error).name !== 'AbortError') {
+            showToast('error', err instanceof Error ? err.message : 'Gagal memuat daftar SKU.');
+          }
+          setIsLoadingSamples(false);
+        });
+
+      return () => {
+        clearTimeout(timer);
+        controller.abort();
+      };
     } else {
       setIsCameraActive(false);
+      setCameraError(null);
       setLastScannedProduct(null);
     }
   }, [isOpen]);
 
-  // Camera stream control
+  const handleProcessScan = useCallback(
+    async (codeToScan: string) => {
+      const cleaned = extractBarcodeValue(codeToScan);
+      if (!cleaned) {
+        showToast('warning', 'Masukkan atau scan kode barcode / SKU produk terlebih dahulu.');
+        inputRef.current?.focus();
+        return;
+      }
+      if (isScanning) return;
+
+      setIsScanning(true);
+      try {
+        const matched = await onScanCode(cleaned);
+        if (matched) {
+          setLastScannedProduct(matched);
+          setScanStatus('success');
+          setInputVal('');
+          setTimeout(() => {
+            setScanStatus('idle');
+          }, 2200);
+        } else {
+          setScanStatus('not-found');
+          setTimeout(() => {
+            setScanStatus('idle');
+          }, 2500);
+        }
+      } finally {
+        setIsScanning(false);
+        inputRef.current?.focus();
+      }
+    },
+    [isScanning, onScanCode, showToast]
+  );
+
+  // Live Multi-Format Camera Decoder (Code 128, QR Code, EAN-13, Code 39, DataMatrix)
   useEffect(() => {
-    let stream: MediaStream | null = null;
-    if (isOpen && isCameraActive) {
-      navigator.mediaDevices
-        ?.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(s => {
-          stream = s;
-          if (videoRef.current) {
-            videoRef.current.srcObject = s;
-          }
-        })
-        .catch(() => {
-          setIsCameraActive(false);
-        });
-    } else {
-      if (videoRef.current && videoRef.current.srcObject) {
+    let cancelled = false;
+
+    const stopScanner = () => {
+      if (scannerControlsRef.current) {
+        try {
+          scannerControlsRef.current.stop();
+        } catch {
+          // Ignore cleanup errors
+        }
+        scannerControlsRef.current = null;
+      }
+      if (videoRef.current?.srcObject) {
         const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-        tracks.forEach(track => track.stop());
+        tracks.forEach(t => t.stop());
         videoRef.current.srcObject = null;
       }
-    }
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
     };
-  }, [isOpen, isCameraActive]);
 
-  // Lookup Map O(1) untuk respon scan instan
-  const skuLookupMap = useMemo(() => {
-    const map = new Map<string, Product>();
-    for (const p of products) {
-      map.set(p.sku.toLowerCase(), p);
-      map.set(p.id.toString(), p);
-      const alphaNum = p.sku.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (alphaNum.length >= 3) {
-        map.set(alphaNum, p);
-      }
+    if (!isOpen || !isCameraActive) {
+      stopScanner();
+      return;
     }
-    return map;
-  }, [products]);
 
-  // Cuplikan 24 produk sampel untuk tombol klik cepat (agar modal tetap ringan)
-  const sampleProducts = useMemo(() => products.slice(0, 24), [products]);
+    setCameraError(null);
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    const hints = new Map<DecodeHintType, unknown>();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.QR_CODE,
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.DATA_MATRIX,
+      BarcodeFormat.UPC_A,
+    ]);
+    hints.set(DecodeHintType.TRY_HARDER, true);
+
+    const reader = new BrowserMultiFormatReader(hints, {
+      delayBetweenScanAttempts: 180,
+      delayBetweenScanSuccess: 1200,
+    });
+
+    reader
+      .decodeFromConstraints(
+        { video: { facingMode: { ideal: 'environment' } } },
+        videoEl,
+        result => {
+          if (cancelled || !result) return;
+          const rawText = result.getText();
+          const extracted = extractBarcodeValue(rawText);
+          if (!extracted) return;
+
+          const now = Date.now();
+          if (
+            lastDecodedRef.current.code === extracted &&
+            now - lastDecodedRef.current.time < 1600
+          ) {
+            return;
+          }
+          lastDecodedRef.current = { code: extracted, time: now };
+          void handleProcessScan(extracted);
+        }
+      )
+      .then(controls => {
+        if (cancelled) {
+          controls.stop();
+        } else {
+          scannerControlsRef.current = controls;
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCameraError(
+            'Kamera tidak tersedia atau izin kamera ditolak. Gunakan scanner fisik USB atau ketik SKU.'
+          );
+          setIsCameraActive(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      stopScanner();
+    };
+  }, [isOpen, isCameraActive, handleProcessScan]);
 
   if (!isOpen) return null;
-
-  const handleProcessScan = (codeToScan: string) => {
-    const trimmed = codeToScan.trim();
-    if (!trimmed) return;
-
-    const clean = trimmed.toLowerCase();
-    let matched = skuLookupMap.get(clean);
-    if (!matched) {
-      const alphaNum = clean.replace(/[^a-z0-9]/g, '');
-      if (alphaNum.length >= 3) {
-        matched = skuLookupMap.get(alphaNum);
-      }
-    }
-
-    if (matched) {
-      const success = onScanCode(matched.sku);
-      if (success) {
-        setLastScannedProduct(matched);
-        setScanStatus('success');
-        setInputVal('');
-        setTimeout(() => {
-          setScanStatus('idle');
-        }, 2200);
-      }
-    } else {
-      setScanStatus('not-found');
-      setTimeout(() => {
-        setScanStatus('idle');
-      }, 2500);
-    }
-    inputRef.current?.focus();
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleProcessScan(inputVal);
+      void handleProcessScan(inputVal);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="bg-white rounded-lg border border-gray-200 w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-        {/* Header: Clean & Informative */}
+        {/* Header */}
         <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/80 shrink-0">
           <div>
             <div className="flex items-center gap-2">
@@ -153,11 +231,11 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               </h3>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Scanner Siap
+                Code 128 &amp; QR Siap
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Arahkan scanner fisik atau ketik kode barcode perhiasan
+              Dukung scanner fisik &amp; kamera web (Code 128, QR Code, EAN-13, Code 39)
             </p>
           </div>
 
@@ -190,7 +268,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           {/* Main Input Field */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              Kode Barcode / SKU
+              Kode Barcode (Code 128 / QR / SKU)
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -201,17 +279,16 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Scan atau masukkan SKU (contoh: 16-164)..."
+                  placeholder="Scan atau masukkan SKU (contoh: 16-164 / 22K-CN-418)..."
                   value={inputVal}
                   onChange={e => {
                     const val = e.target.value;
                     setInputVal(val);
-                    // Instant scan if exact match found
-                    const matched = products.find(
+                    const matched = sampleProducts.find(
                       p => p.sku.toLowerCase() === val.trim().toLowerCase()
                     );
                     if (matched) {
-                      handleProcessScan(val);
+                      void handleProcessScan(val);
                     }
                   }}
                   onKeyDown={handleKeyDown}
@@ -221,10 +298,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => handleProcessScan(inputVal)}
-                className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-md transition-colors cursor-pointer shrink-0"
+                disabled={isScanning}
+                onClick={() => void handleProcessScan(inputVal)}
+                className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold text-xs rounded-md transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1"
               >
-                Scan
+                {isScanning && <Loader2 size={13} className="animate-spin" />}
+                <span>Scan</span>
               </button>
 
               <button
@@ -235,28 +314,34 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                     ? 'bg-red-50 text-red-600 border-red-200'
                     : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                 }`}
-                title={isCameraActive ? 'Matikan Kamera' : 'Nyalakan Kamera Web'}
+                title={isCameraActive ? 'Matikan Kamera' : 'Nyalakan Kamera Scanner'}
               >
                 <Camera size={16} />
               </button>
             </div>
           </div>
 
-          {/* Camera View (Only when toggled) */}
+          {cameraError && (
+            <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-md flex items-center gap-2 text-xs text-amber-800">
+              <AlertCircle size={15} className="shrink-0 text-amber-600" />
+              <span>{cameraError}</span>
+            </div>
+          )}
+
           {isCameraActive && (
-            <div className="relative w-full h-44 bg-black rounded-md overflow-hidden border border-gray-200">
+            <div className="relative w-full h-48 bg-black rounded-md overflow-hidden border border-gray-200">
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-24 border-2 border-orange-500 rounded-md bg-orange-500/10 flex items-center justify-center">
-                  <p className="text-xs text-white font-medium bg-black/60 px-2.5 py-1 rounded">
-                    Posisikan barcode di sini
+                <div className="w-52 h-28 border-2 border-orange-500 rounded-md bg-orange-500/10 flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-x-0 h-0.5 bg-orange-400 animate-laser" />
+                  <p className="text-[11px] text-white font-medium bg-black/65 px-2.5 py-1 rounded">
+                    Arahkan ke Code 128 / QR Code
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Scan Status Feedback */}
           {scanStatus === 'success' && lastScannedProduct && (
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md flex items-center justify-between gap-3 animate-in fade-in duration-150">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -285,7 +370,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             </div>
           )}
 
-          {/* Last Scanned Item Summary Card (when idle) */}
           {scanStatus === 'idle' && lastScannedProduct && (
             <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-md flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -307,7 +391,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             </div>
           )}
 
-          {/* Quick SKU Test Chips (Simpel & Rapi) */}
+          {/* Quick SKU Test Chips */}
           <div className="pt-2 border-t border-gray-100">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -315,36 +399,43 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 Klik Cepat untuk Simulasi Scan:
               </span>
               <span className="text-xs text-gray-400 font-medium font-mono">
-                {products.length} SKU tersedia
+                {totalAvailable} SKU tersedia
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
-              {sampleProducts.map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handleProcessScan(p.sku)}
-                  className="p-2 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-300 rounded text-left transition-colors flex items-center justify-between gap-2 cursor-pointer group"
-                >
-                  <div className="min-w-0 flex items-center gap-2">
-                    <span className="text-xs font-mono font-semibold text-orange-600 bg-orange-100/70 px-1.5 py-0.5 rounded">
-                      {p.sku}
+            {isLoadingSamples ? (
+              <div className="py-6 flex items-center justify-center text-xs text-gray-400 gap-2">
+                <Loader2 size={14} className="animate-spin text-orange-500" />
+                <span>Memuat daftar SKU...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                {sampleProducts.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => void handleProcessScan(p.sku)}
+                    className="p-2 bg-gray-50 hover:bg-orange-50 border border-gray-200 hover:border-orange-300 rounded text-left transition-colors flex items-center justify-between gap-2 cursor-pointer group"
+                  >
+                    <div className="min-w-0 flex items-center gap-2">
+                      <span className="text-xs font-mono font-semibold text-orange-600 bg-orange-100/70 px-1.5 py-0.5 rounded">
+                        {p.sku}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-800 truncate group-hover:text-orange-600">
+                        {p.name}
+                      </span>
+                    </div>
+                    <span className="text-xs font-semibold font-mono text-gray-500 shrink-0">
+                      {p.berat.toFixed(2)}g
                     </span>
-                    <span className="text-xs font-semibold text-gray-800 truncate group-hover:text-orange-600">
-                      {p.name}
-                    </span>
-                  </div>
-                  <span className="text-xs font-semibold font-mono text-gray-500 shrink-0">
-                    {p.berat.toFixed(2)}g
-                  </span>
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Modal Footer: Summary & Done */}
+        {/* Modal Footer */}
         <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
           <div className="text-xs sm:text-sm text-gray-600">
             Keranjang saat ini:{' '}

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { X, Store, Building2, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { X, Store, ShieldCheck, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Tenant } from '../../types';
+import { useToast } from '../../contexts/ToastContext';
 
 interface RegisterTenantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveTenant: (newTenant: Tenant) => void;
+  onSaveTenant: (newTenant: Tenant) => Promise<void> | void;
 }
 
 export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
@@ -23,46 +24,81 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
   const [plan, setPlan] = useState<Tenant['plan']>('Enterprise Multi-Tenant');
   const [isSuccess, setIsSuccess] = useState(false);
   const [createdTenant, setCreatedTenant] = useState<Tenant | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useToast();
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const failValidation = (msg: string) => {
+    setErrorMsg(msg);
+    showToast('error', msg, 'Validasi Form Outlet');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !branchName.trim()) {
-      alert('Mohon isi nama bisnis dan nama cabang utama.');
+    setErrorMsg(null);
+
+    const cleanName = name.trim();
+    const cleanBranch = branchName.trim();
+    const cleanPhone = phone.trim();
+    const phoneDigits = cleanPhone.replace(/[^0-9]/g, '');
+    const cleanEmail = email.trim();
+
+    if (!cleanName || cleanName.length < 3) {
+      failValidation('Nama bisnis / toko emas wajib diisi (minimal 3 karakter).');
+      return;
+    }
+    if (!cleanBranch || cleanBranch.length < 3) {
+      failValidation('Nama cabang utama wajib diisi (minimal 3 karakter).');
+      return;
+    }
+    if (cleanPhone && (phoneDigits.length < 8 || phoneDigits.length > 15)) {
+      failValidation('Format nomor WhatsApp / HP tidak sesuai (8–15 digit angka).');
+      return;
+    }
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      failValidation('Format alamat email toko tidak sesuai.');
       return;
     }
 
-    const initials = name
+    const initials = cleanName
       .split(' ')
       .slice(0, 2)
       .map(w => w[0]?.toUpperCase() || '')
       .join('') || 'EP';
 
-    const cleanSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.epaper.id';
+    const cleanSlug = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.epaper.id';
     const code = 'TEN-' + Math.floor(100 + Math.random() * 900);
 
     const newTenant: Tenant = {
       id: `tenant-${Date.now()}`,
-      name: name.trim(),
+      name: cleanName,
       code,
-      branchName: branchName.trim(),
-      address: address.trim() || `Jl. Utama Bisnis No. 1, ${city || 'Indonesia'}`,
+      branchName: cleanBranch,
+      address: address.trim() || `Jl. Utama Bisnis No. 1, ${city.trim() || 'Indonesia'}`,
       city: city.trim() || 'Jakarta',
       plan,
       cashierCount: 2,
       productCount: 0,
-      phone: phone.trim() || '0812-0000-0000',
-      email: email.trim() || `kontak@${cleanSlug}`,
+      phone: cleanPhone || '0812-0000-0000',
+      email: cleanEmail || `kontak@${cleanSlug}`,
       slug: cleanSlug,
       logoInitial: initials,
-      databaseSchema: `tenant_db_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now().toString().slice(-4)}`,
+      databaseSchema: `tenant_db_${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now().toString().slice(-4)}`,
       status: 'Aktif',
     };
 
-    onSaveTenant(newTenant);
-    setCreatedTenant(newTenant);
-    setIsSuccess(true);
+    setIsSubmitting(true);
+    try {
+      await onSaveTenant(newTenant);
+      setCreatedTenant(newTenant);
+      setIsSuccess(true);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Gagal mendaftarkan tenant baru.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFinish = () => {
@@ -145,7 +181,13 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 text-xs sm:text-sm">
+          <form noValidate onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 text-xs sm:text-sm">
+            {errorMsg && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 flex items-center gap-2">
+                <AlertCircle size={15} className="shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
             <div className="bg-amber-50 border border-amber-200/80 rounded-md p-3 flex items-start gap-2.5 text-amber-900">
               <ShieldCheck size={18} className="text-amber-600 shrink-0 mt-0.5" />
               <div>
@@ -289,17 +331,19 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs"
+                disabled={isSubmitting}
+                className="h-9 px-4 text-xs sm:text-sm font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center shadow-xs disabled:opacity-50"
               >
                 <X size={15} className="mr-1.5 text-gray-500" />
                 <span>Batal</span>
               </button>
               <button
                 type="submit"
-                className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="h-9 px-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
               >
-                <Store size={15} />
-                Daftarkan Tenant Sekarang
+                {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Store size={15} />}
+                <span>{isSubmitting ? 'Mendaftarkan...' : 'Daftarkan Tenant Sekarang'}</span>
               </button>
             </div>
           </form>

@@ -8,6 +8,7 @@ interface CartPanelProps {
   cart: CartItem[];
   onUpdateQty: (id: number, delta: number) => void;
   onRemoveItem: (id: number) => void;
+  onClearCart?: () => void;
   subtotal: number;
   tax: number;
   grandTotal: number;
@@ -19,6 +20,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   cart,
   onUpdateQty,
   onRemoveItem,
+  onClearCart,
   subtotal,
   tax,
   grandTotal,
@@ -48,9 +50,23 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             Keranjang Pesanan
           </h2>
         </div>
-        <span className="px-2.5 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded">
-          {totalQty} Item
-        </span>
+        <div className="flex items-center gap-1.5">
+          {cart.length > 0 && onClearCart && (
+            <Tooltip content="Kosongkan Keranjang" side="bottom">
+              <button
+                type="button"
+                onClick={onClearCart}
+                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                aria-label="Kosongkan Keranjang"
+              >
+                <Trash2 size={15} />
+              </button>
+            </Tooltip>
+          )}
+          <span className="px-2.5 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded">
+            {totalQty} Item
+          </span>
+        </div>
       </div>
 
       {/* Cart Items */}
@@ -97,7 +113,11 @@ export const CartPanel: React.FC<CartPanelProps> = ({
                         type="button"
                         onClick={e => {
                           e.stopPropagation();
-                          onUpdateQty(item.id, -1);
+                          if (item.qty <= 1) {
+                            onRemoveItem(item.id);
+                          } else {
+                            onUpdateQty(item.id, -1);
+                          }
                         }}
                         className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-white rounded transition-all cursor-pointer active:scale-95"
                         aria-label="Kurang satu"

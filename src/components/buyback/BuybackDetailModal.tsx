@@ -35,6 +35,8 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
   const totalPotongan =
     (item.potonganBiaya || item.biayaLebur || 0) + (item.pph22 || 0);
 
+  const isVoid = item.status === 'void';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-xl border border-gray-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] shadow-2xl">
@@ -49,9 +51,14 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-tight">
                   Rincian Transaksi Buyback
                 </h3>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-gray-200 text-gray-700">
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-gray-200 text-gray-700">
                   {item.invoiceNo}
                 </span>
+                {isVoid && (
+                  <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                    VOID
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
                 <Calendar size={12} />
@@ -72,6 +79,12 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
 
         {/* Modal Body: Organized Cards */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+          {isVoid && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+              <strong className="font-bold block">Nota Buyback Ini Telah Di-VOID (Dibatalkan)</strong>
+              {item.voidReason && <span className="block mt-0.5">Alasan: {item.voidReason}</span>}
+            </div>
+          )}
           {/* Highlight Banner: Total Payout */}
           <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl text-white shadow-xs flex items-center justify-between gap-4">
             <div>
