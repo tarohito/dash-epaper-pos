@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import path from 'path';
 import type {
   BuybackCreatePayload,
@@ -54,6 +55,7 @@ import {
 seedInitialDataIfEmpty();
 
 const app = express();
+app.use(compression());
 app.use(express.json({ limit: '15mb' }));
 
 interface AuthContext {

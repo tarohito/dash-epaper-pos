@@ -25,6 +25,28 @@ export default defineConfig({
       'tippy.js',
     ],
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'vendor-icons';
+          }
+          if (
+            id.includes('node_modules/@zxing/') ||
+            id.includes('node_modules/jsbarcode/') ||
+            id.includes('node_modules/qrcode/')
+          ) {
+            return 'vendor-barcode';
+          }
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     host: '0.0.0.0',

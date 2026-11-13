@@ -9,6 +9,7 @@ import {
   Wallet,
   ShoppingBag,
   Gem,
+  Sparkles,
 } from 'lucide-react';
 import { DashboardSummaryResponse, Tenant } from '../../types';
 import { formatIDR, formatCompactIDR } from '../../utils/formatters';
@@ -202,23 +203,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-4 pb-6">
-      {/* Hero Banner */}
-      <div className="@container relative overflow-hidden rounded-xl border border-orange-300/60 bg-gradient-to-r from-[#ff6a00] to-[#ff3b00] shadow-xs">
-        <img
-          src="/assets/aistudio/banner_01_26f17fb6.jpeg"
-          alt="Kelola Penjualan dan Stok dalam Satu Sistem"
-          className="w-full h-auto block select-none"
-        />
-        <div className="p-4 sm:p-5 md:p-0 md:absolute md:inset-y-0 md:left-0 md:flex md:flex-col md:justify-center md:pl-[4.2cqw] md:pr-2 md:w-[52%]">
-          <h2 className="text-[clamp(1.125rem,5.2cqw,1.75rem)] md:text-[clamp(1.125rem,3.1cqw,2.5rem)] font-bold text-white leading-[1.2] tracking-tight">
-            <span className="block whitespace-nowrap">Kelola Penjualan dan</span>
-            <span className="block whitespace-nowrap">Stok dalam Satu Sistem</span>
+      {/* Hero Banner (Ultra Lightweight Pure CSS Gradient & Zero MB Image Load) */}
+      <div className="@container relative overflow-hidden rounded-xl border border-orange-400/40 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 p-6 sm:p-7 text-white shadow-xs">
+        {/* Decorative background shapes */}
+        <div className="absolute -right-8 -bottom-10 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute right-12 top-4 w-32 h-32 rounded-full bg-amber-300/20 blur-xl pointer-events-none" />
+        <div className="relative z-10 max-w-xl">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 text-white text-xs font-semibold backdrop-blur-sm mb-3">
+            <Sparkles size={13} className="text-amber-200" />
+            <span>Multi-Outlet POS Cloud</span>
+          </span>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white leading-tight tracking-tight">
+            Kelola Penjualan dan Stok dalam Satu Sistem
           </h2>
-          <div className="mt-3 md:mt-[1.4cqw]">
+          <p className="text-xs sm:text-sm text-orange-100 mt-2 leading-relaxed max-w-lg">
+            Sistem kasir cerdas toko emas dengan rekap transaksi harian, buyback otomatis, dan laporan tutup kasir akurat.
+          </p>
+          <div className="mt-4">
             <button
               type="button"
               onClick={() => setIsCsModalOpen(true)}
-              className="h-9 px-4 bg-white hover:bg-orange-50 text-orange-600 font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center whitespace-nowrap cursor-pointer shadow-xs active:scale-[0.98]"
+              className="h-9 px-4 bg-white hover:bg-orange-50 text-orange-600 font-bold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center whitespace-nowrap cursor-pointer shadow-xs active:scale-[0.98]"
             >
               Berlangganan Sekarang
             </button>

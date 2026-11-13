@@ -44,7 +44,11 @@ const DB_PATH = path.join(DATA_DIR, 'epaper-pos.db');
 export const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
+db.pragma('cache_size = -64000'); // 64 MB memory page cache
+db.pragma('temp_store = MEMORY'); // Sorting & temp tables in RAM
+db.pragma('mmap_size = 268435456'); // 256 MB memory-mapped I/O for ultra fast reads
 
 // Initialize schema
 db.exec(`
