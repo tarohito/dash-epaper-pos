@@ -131,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* SIDEBAR MENUS */}
-        <div className="flex-1 pl-3 py-4 lg:py-6 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex-1 pl-3 py-2 lg:py-2.5 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {menuItems.map((menu, i) => {
             const Icon = menu.icon;
             const hasSubmenus = !!menu.submenus && menu.submenus.length > 0;
@@ -151,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         handleItemSelect(menu.name);
                       }
                     }}
-                    className={`relative flex items-center px-3.5 py-3 lg:py-2.5 text-left text-sm font-medium group w-full cursor-pointer min-h-[46px] ${
+                    className={`relative flex items-center px-3.5 py-2 lg:py-1.5 text-left text-sm font-medium group w-full cursor-pointer min-h-[38px] ${
                       isParentActive ? 'z-20' : 'z-10'
                     }`}
                   >
@@ -222,8 +222,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <button
                             type="button"
                             onClick={() => handleItemSelect(sub.name)}
-                            className={`relative flex items-center text-left text-sm font-medium group w-full cursor-pointer transition-all duration-300 min-h-[44px] ${
-                              isSidebarCollapsed ? 'px-3.5 py-3 lg:py-2.5' : 'pl-10 pr-3.5 py-2.5'
+                            className={`relative flex items-center text-left text-sm font-medium group w-full cursor-pointer transition-all duration-300 min-h-[34px] ${
+                              isSidebarCollapsed ? 'px-3.5 py-2 lg:py-1.5' : 'pl-10 pr-3.5 py-1.5'
                             }`}
                           >
                             {/* Submenu Hover Background */}
@@ -274,7 +274,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* BOTTOM SECTION: MENGATUR TOKO / MULTI-OUTLET (Dapat diklik baik saat minimize maupun expanded) */}
-        <div className="p-2 sm:p-2.5 border-t border-white/20 shrink-0 relative" ref={storeMenuRef}>
+        <div className="p-2 border-t border-white/20 shrink-0 relative" ref={storeMenuRef}>
           {isSidebarCollapsed ? (
             <Tooltip
               content={`Toko: ${activeTenant?.name || 'Toko Mas'} (${activeTenant?.branchName || 'Cabang'})`}
@@ -285,20 +285,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={() => setIsStoreMenuOpen(!isStoreMenuOpen)}
-                className={`w-10 h-10 mx-auto rounded-lg bg-white hover:bg-gray-100 text-orange-600 flex items-center justify-center font-bold text-xs sm:text-sm cursor-pointer transition-all shadow-sm ${
+                className={`w-9 h-9 mx-auto rounded-lg bg-white hover:bg-gray-100 text-orange-600 flex items-center justify-center font-bold text-xs sm:text-sm cursor-pointer transition-all shadow-sm ${
                   isStoreMenuOpen ? 'ring-2 ring-orange-300' : ''
                 }`}
                 aria-label="Atur Toko"
                 aria-expanded={isStoreMenuOpen}
               >
-                <Store size={18} className="text-orange-600" />
+                <Store size={17} className="text-orange-600" />
               </button>
             </Tooltip>
           ) : (
             <button
               type="button"
               onClick={() => setIsStoreMenuOpen(!isStoreMenuOpen)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white hover:bg-gray-50 text-left transition-all cursor-pointer group outline-none shadow-sm ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white hover:bg-gray-50 text-left transition-all cursor-pointer group outline-none shadow-sm ${
                 isStoreMenuOpen ? 'ring-2 ring-orange-300' : ''
               }`}
               aria-label="Pengaturan Toko"

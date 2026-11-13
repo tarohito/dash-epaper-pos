@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
   Coins,
@@ -16,6 +16,9 @@ import { formatIDR } from '../../utils/formatters';
 import { BuybackFormPage } from './BuybackFormPage';
 import { BuybackDetailModal } from './BuybackDetailModal';
 import Tooltip from '../Tooltip';
+import { usePagination } from '../../hooks/usePagination';
+import { PaginationControls } from '../common/PaginationControls';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface BuybackViewProps {
   buybacks: BuybackItem[];
@@ -37,28 +40,52 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
   });
 
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 200);
   const [filterMethod, setFilterMethod] = useState<'all' | 'transfer' | 'cash'>('all');
   const [selectedDetailItem, setSelectedDetailItem] = useState<BuybackItem | null>(null);
 
-  // Filtered Buybacks
-  const filteredBuybacks = buybacks.filter(bb => {
-    const matchesSearch =
-      bb.invoiceNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bb.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bb.customerPhone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (bb.customerNik && bb.customerNik.includes(searchQuery)) ||
-      bb.itemType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bb.kadar.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filtered Buybacks dengan useMemo & Debounce
+  const filteredBuybacks = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return buybacks.filter(bb => {
+      const matchesSearch =
+        !q ||
+        bb.invoiceNo.toLowerCase().includes(q) ||
+        bb.customerName.toLowerCase().includes(q) ||
+        bb.customerPhone.toLowerCase().includes(q) ||
+        (bb.customerNik && bb.customerNik.includes(q)) ||
+        bb.itemType.toLowerCase().includes(q) ||
+        bb.kadar.toLowerCase().includes(q);
 
-    const matchesMethod = filterMethod === 'all' || bb.paymentMethod === filterMethod;
-    return matchesSearch && matchesMethod;
-  });
+      const matchesMethod = filterMethod === 'all' || bb.paymentMethod === filterMethod;
+      return matchesSearch && matchesMethod;
+    });
+  }, [buybacks, debouncedSearch, filterMethod]);
 
-  // KPI Metrics
-  const totalDanaDicairkan = buybacks.reduce((sum, b) => sum + b.totalBayar, 0);
-  const totalBeratDiterima = buybacks.reduce((sum, b) => sum + b.beratBersih, 0);
-  const totalTransaksi = buybacks.length;
-  const avgPerTransaksi = totalTransaksi > 0 ? Math.round(totalDanaDicairkan / totalTransaksi) : 0;
+  // Paginasi cerdas untuk menjaga performa DOM tetap ringan
+  const {
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    paginatedItems,
+    goToPage,
+    setPageSize,
+  } = usePagination(filteredBuybacks, { initialPageSize: 20 });
+
+  // KPI Metrics dengan useMemo
+  const { totalDanaDicairkan, totalBeratDiterima, totalTransaksi, avgPerTransaksi } = useMemo(() => {
+    const totalDana = buybacks.reduce((sum, b) => sum + b.totalBayar, 0);
+    const totalBerat = buybacks.reduce((sum, b) => sum + b.beratBersih, 0);
+    const count = buybacks.length;
+    const avg = count > 0 ? Math.round(totalDana / count) : 0;
+    return {
+      totalDanaDicairkan: totalDana,
+      totalBeratDiterima: totalBerat,
+      totalTransaksi: count,
+      avgPerTransaksi: avg,
+    };
+  }, [buybacks]);
 
   // Jika sedang membuka Form Buyback Mandiri
   if (viewMode === 'form') {
@@ -257,7 +284,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    filteredBuybacks.map(bb => {
+                    paginatedItems.map(bb => {
                       return (
                         <tr key={bb.id} className="hover:bg-orange-50/25 transition-colors">
                           {/* 1. No Transaksi & Tanggal */}
@@ -343,6 +370,16 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={goToPage}
+              onPageSizeChange={setPageSize}
+            />
 
             {/* Footer info count */}
             <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">

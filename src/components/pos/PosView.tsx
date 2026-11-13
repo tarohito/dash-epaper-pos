@@ -62,6 +62,15 @@ export const PosView: React.FC<PosViewProps> = ({
   const promoCount = useMemo(() => products.filter(p => p.isPromo).length, [products]);
   const availableCategories = useMemo(() => ['Semua', ...Array.from(new Set(products.map(p => p.category)))], [products]);
 
+  // Hitung jumlah item per kategori dalam 1 kali loop O(N) untuk performa instan
+  const categoryCounts = useMemo(() => {
+    const map: Record<string, number> = { Semua: products.length };
+    for (const p of products) {
+      map[p.category] = (map[p.category] || 0) + 1;
+    }
+    return map;
+  }, [products]);
+
   // Filter dinamis dengan useMemo agar tidak dihitung ulang saat render yang tidak terkait
   const displayProducts = useMemo(() => {
     return filteredProducts.filter(p => {
@@ -191,10 +200,7 @@ export const PosView: React.FC<PosViewProps> = ({
                 </div>
                 <div className="max-h-56 overflow-y-auto py-1">
                   {availableCategories.map(cat => {
-                    const count =
-                      cat === 'Semua'
-                        ? products.length
-                        : products.filter(p => p.category === cat).length;
+                    const count = categoryCounts[cat] || 0;
                     const isSelected = selectedCategory === cat;
 
                     return (

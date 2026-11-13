@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
   Barcode,
   Volume2,
@@ -83,15 +83,37 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     };
   }, [isOpen, isCameraActive]);
 
+  // Lookup Map O(1) untuk respon scan instan
+  const skuLookupMap = useMemo(() => {
+    const map = new Map<string, Product>();
+    for (const p of products) {
+      map.set(p.sku.toLowerCase(), p);
+      map.set(p.id.toString(), p);
+      const alphaNum = p.sku.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (alphaNum.length >= 3) {
+        map.set(alphaNum, p);
+      }
+    }
+    return map;
+  }, [products]);
+
+  // Cuplikan 24 produk sampel untuk tombol klik cepat (agar modal tetap ringan)
+  const sampleProducts = useMemo(() => products.slice(0, 24), [products]);
+
   if (!isOpen) return null;
 
   const handleProcessScan = (codeToScan: string) => {
     const trimmed = codeToScan.trim();
     if (!trimmed) return;
 
-    const matched = products.find(
-      p => p.sku.toLowerCase() === trimmed.toLowerCase() || p.id.toString() === trimmed
-    );
+    const clean = trimmed.toLowerCase();
+    let matched = skuLookupMap.get(clean);
+    if (!matched) {
+      const alphaNum = clean.replace(/[^a-z0-9]/g, '');
+      if (alphaNum.length >= 3) {
+        matched = skuLookupMap.get(alphaNum);
+      }
+    }
 
     if (matched) {
       const success = onScanCode(matched.sku);
@@ -298,7 +320,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
-              {products.map(p => (
+              {sampleProducts.map(p => (
                 <button
                   key={p.id}
                   type="button"

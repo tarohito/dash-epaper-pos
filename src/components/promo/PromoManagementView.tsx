@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BadgePercent,
   Search,
@@ -16,6 +16,9 @@ import {
 import { PromoCampaign, Product } from '../../types';
 import { AddEditPromoModal } from './AddEditPromoModal';
 import { PromoCard } from '../pos/PromoCard';
+import { usePagination } from '../../hooks/usePagination';
+import { PaginationControls } from '../common/PaginationControls';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface PromoManagementViewProps {
   promos: PromoCampaign[];
@@ -35,36 +38,65 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
   onNavigateToPosWithPromo,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 200);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<PromoCampaign | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  // Statistics
-  const activePromos = promos.filter(p => p.isActive);
-  const totalPromoProducts = new Set(
-    activePromos.flatMap(p => p.productIds)
-  ).size;
-  const avgDiscount = activePromos.length > 0
-    ? Math.round(activePromos.reduce((a, b) => a + b.discountPercent, 0) / activePromos.length)
-    : 0;
+  // O(1) Lookup Map untuk produk
+  const productMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
-  // Filtered List
-  const filteredPromos = promos.filter(promo => {
-    const matchesSearch =
-      promo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      promo.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (promo.description && promo.description.toLowerCase().includes(searchQuery.toLowerCase()));
+  // Statistics dengan useMemo
+  const { activePromos, totalPromoProducts, avgDiscount } = useMemo(() => {
+    const active = promos.filter(p => p.isActive);
+    const productSet = new Set<number>();
+    let totalDiscount = 0;
+    for (const p of active) {
+      totalDiscount += p.discountPercent;
+      for (const id of p.productIds) {
+        productSet.add(id);
+      }
+    }
+    const avg = active.length > 0 ? Math.round(totalDiscount / active.length) : 0;
+    return {
+      activePromos: active,
+      totalPromoProducts: productSet.size,
+      avgDiscount: avg,
+    };
+  }, [promos]);
 
-    const matchesStatus =
-      statusFilter === 'all'
-        ? true
-        : statusFilter === 'active'
-        ? promo.isActive
-        : !promo.isActive;
+  // Filtered List dengan useMemo
+  const filteredPromos = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return promos.filter(promo => {
+      const matchesSearch =
+        !q ||
+        promo.name.toLowerCase().includes(q) ||
+        promo.code.toLowerCase().includes(q) ||
+        (promo.description && promo.description.toLowerCase().includes(q));
 
-    return matchesSearch && matchesStatus;
-  });
+      const matchesStatus =
+        statusFilter === 'all'
+          ? true
+          : statusFilter === 'active'
+          ? promo.isActive
+          : !promo.isActive;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [promos, debouncedSearch, statusFilter]);
+
+  // Pagination untuk kampanye promo
+  const {
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    paginatedItems,
+    goToPage,
+    setPageSize,
+  } = usePagination(filteredPromos, { initialPageSize: 10 });
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard?.writeText(code);
@@ -233,8 +265,10 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
 
       {/* Promo Campaigns Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredPromos.map(promo => {
-          const promoProductsList = products.filter(p => promo.productIds.includes(p.id));
+        {paginatedItems.map(promo => {
+          const promoProductsList = promo.productIds
+            .map(id => productMap.get(id))
+            .filter((p): p is Product => Boolean(p));
 
           return (
             <div
@@ -374,6 +408,16 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        pageSize={pageSize}
+        onPageChange={goToPage}
+        onPageSizeChange={setPageSize}
+      />
 
       {/* Add / Edit Promo Modal */}
       <AddEditPromoModal

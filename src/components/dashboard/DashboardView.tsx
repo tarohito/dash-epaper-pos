@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TrendingDown, Info } from 'lucide-react';
 import { Product, Transaction, BuybackItem, Tenant } from '../../types';
 import { formatIDR } from '../../utils/formatters';
@@ -14,6 +14,24 @@ interface DashboardViewProps {
   onOpenRegisterTenant: () => void;
 }
 
+// Helper ceiling untuk label sumbu Y yang rapi dan standar finansial
+const getNiceCeiling = (val: number): number => {
+  if (val <= 0) return 1000000;
+  if (val <= 2000) return 2000;
+  if (val <= 5000) return 5000;
+  if (val <= 10000) return 10000;
+  const mag = Math.pow(10, Math.floor(Math.log10(val)));
+  const factor = val / mag;
+  let niceFactor = 10;
+  if (factor <= 1) niceFactor = 1;
+  else if (factor <= 2) niceFactor = 2;
+  else if (factor <= 4) niceFactor = 4;
+  else if (factor <= 6) niceFactor = 6;
+  else if (factor <= 8) niceFactor = 8;
+  else niceFactor = 10;
+  return niceFactor * mag;
+};
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
   products,
   transactions,
@@ -24,116 +42,102 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [period, setPeriod] = useState<'HARI' | 'BULAN'>('HARI');
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
-  // Perhitungan Data Penjualan
-  const totalOmzet = transactions.reduce((sum, tx) => sum + tx.grandTotal, 0);
-  const totalSubtotal = transactions.reduce((sum, tx) => sum + tx.subtotal, 0);
-  const totalBuybackBayar = buybacks.reduce((sum, bb) => sum + bb.totalBayar, 0);
-  const totalProdukTerjual = transactions.reduce(
-    (sum, tx) => sum + tx.items.reduce((s, it) => s + it.qty, 0),
-    0
-  );
+  // Perhitungan Data Penjualan & Agregasi Grafik dengan useMemo agar super cepat di dataset ribuan
+  const {
+    displayTotalPenjualan,
+    displayPenjualanKotor,
+    displayLabaKotor,
+    displayPenerimaan,
+    displayTransaksi,
+    displayProduk,
+    activeLabels,
+    salesData,
+    trxData,
+  } = useMemo(() => {
+    let totalOmzet = 0;
+    let totalSubtotal = 0;
+    let totalProdukTerjual = 0;
 
-  // Nilai metrik sesuai data aktual
-  const displayTotalPenjualan = totalOmzet;
-  const displayPenjualanKotor = totalSubtotal > 0 ? totalSubtotal : totalOmzet;
-  const displayLabaKotor = Math.round(displayTotalPenjualan * 0.18); // Estimasi margin laba kotor 18%
-  const displayPenerimaan = Math.max(0, totalOmzet - totalBuybackBayar);
-  const displayTransaksi = transactions.length;
-  const displayProduk = totalProdukTerjual;
-
-  // Helper ceiling untuk label sumbu Y yang rapi dan standar finansial
-  const getNiceCeiling = (val: number): number => {
-    if (val <= 0) return 1000000;
-    if (val <= 2000) return 2000;
-    if (val <= 5000) return 5000;
-    if (val <= 10000) return 10000;
-    const mag = Math.pow(10, Math.floor(Math.log10(val)));
-    const factor = val / mag;
-    let niceFactor = 10;
-    if (factor <= 1) niceFactor = 1;
-    else if (factor <= 2) niceFactor = 2;
-    else if (factor <= 4) niceFactor = 4;
-    else if (factor <= 6) niceFactor = 6;
-    else if (factor <= 8) niceFactor = 8;
-    else niceFactor = 10;
-    return niceFactor * mag;
-  };
-
-  // Label sumbu X untuk periode HARI (12 slot @ 2 jam) dan BULAN (7 titik tanggal)
-  const dayLabels = [
-    '00:00',
-    '02:00',
-    '04:00',
-    '06:00',
-    '08:00',
-    '10:00',
-    '12:00',
-    '14:00',
-    '16:00',
-    '18:00',
-    '20:00',
-    '22:00',
-  ];
-
-  const monthLabels = [
-    'Tgl 1',
-    'Tgl 5',
-    'Tgl 10',
-    'Tgl 15',
-    'Tgl 20',
-    'Tgl 25',
-    'Tgl 30',
-  ];
-
-  const activeLabels = period === 'HARI' ? dayLabels : monthLabels;
-
-  // Agregasi sebaran data aktual dari daftar transaksi
-  const salesData = Array(activeLabels.length).fill(0);
-  const trxData = Array(activeLabels.length).fill(0);
-
-  if (period === 'HARI') {
-    transactions.forEach(tx => {
-      let hour = 11;
-      if (tx.dateTime) {
-        const d = new Date(tx.dateTime);
-        if (!isNaN(d.getTime())) hour = d.getHours();
-      } else if (tx.timeStr) {
-        const h = parseInt(tx.timeStr.split(':')[0], 10);
-        if (!isNaN(h)) hour = h;
+    for (const tx of transactions) {
+      totalOmzet += tx.grandTotal;
+      totalSubtotal += tx.subtotal;
+      for (const it of tx.items) {
+        totalProdukTerjual += it.qty;
       }
-      const slot = Math.min(11, Math.max(0, Math.floor(hour / 2)));
-      salesData[slot] += tx.grandTotal;
-      trxData[slot] += 1;
-    });
-
-    // Jika belum ada data transaksi tersimpan, letakkan baseline bersih di jam operasional
-    const totalRecorded = salesData.reduce((a, b) => a + b, 0);
-    if (totalRecorded === 0 && displayTotalPenjualan > 0) {
-      salesData[5] = Math.round(displayTotalPenjualan * 0.4);
-      salesData[6] = Math.round(displayTotalPenjualan * 0.6);
-      trxData[5] = 1;
-      trxData[6] = Math.max(1, displayTransaksi - 1);
     }
-  } else {
-    // Mode BULAN
-    transactions.forEach(tx => {
-      let day = 15;
-      if (tx.dateTime) {
-        const d = new Date(tx.dateTime);
-        if (!isNaN(d.getTime())) day = d.getDate();
+
+    const totalBuybackBayar = buybacks.reduce((sum, bb) => sum + bb.totalBayar, 0);
+
+    const totalPenjualan = totalOmzet;
+    const penjualanKotor = totalSubtotal > 0 ? totalSubtotal : totalOmzet;
+    const labaKotor = Math.round(totalPenjualan * 0.18);
+    const penerimaan = Math.max(0, totalOmzet - totalBuybackBayar);
+    const countTransaksi = transactions.length;
+
+    const dayLabels = [
+      '00:00', '02:00', '04:00', '06:00', '08:00', '10:00',
+      '12:00', '14:00', '16:00', '18:00', '20:00', '22:00',
+    ];
+    const monthLabels = [
+      'Tgl 1', 'Tgl 5', 'Tgl 10', 'Tgl 15', 'Tgl 20', 'Tgl 25', 'Tgl 30',
+    ];
+    const labels = period === 'HARI' ? dayLabels : monthLabels;
+    const salesArr = Array(labels.length).fill(0);
+    const trxArr = Array(labels.length).fill(0);
+
+    if (period === 'HARI') {
+      for (const tx of transactions) {
+        let hour = 11;
+        if (tx.dateTime) {
+          const d = new Date(tx.dateTime);
+          if (!isNaN(d.getTime())) hour = d.getHours();
+        } else if (tx.timeStr) {
+          const h = parseInt(tx.timeStr.split(':')[0], 10);
+          if (!isNaN(h)) hour = h;
+        }
+        const slot = Math.min(11, Math.max(0, Math.floor(hour / 2)));
+        salesArr[slot] += tx.grandTotal;
+        trxArr[slot] += 1;
       }
-      // Petakan ke 7 slot tanggal
-      const slot = Math.min(6, Math.max(0, Math.floor((day - 1) / 5)));
-      salesData[slot] += tx.grandTotal;
-      trxData[slot] += 1;
-    });
 
-    const totalRecorded = salesData.reduce((a, b) => a + b, 0);
-    if (totalRecorded === 0 && displayTotalPenjualan > 0) {
-      salesData[2] = displayTotalPenjualan;
-      trxData[2] = displayTransaksi || 1;
+      const totalRec = salesArr.reduce((a, b) => a + b, 0);
+      if (totalRec === 0 && totalPenjualan > 0) {
+        salesArr[5] = Math.round(totalPenjualan * 0.4);
+        salesArr[6] = Math.round(totalPenjualan * 0.6);
+        trxArr[5] = 1;
+        trxArr[6] = Math.max(1, countTransaksi - 1);
+      }
+    } else {
+      for (const tx of transactions) {
+        let day = 15;
+        if (tx.dateTime) {
+          const d = new Date(tx.dateTime);
+          if (!isNaN(d.getTime())) day = d.getDate();
+        }
+        const slot = Math.min(6, Math.max(0, Math.floor((day - 1) / 5)));
+        salesArr[slot] += tx.grandTotal;
+        trxArr[slot] += 1;
+      }
+
+      const totalRec = salesArr.reduce((a, b) => a + b, 0);
+      if (totalRec === 0 && totalPenjualan > 0) {
+        salesArr[2] = totalPenjualan;
+        trxArr[2] = countTransaksi || 1;
+      }
     }
-  }
+
+    return {
+      displayTotalPenjualan: totalPenjualan,
+      displayPenjualanKotor: penjualanKotor,
+      displayLabaKotor: labaKotor,
+      displayPenerimaan: penerimaan,
+      displayTransaksi: countTransaksi,
+      displayProduk: totalProdukTerjual,
+      activeLabels: labels,
+      salesData: salesArr,
+      trxData: trxArr,
+    };
+  }, [transactions, buybacks, period]);
 
   // Pengaturan Dimensi & Ruang Padding SVG
   const chartWidth = 840;

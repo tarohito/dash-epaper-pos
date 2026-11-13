@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isAdminMenuOpen, onCloseAdminMenu]);
 
   return (
-    <header className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 bg-white border-b border-gray-200 z-30 shrink-0 relative">
+    <header className="h-12 sm:h-14 flex items-center justify-between px-3 sm:px-6 bg-white border-b border-gray-200 z-30 shrink-0 relative">
       {/* 1. LOGO & SIDEBAR TOGGLE (Left - Aligned left) */}
       <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3 shrink-0">
         {/* SIDEBAR TOGGLE / MINIMIZE BUTTON (Direct button without wrapper) */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Building2,
   Store,
@@ -30,15 +30,19 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const activeTenant = tenants.find(t => t.id === activeTenantId) || tenants[0];
+  const activeTenant = useMemo(() => tenants.find(t => t.id === activeTenantId) || tenants[0], [tenants, activeTenantId]);
 
-  const filteredTenants = tenants.filter(
-    t =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.branchName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTenants = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return tenants;
+    return tenants.filter(
+      t =>
+        t.name.toLowerCase().includes(q) ||
+        t.branchName.toLowerCase().includes(q) ||
+        t.city.toLowerCase().includes(q) ||
+        t.code.toLowerCase().includes(q)
+    );
+  }, [tenants, searchQuery]);
 
   return (
     <div className="space-y-6 pb-6">

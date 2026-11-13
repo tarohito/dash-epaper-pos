@@ -154,25 +154,60 @@ const App: React.FC = () => {
     setActiveTenantId(newTenant.id);
   };
 
-  // Synchronize product promo flags dynamically with active promos
-  const activePromos = promos.filter(p => p.isActive);
-  const productsWithPromo = products.map(product => {
-    const applicablePromo = activePromos.find(p => p.productIds.includes(product.id));
-    if (applicablePromo) {
+  // Synchronize product promo flags dynamically with active promos (O(1) Map Lookup & Memoized)
+  const productsWithPromo = useMemo(() => {
+    const activePromos = promos.filter(p => p.isActive);
+    if (activePromos.length === 0) {
+      return products.map(product => ({
+        ...product,
+        isPromo: false,
+        promoDiscountPercent: undefined,
+        promoLabel: undefined,
+      }));
+    }
+
+    const promoMap = new Map<number, PromoCampaign>();
+    for (const promo of activePromos) {
+      for (const prodId of promo.productIds) {
+        if (!promoMap.has(prodId)) {
+          promoMap.set(prodId, promo);
+        }
+      }
+    }
+
+    return products.map(product => {
+      const applicablePromo = promoMap.get(product.id);
+      if (applicablePromo) {
+        return {
+          ...product,
+          isPromo: true,
+          promoDiscountPercent: applicablePromo.discountPercent,
+          promoLabel: applicablePromo.label,
+        };
+      }
       return {
         ...product,
-        isPromo: true,
-        promoDiscountPercent: applicablePromo.discountPercent,
-        promoLabel: applicablePromo.label,
+        isPromo: false,
+        promoDiscountPercent: undefined,
+        promoLabel: undefined,
       };
+    });
+  }, [products, promos]);
+
+  // Index map SKU & ID produk untuk O(1) scanner & lookup super instan
+  const productLookupMap = useMemo(() => {
+    const map = new Map<string, Product>();
+    for (const p of productsWithPromo) {
+      map.set(p.sku.toLowerCase(), p);
+      map.set(p.name.toLowerCase(), p);
+      map.set(p.id.toString(), p);
+      const alphaNum = p.sku.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (alphaNum.length >= 3) {
+        map.set(alphaNum, p);
+      }
     }
-    return {
-      ...product,
-      isPromo: false,
-      promoDiscountPercent: undefined,
-      promoLabel: undefined,
-    };
-  });
+    return map;
+  }, [productsWithPromo]);
 
   const handleSavePromo = (savedPromo: PromoCampaign) => {
     setPromos(prev => {
@@ -300,19 +335,16 @@ const App: React.FC = () => {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  // Barcode Auto-Scan Logic
+  // Barcode Auto-Scan Logic dengan O(1) Map Lookup
   const handleAutoScanCode = (code: string): boolean => {
     const clean = code.trim().toLowerCase();
     if (!clean) return false;
 
-    let found = products.find(p => p.sku.toLowerCase() === clean);
+    let found = productLookupMap.get(clean);
     if (!found) {
-      found = products.find(p => p.name.toLowerCase() === clean);
-    }
-    if (!found) {
-      const alphaNum = clean.replace(/[^a-z0-9]/g,'');
-      if (alphaNum.length >= 4) {
-        found = products.find(p => p.sku.toLowerCase().replace(/[^a-z0-9]/g,'') === alphaNum);
+      const alphaNum = clean.replace(/[^a-z0-9]/g, '');
+      if (alphaNum.length >= 3) {
+        found = productLookupMap.get(alphaNum);
       }
     }
 
@@ -656,74 +688,73 @@ const App: React.FC = () => {
         </div>
 
         {/* Bottom Navigation for Tablet & Mobile (lg:hidden) - menus moved from top to bottom */}
-        {/* Bottom Navigation for Tablet & Mobile (lg:hidden) - menus moved from top to bottom */}
-        <nav className="lg:hidden shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1.5 sm:px-3 py-1 flex items-center justify-around z-30 min-h-[56px]">
+        <nav className="lg:hidden shrink-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-1.5 sm:px-3 py-0.5 flex items-center justify-around z-30 min-h-[48px]">
           <button
             type="button"
             onClick={() => setActiveMenu('Kasir POS (Penjualan)')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+            className={`flex flex-col items-center justify-center py-0.5 px-1.5 rounded-md transition-all min-w-[48px] min-h-[40px] cursor-pointer active:scale-95 ${
               activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS'
                 ? 'text-orange-600 font-bold bg-orange-50/80'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             <div className="relative">
-              <ShoppingCart size={19} className={activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS' ? 'text-orange-600' : 'text-gray-500'} />
+              <ShoppingCart size={18} className={activeMenu === 'Kasir POS (Penjualan)' || activeMenu === 'Kasir POS' ? 'text-orange-600' : 'text-gray-500'} />
               {cart.reduce((a, b) => a + b.qty, 0) > 0 && (
                 <span className="absolute -top-1 -right-2.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center font-mono">
                   {cart.reduce((a, b) => a + b.qty, 0)}
                 </span>
               )}
             </div>
-            <span className="text-xs font-semibold mt-1 leading-none">Kasir</span>
+            <span className="text-[11px] font-semibold mt-0.5 leading-none">Kasir</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveMenu('Buyback (Pembelian)')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+            className={`flex flex-col items-center justify-center py-0.5 px-1.5 rounded-md transition-all min-w-[48px] min-h-[40px] cursor-pointer active:scale-95 ${
               activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)'
                 ? 'text-orange-600 font-bold bg-orange-50/80'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            <Scale size={19} className={activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? 'text-orange-600' : 'text-gray-500'} />
-            <span className="text-xs font-semibold mt-1 leading-none">Buyback</span>
+            <Scale size={18} className={activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? 'text-orange-600' : 'text-gray-500'} />
+            <span className="text-[11px] font-semibold mt-0.5 leading-none">Buyback</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveMenu('Transaksi')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+            className={`flex flex-col items-center justify-center py-0.5 px-1.5 rounded-md transition-all min-w-[48px] min-h-[40px] cursor-pointer active:scale-95 ${
               activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian'
                 ? 'text-orange-600 font-bold bg-orange-50/80'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            <ReceiptText size={19} className={activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian' ? 'text-orange-600' : 'text-gray-500'} />
-            <span className="text-xs font-semibold mt-1 leading-none">Transaksi</span>
+            <ReceiptText size={18} className={activeMenu === 'Transaksi' || activeMenu === 'Transaksi Harian' ? 'text-orange-600' : 'text-gray-500'} />
+            <span className="text-[11px] font-semibold mt-0.5 leading-none">Transaksi</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveMenu('Daftar Barang')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all min-w-[56px] min-h-[46px] cursor-pointer active:scale-95 ${
+            className={`flex flex-col items-center justify-center py-0.5 px-1.5 rounded-md transition-all min-w-[48px] min-h-[40px] cursor-pointer active:scale-95 ${
               activeMenu === 'Daftar Barang'
                 ? 'text-orange-600 font-bold bg-orange-50/80'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            <Gem size={19} className={activeMenu === 'Daftar Barang' ? 'text-orange-600' : 'text-gray-500'} />
-            <span className="text-xs font-semibold mt-1 leading-none">Barang</span>
+            <Gem size={18} className={activeMenu === 'Daftar Barang' ? 'text-orange-600' : 'text-gray-500'} />
+            <span className="text-[11px] font-semibold mt-0.5 leading-none">Barang</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsSidebarCollapsed(false)}
-            className="flex flex-col items-center justify-center py-1 px-2 rounded-md transition-all text-gray-600 hover:text-gray-900 min-w-[56px] min-h-[46px] cursor-pointer active:scale-95"
+            className="flex flex-col items-center justify-center py-0.5 px-1.5 rounded-md transition-all text-gray-600 hover:text-gray-900 min-w-[48px] min-h-[40px] cursor-pointer active:scale-95"
           >
-            <Menu size={19} />
-            <span className="text-xs font-semibold mt-1 leading-none">Menu</span>
+            <Menu size={18} />
+            <span className="text-[11px] font-semibold mt-0.5 leading-none">Menu</span>
           </button>
         </nav>
 
