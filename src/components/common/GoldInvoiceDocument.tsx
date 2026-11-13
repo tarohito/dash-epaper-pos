@@ -1,17 +1,21 @@
 import React from'react';
-import { Transaction, BuybackItem } from'../../types';
+import { Transaction, BuybackItem, Tenant, StoreSettings } from'../../types';
 import { formatIDR } from'../../utils/formatters';
 
 interface GoldInvoiceDocumentProps {
   receipt: Transaction | BuybackItem;
   type?:'sale' |'buyback';
   id?: string;
+  activeTenant?: Tenant;
+  storeSettings?: StoreSettings;
 }
 
 export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
   receipt,
   type ='sale',
   id,
+  activeTenant,
+  storeSettings,
 }) => {
   const isBuyback = type ==='buyback';
   const buybackData = isBuyback ? (receipt as BuybackItem) : null;
@@ -97,11 +101,11 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
                 </svg>
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-[#8c671b] leading-none uppercase">
-                  e.paper
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#8c671b] leading-none uppercase">
+                  {activeTenant?.name || 'e.paper'}
                 </h1>
-                <span className="text-xs font-extrabold tracking-[0.3em] text-[#9a7420] uppercase block mt-0.5">
-                  GOLD & JEWELLERY
+                <span className="text-xs font-extrabold tracking-[0.25em] text-[#9a7420] uppercase block mt-0.5">
+                  {storeSettings?.receiptTagline || 'GOLD & JEWELLERY'}
                 </span>
               </div>
             </div>
@@ -134,7 +138,7 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
             </div>
             <div className="text-xs text-gray-600 font-medium">{dateStr}</div>
             <div className="text-xs font-bold text-gray-700">
-              e.paper G-WALK Citraland &bull; Grand Indonesia
+              {activeTenant ? `${activeTenant.name} • ${activeTenant.branchName}` : 'e.paper Gold Store'}
             </div>
           </div>
         </div>
@@ -305,6 +309,11 @@ export const GoldInvoiceDocument: React.FC<GoldInvoiceDocumentProps> = ({
               <li>Jika jual/tukar barang ada kerusakan/cacat, mata hilang, dsb., maka akan dikenakan potongan tambahan mengikuti kondisi perhiasan.</li>
               <li>Jika barang pesanan khusus (custom order), batu, dan ongkos lebur tidak dapat dikembalikan lagi.</li>
             </ol>
+            {storeSettings?.receiptFooterNote && (
+              <p className="mt-1.5 pt-1.5 border-t border-gray-200 font-semibold text-gray-800">
+                {storeSettings.receiptFooterNote}
+              </p>
+            )}
           </div>
 
           {/* Right: Signatures (Customer & Gold Advisor) */}

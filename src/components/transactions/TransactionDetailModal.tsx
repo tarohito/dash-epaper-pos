@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  Printer,
-  User,
-  CreditCard,
-  FileText,
-} from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { Transaction } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import {
@@ -61,7 +56,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
               onClose();
               onPrintReceipt(transaction);
             }}
-            className={MODAL_BTN_PRIMARY_CLASS}
+            className={`${MODAL_BTN_PRIMARY_CLASS} gap-1.5`}
           >
             <Printer size={15} className="shrink-0" />
             <span>Cetak Nota Penjualan</span>
@@ -110,9 +105,8 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {/* Card 1: Pelanggan & Kasir */}
             <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
-                <User size={14} className="text-orange-500" />
-                <span>Pelanggan &amp; Kasir</span>
+              <div className="text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
+                Pelanggan &amp; Kasir
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between gap-2">
@@ -140,9 +134,8 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
             {/* Card 2: Detail Pembayaran */}
             <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
-                <CreditCard size={14} className="text-orange-500" />
-                <span>Rincian Pembayaran</span>
+              <div className="text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
+                Rincian Pembayaran
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between gap-2">
@@ -223,9 +216,8 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
           {/* Card 3: Daftar Perhiasan & Rincian Harga */}
           <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
-              <FileText size={14} className="text-orange-500" />
-              <span>Rincian Barang &amp; Kalkulasi Harga</span>
+            <div className="text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
+              Rincian Barang &amp; Kalkulasi Harga
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200/70 divide-y divide-gray-100 mb-3 overflow-hidden">

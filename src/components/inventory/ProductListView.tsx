@@ -33,6 +33,7 @@ interface ProductListViewProps {
   onOpenAddModal: () => void;
   onEditProduct: (product: Product) => void;
   onDeleteProduct: (id: number) => Promise<void>;
+  canManageInventory?: boolean;
 }
 
 export const ProductListView: React.FC<ProductListViewProps> = ({
@@ -40,6 +41,7 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
   onOpenAddModal,
   onEditProduct,
   onDeleteProduct,
+  canManageInventory = true,
 }) => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 220);
@@ -149,16 +151,18 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={onOpenAddModal}
-            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-xs active:scale-[0.98]"
-          >
-            <Plus size={16} />
-            <span>Tambah Barang</span>
-          </button>
-        </div>
+        {canManageInventory && (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={onOpenAddModal}
+              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-xs active:scale-[0.98]"
+            >
+              <Plus size={16} />
+              <span>Tambah Barang</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 4 Modern KPI Metric Cards */}
@@ -525,31 +529,35 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                             </button>
                           </Tooltip>
 
-                          <Tooltip content="Edit Barang" side="top">
-                            <button
-                              type="button"
-                              onClick={() => onEditProduct(p)}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 transition-all cursor-pointer inline-flex items-center justify-center active:scale-95 shadow-2xs"
-                              aria-label="Edit Barang"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                          </Tooltip>
+                          {canManageInventory && (
+                            <>
+                              <Tooltip content="Edit Barang" side="top">
+                                <button
+                                  type="button"
+                                  onClick={() => onEditProduct(p)}
+                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 transition-all cursor-pointer inline-flex items-center justify-center active:scale-95 shadow-2xs"
+                                  aria-label="Edit Barang"
+                                >
+                                  <Pencil size={15} />
+                                </button>
+                              </Tooltip>
 
-                          <Tooltip
-                            content={(p.salesCount ?? 0) > 0 ? 'Sudah terjual' : 'Hapus Barang'}
-                            side="top"
-                          >
-                            <button
-                              type="button"
-                              disabled={(p.salesCount ?? 0) > 0}
-                              onClick={() => setDeletingProduct(p)}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 transition-all cursor-pointer inline-flex items-center justify-center active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                              aria-label="Hapus Barang"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </Tooltip>
+                              <Tooltip
+                                content={(p.salesCount ?? 0) > 0 ? 'Sudah terjual' : 'Hapus Barang'}
+                                side="top"
+                              >
+                                <button
+                                  type="button"
+                                  disabled={(p.salesCount ?? 0) > 0}
+                                  onClick={() => setDeletingProduct(p)}
+                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 transition-all cursor-pointer inline-flex items-center justify-center active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
+                                  aria-label="Hapus Barang"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </Tooltip>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

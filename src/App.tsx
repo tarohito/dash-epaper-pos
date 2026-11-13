@@ -8,9 +8,12 @@ import { PosView } from './components/pos/PosView';
 import { PrintableReceipt } from './components/pos/PrintableReceipt';
 import { ScanFeedbackToast } from './components/pos/ScanFeedbackToast';
 import { PrintableBuybackReceipt } from './components/buyback/PrintableBuybackReceipt';
+import { PrintableShiftReport } from './components/reports/PrintableShiftReport';
 import { FallbackView } from './components/common/FallbackView';
+import { LoginPage } from './components/auth/LoginPage';
 
 import {
+  AuthLoginResponse,
   Product,
   CartItem,
   Transaction,
@@ -19,10 +22,19 @@ import {
   PromoCampaign,
   Tenant,
   Customer,
+  UserAccount,
+  UserRole,
+  StoreSettings,
+  ShiftClosingRecord,
 } from './types';
 import { playScannerBeep, playCashRegisterChime } from './utils/audio';
 import { extractBarcodeValue } from './utils/barcode';
-import { posApi } from './services/api';
+import {
+  clearAuthToken,
+  getAuthToken,
+  posApi,
+  setUnauthorizedHandler,
+} from './services/api';
 
 // Code splitting (Lazy load secondary views & modals so Kasir POS initial load is fast & lightweight)
 const DashboardView = lazy(() =>
@@ -49,6 +61,31 @@ const CustomerView = lazy(() =>
 const TenantManagementView = lazy(() =>
   import('./components/tenant/TenantManagementView').then(m => ({ default: m.TenantManagementView }))
 );
+const UserManagementView = lazy(() =>
+  import('./components/users/UserManagementView').then(m => ({ default: m.UserManagementView }))
+);
+const StoreSettingsView = lazy(() =>
+  import('./components/settings/StoreSettingsView').then(m => ({ default: m.StoreSettingsView }))
+);
+const ShiftClosingView = lazy(() =>
+  import('./components/reports/ShiftClosingView').then(m => ({ default: m.ShiftClosingView }))
+);
+
+const DEFAULT_STORE_SETTINGS: StoreSettings = {
+  tenantId: 'tenant-tms-001',
+  ppnPercent: 11,
+  enablePpn: true,
+  goldPrice24kBuyback: 2350000,
+  goldPrice22kBuyback: 1950000,
+  goldPrice18kBuyback: 1420000,
+  goldPrice16kBuyback: 1180000,
+  receiptTagline: 'GOLD & JEWELLERY',
+  receiptFooterNote:
+    'Simpan surat resmi ini dengan baik. Pembelian & buyback mengikuti ketentuan harga pasar emas berjalan.',
+  autoPrintReceipt: false,
+  requireCustomerOnSale: false,
+  updatedAt: '',
+};
 
 const BarcodeScannerModal = lazy(() =>
   import('./components/pos/BarcodeScannerModal').then(m => ({ default: m.BarcodeScannerModal }))
@@ -79,7 +116,28 @@ const ViewLoadingFallback: React.FC = () => (
   </div>
 );
 
+function isMenuAllowedForRole(menu: string, role: UserRole): boolean {
+  if (menu === 'Manajemen User') return role === 'owner';
+  if (
+    menu === 'Dashboard' ||
+    menu === 'Promo' ||
+    menu === 'Daftar Kategori' ||
+    menu === 'Multi-Outlet' ||
+    menu === 'Multi-Tenant' ||
+    menu === 'Multi-Tenant & Outlet' ||
+    menu === 'Laporan & Analitik' ||
+    menu === 'Pengaturan'
+  ) {
+    return role === 'owner' || role === 'branch_manager';
+  }
+  return true;
+}
+
 const App: React.FC = () => {
+  // Auth State
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   // Navigation & Layout State
   const [activeMenu, setActiveMenu] = useState('Kasir POS (Penjualan)');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -93,6 +151,8 @@ const App: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [activeTenantId, setActiveTenantId] = useState<string>('tenant-tms-001');
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS);
+  const [printingShift, setPrintingShift] = useState<ShiftClosingRecord | null>(null);
 
   // View-level invalidation counters so only active/affected views refresh from SQLite
   const [productsRefreshKey, setProductsRefreshKey] = useState(0);
@@ -106,27 +166,89 @@ const App: React.FC = () => {
   // Toast feedback state from global ToastContext
   const { showToast } = useToast();
 
-  // Load lightweight bootstrap metadata (categories, tenants, active tenant)
+  const resetAuthSession = useCallback(() => {
+    clearAuthToken();
+    setCurrentUser(null);
+    setCart([]);
+    setCustomerId(undefined);
+    setCustomerName('Pelanggan Umum');
+    setIsAdminMenuOpen(false);
+    setIsPaymentModalOpen(false);
+    setIsReceiptModalOpen(false);
+    setIsBuybackReceiptModalOpen(false);
+    setIsAddProductModalOpen(false);
+    setIsAddCategoryModalOpen(false);
+    setIsRegisterTenantOpen(false);
+    setIsScanModalOpen(false);
+    setIsCheckingAuth(false);
+    setIsLoadingData(false);
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(resetAuthSession);
+    return () => setUnauthorizedHandler(null);
+  }, [resetAuthSession]);
+
+  // Load lightweight bootstrap metadata (authenticated user, categories, accessible tenants, active tenant)
   const fetchBootstrapData = useCallback(async () => {
+    if (!getAuthToken()) {
+      setCurrentUser(null);
+      setIsCheckingAuth(false);
+      setIsLoadingData(false);
+      return;
+    }
+
     setIsLoadingData(true);
     setLoadError(null);
     try {
       const data = await posApi.bootstrap();
+      setCurrentUser(data.user);
       setCategories(data.categories);
       setTenants(data.tenants);
       setActiveTenantId(data.activeTenantId);
+      if (data.storeSettings) {
+        setStoreSettings(data.storeSettings);
+      }
+      setActiveMenu(prev =>
+        isMenuAllowedForRole(prev, data.user.role) ? prev : 'Kasir POS (Penjualan)'
+      );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Gagal memuat data dari database SQLite.';
-      setLoadError(msg);
-      showToast('error', msg);
+      if (!getAuthToken()) {
+        setCurrentUser(null);
+      } else {
+        const msg = err instanceof Error ? err.message : 'Gagal memuat data dari database SQLite.';
+        setLoadError(msg);
+        showToast('error', msg);
+      }
     } finally {
+      setIsCheckingAuth(false);
       setIsLoadingData(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    fetchBootstrapData();
+    void fetchBootstrapData();
   }, [fetchBootstrapData]);
+
+  const handleLoginSuccess = useCallback(
+    async (auth: AuthLoginResponse) => {
+      setCurrentUser(auth.user);
+      setTenants(auth.tenants);
+      setActiveTenantId(auth.activeTenantId);
+      setActiveMenu('Kasir POS (Penjualan)');
+      setCart([]);
+      setCustomerId(undefined);
+      setCustomerName('Pelanggan Umum');
+      await fetchBootstrapData();
+    },
+    [fetchBootstrapData]
+  );
+
+  const handleLogout = useCallback(async () => {
+    await posApi.logout();
+    resetAuthSession();
+    showToast('success', 'Anda telah keluar dari sesi.');
+  }, [resetAuthSession, showToast]);
 
   // Customer CRUD
   const handleSaveCustomer = async (savedCustomer: Customer, isEdit?: boolean) => {
@@ -160,11 +282,36 @@ const App: React.FC = () => {
   const [isRegisterTenantOpen, setIsRegisterTenantOpen] = useState(false);
   const activeTenant = tenants.find(t => t.id === activeTenantId) || tenants[0];
 
+  const refreshActiveOutletViews = useCallback(() => {
+    setProductsRefreshKey(k => k + 1);
+    setCategoriesRefreshKey(k => k + 1);
+    setTransactionsRefreshKey(k => k + 1);
+    setBuybacksRefreshKey(k => k + 1);
+    setPromosRefreshKey(k => k + 1);
+    setDashboardRefreshKey(k => k + 1);
+  }, []);
+
+  const refreshTenantsMetadata = useCallback(async () => {
+    try {
+      const latest = await posApi.getTenants();
+      setTenants(latest);
+    } catch {
+      // Abaikan jika refresh metadata tenant gagal sementara
+    }
+  }, []);
+
   const handleSelectTenant = async (tenantId: string) => {
+    if (tenantId === activeTenantId) return;
     const prevId = activeTenantId;
     setActiveTenantId(tenantId);
     try {
       await posApi.setActiveTenant(tenantId);
+      setCart([]);
+      setCustomerId(undefined);
+      setCustomerName('Pelanggan Umum');
+      refreshActiveOutletViews();
+      void refreshTenantsMetadata();
+      void posApi.getStoreSettings().then(res => setStoreSettings(res.storeSettings)).catch(() => {});
       const selected = tenants.find(t => t.id === tenantId);
       showToast('success', `Berhasil beralih ke outlet "${selected?.name || tenantId}".`);
     } catch (err) {
@@ -178,8 +325,13 @@ const App: React.FC = () => {
       const created = await posApi.registerTenant(newTenant);
       setTenants(prev => [created, ...prev]);
       setActiveTenantId(created.id);
+      setCart([]);
+      setCustomerId(undefined);
+      setCustomerName('Pelanggan Umum');
+      refreshActiveOutletViews();
+      void posApi.getStoreSettings().then(res => setStoreSettings(res.storeSettings)).catch(() => {});
       setIsRegisterTenantOpen(false);
-      showToast('success', `Outlet "${created.name}" berhasil didaftarkan.`);
+      showToast('success', `Outlet "${created.name}" berhasil didaftarkan & diaktifkan.`);
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Gagal mendaftarkan outlet.');
       throw err;
@@ -269,8 +421,31 @@ const App: React.FC = () => {
   }, []);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.harga * item.qty, 0), [cart]);
-  const tax = useMemo(() => Math.round(subtotal * 0.11), [subtotal]);
+  const tax = useMemo(
+    () => (storeSettings.enablePpn ? Math.round(subtotal * (storeSettings.ppnPercent / 100)) : 0),
+    [subtotal, storeSettings.enablePpn, storeSettings.ppnPercent]
+  );
+  const taxLabel = useMemo(
+    () => (storeSettings.enablePpn ? `PPN (${storeSettings.ppnPercent}%)` : 'PPN (0% / Non-PKP)'),
+    [storeSettings.enablePpn, storeSettings.ppnPercent]
+  );
   const grandTotal = useMemo(() => subtotal + tax, [subtotal, tax]);
+
+  const handlePrintShift = useCallback((shift: ShiftClosingRecord) => {
+    setPrintingShift(shift);
+    document.body.classList.add('printing-shift');
+    const cleanup = () => {
+      document.body.classList.remove('printing-shift');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    window.requestAnimationFrame(() => {
+      setTimeout(() => {
+        window.print();
+        setTimeout(cleanup, 1200);
+      }, 60);
+    });
+  }, []);
 
   // Cart Handlers
   const handleAddToCart = useCallback(
@@ -369,6 +544,7 @@ const App: React.FC = () => {
 
   // Global Hardware Barcode Scanner Listener
   useEffect(() => {
+    if (!currentUser) return;
     let scanBuffer = '';
     let lastKeyTime = Date.now();
 
@@ -401,7 +577,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchQuery, handleAutoScanCode]);
+  }, [currentUser, searchQuery, handleAutoScanCode]);
 
   // Payment Confirmation Handler (SQLite Atomic Checkout + Stock Deduction)
   const handleConfirmPayment = async (paymentData: {
@@ -415,7 +591,7 @@ const App: React.FC = () => {
   }) => {
     try {
       const result = await posApi.createTransaction({
-        cashier: 'Administrator Kasir (Shift 1)',
+        cashier: currentUser?.fullName || 'Kasir',
         customerId,
         customerName: customerName.trim() || 'Pelanggan Umum',
         items: cart.map(item => ({ id: item.id, qty: item.qty })),
@@ -442,6 +618,12 @@ const App: React.FC = () => {
       setSelectedReceipt(result.transaction);
       setIsReceiptModalOpen(true);
       showToast('success', `Transaksi ${result.transaction.invoiceNo} berhasil disimpan.`);
+      if (storeSettings.autoPrintReceipt) {
+        setTimeout(() => {
+          document.body.classList.remove('printing-shift');
+          window.print();
+        }, 250);
+      }
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Gagal memproses pembayaran.');
       throw err;
@@ -521,6 +703,7 @@ const App: React.FC = () => {
         setProductsRefreshKey(k => k + 1);
         setCategoriesRefreshKey(k => k + 1);
         setDashboardRefreshKey(k => k + 1);
+        void refreshTenantsMetadata();
         setIsAddProductModalOpen(false);
         showToast('success', `Barang "${created.name}" ditambahkan ke inventaris.`);
       }
@@ -537,6 +720,7 @@ const App: React.FC = () => {
       setProductsRefreshKey(k => k + 1);
       setCategoriesRefreshKey(k => k + 1);
       setDashboardRefreshKey(k => k + 1);
+      void refreshTenantsMetadata();
       showToast('success', 'Barang berhasil dihapus dari inventaris.');
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Gagal menghapus barang.');
@@ -580,13 +764,37 @@ const App: React.FC = () => {
     }
   };
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6 font-sans">
+        <Loader2 size={28} className="animate-spin text-orange-500 mb-3" />
+        <p className="text-sm font-semibold text-gray-700">Memeriksa sesi login...</p>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  const isOwner = currentUser.role === 'owner';
+  const canManageOperations = currentUser.role === 'owner' || currentUser.role === 'branch_manager';
+
+  const handleGuardedSelectMenu = (menu: string) => {
+    if (!isMenuAllowedForRole(menu, currentUser.role)) {
+      showToast('warning', 'Menu tersebut hanya dapat diakses oleh Owner atau Kepala Cabang.');
+      return;
+    }
+    setActiveMenu(menu);
+  };
+
   return (
     <TooltipProvider delayDuration={120}>
       <div className="flex flex-col h-full h-[100dvh] font-sans text-gray-800 overflow-hidden bg-gray-100">
         {/* Header */}
         <Header
           activeMenu={activeMenu}
-          onSelectMenu={setActiveMenu}
+          onSelectMenu={handleGuardedSelectMenu}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           hasNotification={hasNotification}
@@ -594,6 +802,9 @@ const App: React.FC = () => {
           isAdminMenuOpen={isAdminMenuOpen}
           onToggleAdminMenu={() => setIsAdminMenuOpen(prev => !prev)}
           onCloseAdminMenu={() => setIsAdminMenuOpen(false)}
+          currentUser={currentUser}
+          activeTenant={activeTenant}
+          onLogout={handleLogout}
         />
 
         {/* Body */}
@@ -601,7 +812,7 @@ const App: React.FC = () => {
           {/* Sidebar */}
           <Sidebar
             activeMenu={activeMenu}
-            onSelectMenu={setActiveMenu}
+            onSelectMenu={handleGuardedSelectMenu}
             isSidebarCollapsed={isSidebarCollapsed}
             onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             isProdukExpanded={isProdukExpanded}
@@ -617,6 +828,7 @@ const App: React.FC = () => {
             activeTenantId={activeTenantId}
             onSelectTenant={handleSelectTenant}
             onOpenRegisterModal={() => setIsRegisterTenantOpen(true)}
+            userRole={currentUser.role}
           />
 
           {/* Main Content Area */}
@@ -661,6 +873,7 @@ const App: React.FC = () => {
                   onClearCart={handleClearCart}
                   subtotal={subtotal}
                   tax={tax}
+                  taxLabel={taxLabel}
                   grandTotal={grandTotal}
                   onOpenPaymentModal={() => setIsPaymentModalOpen(true)}
                 />
@@ -675,8 +888,9 @@ const App: React.FC = () => {
                       }}
                       onVoidTransaction={handleVoidTransaction}
                       onNavigateToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
+                      canVoid={canManageOperations}
                     />
-                  ) : activeMenu === 'Promo' ? (
+                  ) : activeMenu === 'Promo' && canManageOperations ? (
                     <PromoManagementView
                       refreshTrigger={promosRefreshKey}
                       onSavePromo={handleSavePromo}
@@ -695,8 +909,9 @@ const App: React.FC = () => {
                         setIsAddProductModalOpen(true);
                       }}
                       onDeleteProduct={handleDeleteProduct}
+                      canManageInventory={canManageOperations}
                     />
-                  ) : activeMenu === 'Daftar Kategori' ? (
+                  ) : activeMenu === 'Daftar Kategori' && canManageOperations ? (
                     <CategoryListView
                       refreshTrigger={categoriesRefreshKey}
                       onOpenAddCategoryModal={() => {
@@ -712,6 +927,9 @@ const App: React.FC = () => {
                   ) : activeMenu === 'Buyback (Pembelian)' || activeMenu === 'Pembelian (buyback)' ? (
                     <BuybackView
                       refreshTrigger={buybacksRefreshKey}
+                      branchName={activeTenant?.branchName}
+                      cashierName={currentUser.fullName}
+                      canVoid={canManageOperations}
                       onSaveBuyback={handleSaveBuyback}
                       onVoidBuyback={handleVoidBuyback}
                       onSelectReceipt={bb => {
@@ -725,23 +943,45 @@ const App: React.FC = () => {
                       refreshTrigger={customersRefreshKey}
                       onSaveCustomer={handleSaveCustomer}
                       onDeleteCustomer={handleDeleteCustomer}
+                      canDelete={canManageOperations}
                     />
-                  ) : activeMenu === 'Dashboard' ? (
+                  ) : activeMenu === 'Dashboard' && canManageOperations ? (
                     <DashboardView
                       refreshTrigger={dashboardRefreshKey}
                       activeTenant={activeTenant}
-                      onNavigateTo={setActiveMenu}
+                      onNavigateTo={handleGuardedSelectMenu}
                       onOpenRegisterTenant={() => setIsRegisterTenantOpen(true)}
                     />
-                  ) : activeMenu === 'Multi-Tenant & Outlet' ||
-                    activeMenu === 'Multi-Outlet' ||
-                    activeMenu === 'Multi-Tenant' ? (
+                  ) : (activeMenu === 'Multi-Tenant & Outlet' ||
+                      activeMenu === 'Multi-Outlet' ||
+                      activeMenu === 'Multi-Tenant') &&
+                    canManageOperations ? (
                     <TenantManagementView
                       tenants={tenants}
                       activeTenantId={activeTenantId}
                       onSelectTenant={handleSelectTenant}
                       onOpenRegisterModal={() => setIsRegisterTenantOpen(true)}
                       onNavigateToPos={() => setActiveMenu('Kasir POS (Penjualan)')}
+                      canCreateOutlet={isOwner}
+                    />
+                  ) : activeMenu === 'Manajemen User' && isOwner ? (
+                    <UserManagementView currentUser={currentUser} tenants={tenants} />
+                  ) : activeMenu === 'Pengaturan' && canManageOperations ? (
+                    <StoreSettingsView
+                      activeTenant={activeTenant}
+                      storeSettings={storeSettings}
+                      userRole={currentUser.role}
+                      onSettingsSaved={({ tenant, storeSettings: saved }) => {
+                        setTenants(prev => prev.map(t => (t.id === tenant.id ? tenant : t)));
+                        setStoreSettings(saved);
+                      }}
+                    />
+                  ) : activeMenu === 'Rekap Shift' ||
+                    (activeMenu === 'Laporan & Analitik' && canManageOperations) ? (
+                    <ShiftClosingView
+                      currentUser={currentUser}
+                      activeTenant={activeTenant}
+                      onPrintShift={handlePrintShift}
                     />
                   ) : (
                     <FallbackView title={activeMenu} onBackToPos={() => setActiveMenu('Kasir POS (Penjualan)')} />
@@ -865,6 +1105,8 @@ const App: React.FC = () => {
               cart={cart}
               subtotal={subtotal}
               tax={tax}
+              taxLabel={taxLabel}
+              requireCustomer={storeSettings.requireCustomerOnSale}
               grandTotal={grandTotal}
               customerId={customerId}
               customerName={customerName}
@@ -882,7 +1124,12 @@ const App: React.FC = () => {
               isOpen={isReceiptModalOpen}
               onClose={() => setIsReceiptModalOpen(false)}
               receipt={selectedReceipt}
-              onPrint={() => window.print()}
+              activeTenant={activeTenant}
+              storeSettings={storeSettings}
+              onPrint={() => {
+                document.body.classList.remove('printing-shift');
+                window.print();
+              }}
               onViewDailyTransactions={() => setActiveMenu('Transaksi')}
             />
           )}
@@ -892,7 +1139,12 @@ const App: React.FC = () => {
               isOpen={isBuybackReceiptModalOpen}
               onClose={() => setIsBuybackReceiptModalOpen(false)}
               receipt={selectedBuybackReceipt}
-              onPrint={() => window.print()}
+              activeTenant={activeTenant}
+              storeSettings={storeSettings}
+              onPrint={() => {
+                document.body.classList.remove('printing-shift');
+                window.print();
+              }}
             />
           )}
 
@@ -933,8 +1185,17 @@ const App: React.FC = () => {
         <ScanFeedbackToast feedback={scanFeedback} />
 
         {/* Hidden Printable Elements for Thermal Printer (@media print) */}
-        <PrintableReceipt receipt={selectedReceipt} />
-        <PrintableBuybackReceipt receipt={selectedBuybackReceipt} />
+        <PrintableReceipt
+          receipt={selectedReceipt}
+          activeTenant={activeTenant}
+          storeSettings={storeSettings}
+        />
+        <PrintableBuybackReceipt
+          receipt={selectedBuybackReceipt}
+          activeTenant={activeTenant}
+          storeSettings={storeSettings}
+        />
+        <PrintableShiftReport shift={printingShift} activeTenant={activeTenant} />
       </div>
     </TooltipProvider>
   );

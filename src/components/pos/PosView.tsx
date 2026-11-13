@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Barcode, ShoppingCart, ArrowRight, X, Filter, ChevronDown, Loader2 } from 'lucide-react';
+import { Barcode, X, Filter, ChevronDown, Loader2 } from 'lucide-react';
 import { Product, CartItem } from '../../types';
 import { ProductCard } from './ProductCard';
 import { PromoCard } from './PromoCard';
@@ -26,6 +26,7 @@ interface PosViewProps {
   onClearCart?: () => void;
   subtotal: number;
   tax: number;
+  taxLabel?: string;
   grandTotal: number;
   onOpenPaymentModal: () => void;
 }
@@ -46,6 +47,7 @@ export const PosView: React.FC<PosViewProps> = ({
   onClearCart,
   subtotal,
   tax,
+  taxLabel,
   grandTotal,
   onOpenPaymentModal,
 }) => {
@@ -209,7 +211,6 @@ export const PosView: React.FC<PosViewProps> = ({
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          <ShoppingCart size={15} className={mobileTab === 'cart' ? 'text-orange-500' : ''} />
           <span>Keranjang</span>
           {totalCartQty > 0 && (
             <span className="text-xs px-2 py-0.5 bg-orange-500 text-white rounded-full font-bold font-mono">
@@ -434,6 +435,7 @@ export const PosView: React.FC<PosViewProps> = ({
           onClearCart={onClearCart ? () => setIsConfirmClearCart(true) : undefined}
           subtotal={subtotal}
           tax={tax}
+          taxLabel={taxLabel}
           grandTotal={grandTotal}
           onOpenPaymentModal={onOpenPaymentModal}
           onBackToCatalog={() => setMobileTab('catalog')}
@@ -457,9 +459,8 @@ export const PosView: React.FC<PosViewProps> = ({
                 <p className="text-base font-bold font-mono tracking-tight mt-0.5">{formatIDR(grandTotal)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-white text-orange-600 px-3 py-1.5 rounded-md">
-              <span>Buka Keranjang</span>
-              <ArrowRight size={14} />
+            <div className="flex items-center text-xs sm:text-sm font-semibold bg-white text-orange-600 px-3 py-1.5 rounded-md">
+              Buka Keranjang
             </div>
           </button>
         </div>

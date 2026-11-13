@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Store, ShieldCheck, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Tenant } from '../../types';
 import { useToast } from '../../contexts/ToastContext';
 import {
@@ -133,8 +133,7 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
               onClick={handleFinish}
               className={MODAL_BTN_PRIMARY_CLASS}
             >
-              <CheckCircle2 size={15} className="shrink-0" />
-              <span>Mulai Gunakan Outlet Ini</span>
+              Mulai Gunakan Outlet Ini
             </button>
           </div>
         ) : (
@@ -145,8 +144,7 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
               disabled={isSubmitting}
               className={MODAL_BTN_SECONDARY_CLASS}
             >
-              <X size={15} className="text-gray-500 shrink-0" />
-              <span>Batal</span>
+              Batal
             </button>
             <button
               type="submit"
@@ -154,8 +152,7 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
               disabled={isSubmitting}
               className={MODAL_BTN_PRIMARY_CLASS}
             >
-              {isSubmitting ? <Loader2 size={15} className="animate-spin shrink-0" /> : <Store size={15} className="shrink-0" />}
-              <span>{isSubmitting ? 'Mendaftarkan...' : 'Daftarkan Tenant'}</span>
+              {isSubmitting ? 'Mendaftarkan...' : 'Daftarkan Tenant'}
             </button>
           </div>
         )

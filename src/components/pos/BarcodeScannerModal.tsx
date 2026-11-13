@@ -6,8 +6,6 @@ import {
   Camera,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
-  Check,
   Loader2,
 } from 'lucide-react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
@@ -253,8 +251,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             onClick={onClose}
             className={MODAL_BTN_PRIMARY_CLASS}
           >
-            <Check size={15} className="shrink-0" />
-            <span>Selesai Scan</span>
+            Selesai Scan
           </button>
         </div>
       }
@@ -295,10 +292,9 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 type="button"
                 disabled={isScanning}
                 onClick={() => void handleProcessScan(inputVal)}
-                className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold text-xs rounded-md transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1"
+                className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold text-xs rounded-md transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center"
               >
-                {isScanning && <Loader2 size={13} className="animate-spin" />}
-                <span>Scan</span>
+                {isScanning ? 'Memproses...' : 'Scan'}
               </button>
 
               <button
@@ -389,8 +385,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           {/* Quick SKU Test Chips */}
           <div className="pt-2 border-t border-gray-100">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles size={13} className="text-amber-500" />
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Klik Cepat untuk Simulasi Scan:
               </span>
               <span className="text-xs text-gray-400 font-medium font-mono">

@@ -3,7 +3,6 @@ import {
   Coins,
   Scale,
   ReceiptText,
-  Calendar,
   Building2,
   Plus,
   Printer,
@@ -32,6 +31,9 @@ import {
 
 interface BuybackViewProps {
   refreshTrigger: number;
+  branchName?: string;
+  cashierName?: string;
+  canVoid?: boolean;
   onSaveBuyback: (newBuyback: BuybackCreatePayload) => Promise<void>;
   onVoidBuyback: (id: string, reason: string) => Promise<void>;
   onSelectReceipt: (item: BuybackItem) => void;
@@ -41,6 +43,9 @@ interface BuybackViewProps {
 
 export const BuybackView: React.FC<BuybackViewProps> = ({
   refreshTrigger,
+  branchName,
+  cashierName,
+  canVoid = true,
   onSaveBuyback,
   onVoidBuyback,
   onSelectReceipt,
@@ -174,6 +179,8 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
         }}
         initialCustomer={initialCustomer}
         existingCount={stats.totalTransaksi}
+        branchName={branchName}
+        cashierName={cashierName}
       />
     );
   }
@@ -428,8 +435,8 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                                 </span>
                               )}
                             </div>
-                            <span className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                              <Calendar size={12} /> {bb.date}
+                            <span className="text-xs text-gray-500 block mt-0.5 tabular-nums">
+                              {bb.date}
                             </span>
                           </td>
 
@@ -493,17 +500,19 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                                 </button>
                               </Tooltip>
 
-                              <Tooltip content={isVoid ? 'Sudah Di-void' : 'Void Buyback'} side="top">
-                                <button
-                                  type="button"
-                                  disabled={isActionBusy || isVoid}
-                                  onClick={() => setVoidingItem(bb)}
-                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-amber-50 text-gray-600 hover:text-amber-700 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                                  aria-label="Void Buyback"
-                                >
-                                  <RotateCcw size={15} />
-                                </button>
-                              </Tooltip>
+                              {canVoid && (
+                                <Tooltip content={isVoid ? 'Sudah Di-void' : 'Void Buyback'} side="top">
+                                  <button
+                                    type="button"
+                                    disabled={isActionBusy || isVoid}
+                                    onClick={() => setVoidingItem(bb)}
+                                    className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-amber-50 text-gray-600 hover:text-amber-700 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
+                                    aria-label="Void Buyback"
+                                  >
+                                    <RotateCcw size={15} />
+                                  </button>
+                                </Tooltip>
+                              )}
 
                               <Tooltip content="Cetak Nota" side="top">
                                 <button

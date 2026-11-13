@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Eraser, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Eraser } from 'lucide-react';
 
 interface SignaturePadProps {
   label: string;
@@ -122,9 +122,9 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
         <button
           type="button"
           onClick={clearCanvas}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-colors cursor-pointer"
+          className="text-xs font-semibold text-gray-600 hover:text-red-600 px-2.5 py-1 rounded hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-colors cursor-pointer inline-flex items-center gap-1"
         >
-          <Eraser size={12} />
+          <Eraser size={13} className="shrink-0" />
           <span>Hapus</span>
         </button>
       </div>

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Printer, ReceiptText, Plus } from 'lucide-react';
-import { Transaction } from '../../types';
+import { Printer } from 'lucide-react';
+import { Transaction, Tenant, StoreSettings } from '../../types';
 import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
 import {
   ModalShell,
@@ -12,6 +12,8 @@ interface ReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
   receipt: Transaction | null;
+  activeTenant?: Tenant;
+  storeSettings?: StoreSettings;
   onPrint: () => void;
   onViewDailyTransactions: () => void;
 }
@@ -20,6 +22,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   isOpen,
   onClose,
   receipt,
+  activeTenant,
+  storeSettings,
   onPrint,
   onViewDailyTransactions,
 }) => {
@@ -43,8 +47,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             }}
             className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <ReceiptText size={15} className="text-gray-500 shrink-0" />
-            <span>Lihat Transaksi Harian</span>
+            Lihat Transaksi Harian
           </button>
           <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2">
             <button
@@ -52,13 +55,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               onClick={onClose}
               className={MODAL_BTN_SECONDARY_CLASS}
             >
-              <Plus size={15} className="text-gray-500 shrink-0" />
-              <span>Transaksi Baru</span>
+              Transaksi Baru
             </button>
             <button
               type="button"
               onClick={onPrint}
-              className={MODAL_BTN_PRIMARY_CLASS}
+              className={`${MODAL_BTN_PRIMARY_CLASS} gap-1.5`}
             >
               <Printer size={15} className="shrink-0" />
               <span>Cetak Nota Emas</span>
@@ -68,7 +70,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       }
     >
       <div className="min-w-0 w-full overflow-x-auto flex justify-center">
-        <GoldInvoiceDocument receipt={receipt} type="sale" />
+        <GoldInvoiceDocument
+          receipt={receipt}
+          type="sale"
+          activeTenant={activeTenant}
+          storeSettings={storeSettings}
+        />
       </div>
     </ModalShell>
   );

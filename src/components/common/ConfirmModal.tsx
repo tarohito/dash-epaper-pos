@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Trash2, AlertCircle, X } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import {
   ModalShell,
@@ -86,21 +86,19 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             disabled={isLoading}
             className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={15} className="text-gray-500 shrink-0" />
-            <span>{cancelLabel}</span>
+            {cancelLabel}
           </button>
           <button
             type="button"
             onClick={() => void handleConfirmClick()}
             disabled={isLoading}
-            className={`h-9 px-4 text-xs sm:text-sm font-semibold text-white rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`h-9 px-4 text-xs sm:text-sm font-semibold text-white rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center whitespace-nowrap shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
               variant === 'void'
                 ? 'bg-amber-600 hover:bg-amber-700'
                 : 'bg-red-600 hover:bg-red-700'
             }`}
           >
-            {variant === 'void' ? <RotateCcw size={14} className="shrink-0" /> : <Trash2 size={14} className="shrink-0" />}
-            <span>{isLoading ? loadingLabel : confirmLabel}</span>
+            {isLoading ? loadingLabel : confirmLabel}
           </button>
         </div>
       }

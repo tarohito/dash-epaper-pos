@@ -15,10 +15,12 @@ import {
   ChevronLeft,
   Check,
   Plus,
-  ArrowRight,
+  UserCog,
+  FileSpreadsheet,
+  Settings,
 } from 'lucide-react';
 import Tooltip from '../Tooltip';
-import { Tenant } from '../../types';
+import { Tenant, UserRole } from '../../types';
 
 interface SidebarProps {
   activeMenu: string;
@@ -31,6 +33,7 @@ interface SidebarProps {
   activeTenantId?: string;
   onSelectTenant?: (tenantId: string) => void;
   onOpenRegisterModal?: () => void;
+  userRole?: UserRole;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -44,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTenantId = '',
   onSelectTenant,
   onOpenRegisterModal,
+  userRole = 'owner',
 }) => {
   const [isStoreMenuOpen, setIsStoreMenuOpen] = useState(false);
   const storeMenuRef = useRef<HTMLDivElement>(null);
@@ -68,24 +72,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setIsStoreMenuOpen(false);
   }, [isSidebarCollapsed]);
 
-  const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard },
-    { name: 'Kasir POS (Penjualan)', icon: ShoppingCart },
-    { name: 'Buyback (Pembelian)', icon: Scale },
-    { name: 'Transaksi', icon: ReceiptText },
-    { name: 'Promo', icon: BadgePercent },
+  const allMenuItems = [
+    { name: 'Dashboard', icon: LayoutDashboard, roles: ['owner', 'branch_manager'] as UserRole[] },
+    { name: 'Kasir POS (Penjualan)', icon: ShoppingCart, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Buyback (Pembelian)', icon: Scale, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Transaksi', icon: ReceiptText, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Promo', icon: BadgePercent, roles: ['owner', 'branch_manager'] as UserRole[] },
     {
       name: 'Produk',
       icon: Package,
+      roles: ['owner', 'branch_manager', 'cashier'] as UserRole[],
       submenus: [
-        { name: 'Daftar Kategori', icon: FolderTree },
-        { name: 'Daftar Barang', icon: Gem },
+        { name: 'Daftar Kategori', icon: FolderTree, roles: ['owner', 'branch_manager'] as UserRole[] },
+        { name: 'Daftar Barang', icon: Gem, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
       ],
     },
-    { name: 'Pelanggan', icon: Users },
-    { name: 'Multi-Outlet', icon: Store },
-    { name: 'Laporan & Analitik', icon: BarChart3 },
+    { name: 'Pelanggan', icon: Users, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Multi-Outlet', icon: Store, roles: ['owner', 'branch_manager'] as UserRole[] },
+    { name: 'Manajemen User', icon: UserCog, roles: ['owner'] as UserRole[] },
+    { name: 'Rekap Shift', icon: FileSpreadsheet, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Pengaturan', icon: Settings, roles: ['owner', 'branch_manager'] as UserRole[] },
   ];
+
+  const menuItems = allMenuItems
+    .filter(item => item.roles.includes(userRole))
+    .map(item =>
+      item.submenus
+        ? { ...item, submenus: item.submenus.filter(sub => sub.roles.includes(userRole)) }
+        : item
+    );
 
   const handleItemSelect = (menuName: string) => {
     onSelectMenu(menuName);
@@ -365,31 +380,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 })}
               </div>
 
-              <div className="pt-2 border-t border-gray-100 space-y-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsStoreMenuOpen(false);
-                    onOpenRegisterModal?.();
-                  }}
-                  className="w-full py-2 px-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-none"
-                >
-                  <Plus size={13} />
-                  Tambah Toko / Outlet Baru
-                </button>
+              {(userRole === 'owner' || userRole === 'branch_manager') && (
+                <div className="pt-2 border-t border-gray-100 space-y-1">
+                  {userRole === 'owner' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsStoreMenuOpen(false);
+                        onOpenRegisterModal?.();
+                      }}
+                      className="w-full py-2 px-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-none"
+                    >
+                      <Plus size={14} className="shrink-0" />
+                      <span>Tambah Toko / Outlet Baru</span>
+                    </button>
+                  )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsStoreMenuOpen(false);
-                    onSelectMenu('Multi-Outlet');
-                  }}
-                  className="w-full py-1.5 px-2 text-gray-700 hover:bg-gray-100 font-semibold text-xs rounded-md transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <span>Kelola Multi-Outlet</span>
-                  <ArrowRight size={12} />
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStoreMenuOpen(false);
+                      onSelectMenu('Multi-Outlet');
+                    }}
+                    className="w-full py-1.5 px-2 text-gray-700 hover:bg-gray-100 font-semibold text-xs rounded-md transition-colors flex items-center justify-center cursor-pointer"
+                  >
+                    Kelola Multi-Outlet
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

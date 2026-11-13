@@ -1,5 +1,5 @@
 import React from'react';
-import { Receipt, Boxes, Gem, Trash2, Minus, Plus, CreditCard } from'lucide-react';
+import { Boxes, Gem, Trash2, Minus, Plus, CreditCard } from 'lucide-react';
 import { CartItem } from'../../types';
 import { formatIDR } from'../../utils/formatters';
 import Tooltip from'../Tooltip';
@@ -12,6 +12,7 @@ interface CartPanelProps {
   onClearCart?: () => void;
   subtotal: number;
   tax: number;
+  taxLabel?: string;
   grandTotal: number;
   onOpenPaymentModal: () => void;
   onBackToCatalog?: () => void;
@@ -24,6 +25,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   onClearCart,
   subtotal,
   tax,
+  taxLabel = 'PPN (11%)',
   grandTotal,
   onOpenPaymentModal,
   onBackToCatalog,
@@ -163,7 +165,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             </div>
           </div>
           <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
-            <span className="text-gray-600 font-medium shrink-0">PPN (11%)</span>
+            <span className="text-gray-600 font-medium shrink-0">{taxLabel}</span>
             <div className="flex-1 min-w-0 text-right">
               <MoneyAmount
                 value={tax}
@@ -191,7 +193,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
           disabled={cart.length === 0}
           className="w-full h-11 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-lg transition-all inline-flex justify-center items-center cursor-pointer disabled:cursor-not-allowed text-sm active:scale-[0.99] shadow-xs"
         >
-          <CreditCard size={18} className="mr-2 shrink-0" />
+          <CreditCard size={17} className="mr-2 shrink-0" />
           <span>Proses Pembayaran ({totalQty} Item)</span>
         </button>
       </div>

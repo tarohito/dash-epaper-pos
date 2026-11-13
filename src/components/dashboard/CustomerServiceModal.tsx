@@ -5,7 +5,6 @@ import {
   Clock,
   Copy,
   Check,
-  ExternalLink,
   Store,
 } from 'lucide-react';
 import { Tenant } from '../../types';
@@ -68,12 +67,12 @@ export const CustomerServiceModal: React.FC<CustomerServiceModalProps> = ({
           <button
             type="button"
             onClick={() => handleCopy(CS_WHATSAPP_DISPLAY, 'wa', 'Nomor WhatsApp CS')}
-            className={MODAL_BTN_SECONDARY_CLASS}
+            className={`${MODAL_BTN_SECONDARY_CLASS} gap-1.5`}
           >
             {copiedField === 'wa' ? (
-              <Check size={15} className="text-emerald-600 shrink-0" />
+              <Check size={14} className="text-emerald-600 shrink-0" />
             ) : (
-              <Copy size={15} className="shrink-0" />
+              <Copy size={14} className="shrink-0" />
             )}
             <span>{copiedField === 'wa' ? 'Nomor Tersalin' : 'Salin Nomor WA'}</span>
           </button>
@@ -82,11 +81,10 @@ export const CustomerServiceModal: React.FC<CustomerServiceModalProps> = ({
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={MODAL_BTN_PRIMARY_CLASS}
+            className={`${MODAL_BTN_PRIMARY_CLASS} gap-1.5`}
           >
             <MessageCircle size={15} className="shrink-0" />
             <span>Chat WhatsApp CS</span>
-            <ExternalLink size={13} className="opacity-85 shrink-0" />
           </a>
         </div>
       }

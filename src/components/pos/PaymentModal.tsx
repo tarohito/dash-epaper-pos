@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  X,
   User,
   Banknote,
   CreditCard,
   Building2,
   QrCode,
-  CheckCircle2,
   AlertCircle,
   ShieldCheck,
-  CheckCheck,
-  Copy,
   Gem,
-  Loader2,
   UserPlus,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { CartItem } from '../../types';
 import { formatIDR, formatNumber } from '../../utils/formatters';
@@ -34,6 +31,8 @@ interface PaymentModalProps {
   cart: CartItem[];
   subtotal: number;
   tax: number;
+  taxLabel?: string;
+  requireCustomer?: boolean;
   grandTotal: number;
   customerId?: string;
   customerName: string;
@@ -56,6 +55,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   cart,
   subtotal,
   tax,
+  taxLabel = 'PPN (11%)',
+  requireCustomer = false,
   grandTotal,
   customerId,
   customerName,
@@ -119,6 +120,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     if (cart.length === 0) {
       failValidation('Keranjang belanja masih kosong.');
+      return;
+    }
+
+    if (requireCustomer && !linkedCustomer) {
+      failValidation('Outlet ini mewajibkan memilih Member / Pelanggan terdaftar sebelum checkout.');
       return;
     }
 
@@ -195,19 +201,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             disabled={isSubmitting}
             className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={15} className="text-gray-500 shrink-0" />
-            <span>Batal</span>
+            Batal
           </button>
           <button
             type="button"
             onClick={() => void handleConfirm()}
             disabled={isSubmitting}
-            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center whitespace-nowrap cursor-pointer shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? <Loader2 size={15} className="animate-spin shrink-0" /> : <CheckCircle2 size={15} className="shrink-0" />}
-            <span>
-              {isSubmitting ? 'Memproses Pembayaran...' : `Konfirmasi Bayar (${formatIDR(grandTotal)})`}
-            </span>
+            {isSubmitting ? 'Memproses Pembayaran...' : `Konfirmasi Bayar (${formatIDR(grandTotal)})`}
           </button>
         </div>
       }
@@ -239,16 +241,23 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
             <div className="text-left sm:text-right text-white/95 text-xs sm:text-sm shrink-0 font-medium space-y-1 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-white/20">
               <div>Subtotal: <span className="font-mono">{formatIDR(subtotal)}</span></div>
-              <div className="text-xs text-orange-100">PPN (11%): <span className="font-mono">{formatIDR(tax)}</span></div>
+              <div className="text-xs text-orange-100">{taxLabel}: <span className="font-mono">{formatIDR(tax)}</span></div>
             </div>
           </div>
 
           {/* Customer Selector & Quick Member Registration */}
           <div className="space-y-2.5 p-3.5 rounded-lg bg-gray-50/70 border border-gray-200/80">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-xs sm:text-sm font-semibold text-gray-800">
-                Pelanggan / Member
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="text-xs sm:text-sm font-semibold text-gray-800">
+                  Pelanggan / Member
+                </label>
+                {requireCustomer && (
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                    Wajib Member
+                  </span>
+                )}
+              </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -257,10 +266,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     setQuickNik('');
                     setIsQuickAddOpen(prev => !prev);
                   }}
-                  className="text-xs font-semibold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-semibold text-orange-600 hover:text-orange-700 cursor-pointer inline-flex items-center gap-1"
                 >
-                  <UserPlus size={13} />
-                  <span>{isQuickAddOpen ? 'Tutup Form Cepat' : '+ Daftar Member Baru'}</span>
+                  {!isQuickAddOpen && <UserPlus size={13} className="shrink-0" />}
+                  <span>{isQuickAddOpen ? 'Tutup Form Cepat' : 'Daftar Member Baru'}</span>
                 </button>
               </div>
 
@@ -356,10 +365,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                         setIsSavingMember(false);
                       }
                     }}
-                    className="h-8 px-3 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60 rounded-md cursor-pointer inline-flex items-center gap-1"
+                    className="h-8 px-3 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60 rounded-md cursor-pointer inline-flex items-center justify-center"
                   >
-                    {isSavingMember && <Loader2 size={12} className="animate-spin" />}
-                    <span>Simpan &amp; Pilih</span>
+                    {isSavingMember ? 'Menyimpan...' : 'Simpan & Pilih'}
                   </button>
                 </div>
               </div>
@@ -669,14 +677,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <button
                   type="button"
                   onClick={() => copyToClipboard(BANK_ACCOUNTS[transferBank].accountNo, 'rekening')}
-                  className="px-3 py-1.5 bg-gray-100 hover:bg-teal-50 text-gray-700 hover:text-teal-700 border border-gray-200 text-xs sm:text-sm font-semibold rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-teal-50 text-gray-700 hover:text-teal-700 border border-gray-200 text-xs sm:text-sm font-semibold rounded-md transition-colors cursor-pointer inline-flex items-center gap-1.5 shrink-0"
                 >
                   {copyFeedback === 'rekening' ? (
-                    <CheckCheck size={15} className="text-emerald-600" />
+                    <Check size={13} className="text-teal-600 shrink-0" />
                   ) : (
-                    <Copy size={15} />
+                    <Copy size={13} className="shrink-0" />
                   )}
-                  {copyFeedback === 'rekening' ? 'Tersalin' : 'Salin'}
+                  <span>{copyFeedback === 'rekening' ? 'Tersalin' : 'Salin'}</span>
                 </button>
               </div>
 

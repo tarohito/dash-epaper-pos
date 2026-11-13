@@ -2,33 +2,52 @@ import express from 'express';
 import path from 'path';
 import type {
   BuybackCreatePayload,
-  BuybackItem,
   Customer,
   PaymentDetails,
   Product,
   PromoCampaign,
+  ShiftClosingCreatePayload,
+  StoreSettingsUpdatePayload,
   Tenant,
   Transaction,
   TransactionItem,
+  UserAccount,
+  UserCreatePayload,
+  UserRole,
+  UserUpdatePayload,
 } from './src/types/index.ts';
 import {
+  authenticateUser,
+  createSession,
+  createShiftClosing,
+  createUserAccount,
   db,
+  deleteSession,
+  deleteUserAccount,
   generateNextMemberCode,
+  getAccessibleTenantsForUser,
   getActivePromos,
-  getActiveTenantId,
   getAllCategories,
-  getAllTenants,
   getBuybackById,
   getCategoriesWithStats,
   getDashboardSummary,
+  getLiveShiftSummary,
+  getSessionContext,
+  getStoreSettings,
   getTransactionById,
+  isTenantAllowedForUser,
   lookupProductByCode,
   queryBuybacks,
   queryCustomers,
   queryProducts,
   queryPromos,
+  queryShiftClosings,
   queryTransactions,
+  queryUsers,
   seedInitialDataIfEmpty,
+  updateSessionTenant,
+  updateStoreSettings,
+  updateUserAccount,
 } from './server/db.ts';
 
 // Seed SQLite on startup if empty
@@ -37,16 +56,144 @@ seedInitialDataIfEmpty();
 const app = express();
 app.use(express.json({ limit: '15mb' }));
 
+interface AuthContext {
+  token: string;
+  user: UserAccount;
+  activeTenantId: string;
+}
+
+type AuthenticatedRequest = express.Request & { auth?: AuthContext };
+
+function extractTokenFromRequest(req: express.Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    const bearer = authHeader.slice(7).trim();
+    if (bearer) return bearer;
+  }
+
+  const cookieHeader = req.headers.cookie;
+  if (typeof cookieHeader === 'string' && cookieHeader.length > 0) {
+    for (const part of cookieHeader.split(';')) {
+      const [k, ...rest] = part.trim().split('=');
+      if (k === 'epaper_session') {
+        const val = decodeURIComponent(rest.join('=')).trim();
+        if (val) return val;
+      }
+    }
+  }
+  return null;
+}
+
+function getAuth(req: express.Request): AuthContext {
+  return (req as AuthenticatedRequest).auth!;
+}
+
+const requireAuth: express.RequestHandler = (req, res, next) => {
+  const token = extractTokenFromRequest(req);
+  if (!token) {
+    res.status(401).json({ error: 'Silakan login terlebih dahulu untuk mengakses aplikasi.' });
+    return;
+  }
+  const ctx = getSessionContext(token);
+  if (!ctx) {
+    res.status(401).json({ error: 'Sesi login telah berakhir atau tidak valid. Silakan login kembali.' });
+    return;
+  }
+  (req as AuthenticatedRequest).auth = ctx;
+  next();
+};
+
+function requireRoles(...roles: UserRole[]): express.RequestHandler {
+  return (req, res, next) => {
+    const auth = (req as AuthenticatedRequest).auth;
+    if (!auth) {
+      res.status(401).json({ error: 'Autentikasi diperlukan.' });
+      return;
+    }
+    if (!roles.includes(auth.user.role)) {
+      res.status(403).json({ error: 'Anda tidak memiliki izin peran untuk melakukan tindakan ini.' });
+      return;
+    }
+    next();
+  };
+}
+
+// ============================================================
+// AUTHENTICATION ROUTES (PUBLIC LOGIN / LOGOUT)
+// ============================================================
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const body = (req.body ?? {}) as { identifier?: string; username?: string; password?: string };
+    const identifier = String(body.identifier ?? body.username ?? '').trim();
+    const password = String(body.password ?? '');
+
+    if (!identifier || !password) {
+      res.status(400).json({ error: 'Username/email dan kata sandi wajib diisi.' });
+      return;
+    }
+
+    const user = authenticateUser(identifier, password);
+    if (!user) {
+      res.status(401).json({ error: 'Username/email atau kata sandi salah, atau akun tidak aktif.' });
+      return;
+    }
+
+    const { token, activeTenantId } = createSession(user);
+    const tenants = getAccessibleTenantsForUser(user);
+
+    res.setHeader(
+      'Set-Cookie',
+      `epaper_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 3600}`
+    );
+    res.json({
+      token,
+      user,
+      tenants,
+      activeTenantId,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memproses login.' });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  try {
+    const token = extractTokenFromRequest(req);
+    if (token) {
+      deleteSession(token);
+    }
+    res.setHeader('Set-Cookie', 'epaper_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal logout.' });
+  }
+});
+
+// Require valid authenticated session for all remaining /api endpoints
+app.use('/api', requireAuth);
+
+app.get('/api/auth/me', (req, res) => {
+  const auth = getAuth(req);
+  res.json({
+    user: auth.user,
+    tenants: getAccessibleTenantsForUser(auth.user),
+    activeTenantId: auth.activeTenantId,
+  });
+});
+
 // ============================================================
 // BOOTSTRAP (LIGHTWEIGHT SHELL DATA ONLY)
 // ============================================================
-app.get('/api/bootstrap', (_req, res) => {
+app.get('/api/bootstrap', (req, res) => {
   try {
+    const auth = getAuth(req);
     res.json({
+      user: auth.user,
       categories: getAllCategories(),
-      tenants: getAllTenants(),
-      activeTenantId: getActiveTenantId(),
-      activePromos: getActivePromos(),
+      tenants: getAccessibleTenantsForUser(auth.user),
+      activeTenantId: auth.activeTenantId,
+      activePromos: getActivePromos(auth.activeTenantId),
+      storeSettings: getStoreSettings(auth.activeTenantId),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat data awal dari SQLite.' });
@@ -54,12 +201,67 @@ app.get('/api/bootstrap', (_req, res) => {
 });
 
 // ============================================================
+// USER MANAGEMENT CRUD (OWNER ONLY)
+// ============================================================
+app.get('/api/users', requireRoles('owner'), (req, res) => {
+  try {
+    const page = Number(req.query.page ?? 1) || 1;
+    const pageSize = Number(req.query.pageSize ?? 10) || 10;
+    const search = String(req.query.search ?? '');
+    const role = String(req.query.role ?? 'all');
+    const sortBy = String(req.query.sortBy ?? 'newest');
+    const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
+    res.json(queryUsers({ page, pageSize, search, role, sortBy, sortDir }));
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat daftar pengguna.' });
+  }
+});
+
+app.post('/api/users', requireRoles('owner'), (req, res) => {
+  try {
+    const payload = req.body as UserCreatePayload;
+    const created = createUserAccount(payload);
+    res.status(201).json(created);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Gagal membuat akun pengguna.';
+    const status = msg.includes('sudah digunakan') ? 409 : 400;
+    res.status(status).json({ error: msg });
+  }
+});
+
+app.put('/api/users/:id', requireRoles('owner'), (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const updated = updateUserAccount(String(req.params.id), req.body as UserUpdatePayload, auth.user.id);
+    res.json(updated);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Gagal memperbarui akun pengguna.';
+    const status = msg.includes('tidak ditemukan') ? 404 : msg.includes('sudah digunakan') ? 409 : 400;
+    res.status(status).json({ error: msg });
+  }
+});
+
+app.delete('/api/users/:id', requireRoles('owner'), (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const userId = String(req.params.id);
+    deleteUserAccount(userId, auth.user.id);
+    res.json({ deletedId: userId });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Gagal menghapus akun pengguna.';
+    const status = msg.includes('tidak ditemukan') ? 404 : 400;
+    res.status(status).json({ error: msg });
+  }
+});
+
+// ============================================================
 // DASHBOARD SUMMARY (SERVER-SIDE AGGREGATION)
 // ============================================================
-app.get('/api/dashboard/summary', (req, res) => {
+app.get('/api/dashboard/summary', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const { activeTenantId } = getAuth(req);
     const period = req.query.period === 'BULAN' ? 'BULAN' : 'HARI';
-    res.json(getDashboardSummary(period));
+    res.json(getDashboardSummary(period, activeTenantId));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat ringkasan dasbor.' });
   }
@@ -70,8 +272,9 @@ app.get('/api/dashboard/summary', (req, res) => {
 // ============================================================
 app.get('/api/products/lookup', (req, res) => {
   try {
+    const { activeTenantId } = getAuth(req);
     const code = String(req.query.code ?? '');
-    const product = lookupProductByCode(code);
+    const product = lookupProductByCode(code, activeTenantId);
     if (!product) {
       res.status(404).json({ error: 'Produk dengan kode/SKU tersebut tidak ditemukan.' });
       return;
@@ -84,6 +287,7 @@ app.get('/api/products/lookup', (req, res) => {
 
 app.get('/api/products', (req, res) => {
   try {
+    const { activeTenantId } = getAuth(req);
     const page = Number(req.query.page ?? 1) || 1;
     const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
@@ -91,14 +295,15 @@ app.get('/api/products', (req, res) => {
     const promoOnly = req.query.promoOnly === 'true' || req.query.promoOnly === '1';
     const sortBy = String(req.query.sortBy ?? 'newest');
     const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
-    res.json(queryProducts({ page, pageSize, search, category, promoOnly, sortBy, sortDir }));
+    res.json(queryProducts({ page, pageSize, search, category, promoOnly, sortBy, sortDir, tenantId: activeTenantId }));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat produk.' });
   }
 });
 
-app.post('/api/products', (req, res) => {
+app.post('/api/products', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const tenantId = getAuth(req).activeTenantId;
     const body = req.body as Partial<Product>;
     const sku = (body.sku ?? '').trim().toUpperCase();
     const name = (body.name ?? '').trim();
@@ -123,17 +328,19 @@ app.post('/api/products', (req, res) => {
       return;
     }
 
-    const existingSku = db.prepare('SELECT id FROM products WHERE LOWER(sku) = LOWER(?)').get(sku);
+    const existingSku = db
+      .prepare('SELECT id FROM products WHERE tenantId = ? AND LOWER(sku) = LOWER(?)')
+      .get(tenantId, sku);
     if (existingSku) {
-      res.status(409).json({ error: `SKU "${sku}" sudah digunakan produk lain.` });
+      res.status(409).json({ error: `SKU "${sku}" sudah digunakan produk lain di outlet ini.` });
       return;
     }
 
     const createTx = db.transaction(() => {
       db.prepare('INSERT OR IGNORE INTO categories (name, sortOrder) VALUES (?, 99)').run(category);
       const info = db
-        .prepare('INSERT INTO products (sku, name, berat, harga, stok, category, image) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(sku, name, berat, harga, stok, category, image);
+        .prepare('INSERT INTO products (tenantId, sku, name, berat, harga, stok, category, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(tenantId, sku, name, berat, harga, stok, category, image);
       return db
         .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE id = ?')
         .get(info.lastInsertRowid) as Product;
@@ -146,16 +353,19 @@ app.post('/api/products', (req, res) => {
   }
 });
 
-app.put('/api/products/:id', (req, res) => {
+app.put('/api/products/:id', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const tenantId = getAuth(req).activeTenantId;
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) {
       res.status(400).json({ error: 'ID produk tidak valid.' });
       return;
     }
-    const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(id) as Product | undefined;
+    const existing = db
+      .prepare('SELECT * FROM products WHERE id = ? AND tenantId = ?')
+      .get(id, tenantId) as Product | undefined;
     if (!existing) {
-      res.status(404).json({ error: 'Produk tidak ditemukan.' });
+      res.status(404).json({ error: 'Produk tidak ditemukan di outlet aktif.' });
       return;
     }
 
@@ -174,18 +384,18 @@ app.put('/api/products/:id', (req, res) => {
     }
 
     const duplicateSku = db
-      .prepare('SELECT id FROM products WHERE LOWER(sku) = LOWER(?) AND id != ?')
-      .get(sku, id);
+      .prepare('SELECT id FROM products WHERE tenantId = ? AND LOWER(sku) = LOWER(?) AND id != ?')
+      .get(tenantId, sku, id);
     if (duplicateSku) {
-      res.status(409).json({ error: `SKU "${sku}" sudah digunakan produk lain.` });
+      res.status(409).json({ error: `SKU "${sku}" sudah digunakan produk lain di outlet ini.` });
       return;
     }
 
     const updateTx = db.transaction(() => {
       db.prepare('INSERT OR IGNORE INTO categories (name, sortOrder) VALUES (?, 99)').run(category);
       db.prepare(
-        'UPDATE products SET sku = ?, name = ?, berat = ?, harga = ?, stok = ?, category = ?, image = ? WHERE id = ?'
-      ).run(sku, name, berat, harga, stok, category, image, id);
+        'UPDATE products SET sku = ?, name = ?, berat = ?, harga = ?, stok = ?, category = ?, image = ? WHERE id = ? AND tenantId = ?'
+      ).run(sku, name, berat, harga, stok, category, image, id, tenantId);
       return db
         .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE id = ?')
         .get(id) as Product;
@@ -198,8 +408,9 @@ app.put('/api/products/:id', (req, res) => {
   }
 });
 
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const tenantId = getAuth(req).activeTenantId;
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) {
       res.status(400).json({ error: 'ID produk tidak valid.' });
@@ -214,9 +425,9 @@ app.delete('/api/products/:id', (req, res) => {
       });
       return;
     }
-    const result = db.prepare('DELETE FROM products WHERE id = ?').run(id);
+    const result = db.prepare('DELETE FROM products WHERE id = ? AND tenantId = ?').run(id, tenantId);
     if (result.changes === 0) {
-      res.status(404).json({ error: 'Produk tidak ditemukan.' });
+      res.status(404).json({ error: 'Produk tidak ditemukan di outlet aktif.' });
       return;
     }
     res.json({ deletedId: id });
@@ -230,8 +441,9 @@ app.delete('/api/products/:id', (req, res) => {
 // ============================================================
 app.get('/api/categories', (req, res) => {
   try {
+    const { activeTenantId } = getAuth(req);
     if (req.query.withStats === 'true' || req.query.withStats === '1') {
-      res.json(getCategoriesWithStats());
+      res.json(getCategoriesWithStats(activeTenantId));
       return;
     }
     res.json(getAllCategories());
@@ -240,7 +452,7 @@ app.get('/api/categories', (req, res) => {
   }
 });
 
-app.post('/api/categories', (req, res) => {
+app.post('/api/categories', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
     const name = String((req.body as { name?: string }).name ?? '').trim();
     if (!name) {
@@ -260,9 +472,9 @@ app.post('/api/categories', (req, res) => {
   }
 });
 
-app.put('/api/categories/:oldName', (req, res) => {
+app.put('/api/categories/:oldName', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
-    const oldName = decodeURIComponent(req.params.oldName).trim();
+    const oldName = decodeURIComponent(String(req.params.oldName)).trim();
     const newName = String((req.body as { name?: string }).name ?? '').trim();
     if (!newName) {
       res.status(400).json({ error: 'Nama kategori baru wajib diisi.' });
@@ -299,9 +511,9 @@ app.put('/api/categories/:oldName', (req, res) => {
   }
 });
 
-app.delete('/api/categories/:name', (req, res) => {
+app.delete('/api/categories/:name', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
-    const name = decodeURIComponent(req.params.name).trim();
+    const name = decodeURIComponent(String(req.params.name)).trim();
     const usedCount = (
       db.prepare('SELECT COUNT(*) as cnt FROM products WHERE category = ?').get(name) as { cnt: number }
     ).cnt;
@@ -327,13 +539,14 @@ app.delete('/api/categories/:name', (req, res) => {
 // ============================================================
 app.get('/api/transactions', (req, res) => {
   try {
+    const { activeTenantId } = getAuth(req);
     const page = Number(req.query.page ?? 1) || 1;
     const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
     const method = String(req.query.method ?? 'semua');
     const sortBy = String(req.query.sortBy ?? 'newest');
     const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
-    res.json(queryTransactions({ page, pageSize, search, method, sortBy, sortDir }));
+    res.json(queryTransactions({ page, pageSize, search, method, sortBy, sortDir, tenantId: activeTenantId }));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat transaksi.' });
   }
@@ -341,6 +554,8 @@ app.get('/api/transactions', (req, res) => {
 
 app.post('/api/transactions', (req, res) => {
   try {
+    const auth = getAuth(req);
+    const tenantId = auth.activeTenantId;
     const body = req.body as {
       cashier?: string;
       customerId?: string;
@@ -356,7 +571,7 @@ app.post('/api/transactions', (req, res) => {
     }
 
     const paymentMethod = body.paymentMethod ?? 'cash';
-    const cashier = (body.cashier ?? '').trim() || 'Administrator Kasir (Shift 1)';
+    const cashier = auth.user.fullName || (body.cashier ?? '').trim() || 'Kasir';
     let resolvedCustomerId = (body.customerId ?? '').trim() || undefined;
     let customerName = (body.customerName ?? '').trim() || 'Pelanggan Umum';
 
@@ -382,11 +597,11 @@ app.post('/api/transactions', (req, res) => {
 
       for (const reqItem of body.items!) {
         const prod = db
-          .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE id = ?')
-          .get(reqItem.id) as Product | undefined;
+          .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE id = ? AND tenantId = ?')
+          .get(reqItem.id, tenantId) as Product | undefined;
 
         if (!prod) {
-          throw new Error(`Produk ID ${reqItem.id} tidak ditemukan di database.`);
+          throw new Error(`Produk ID ${reqItem.id} tidak ditemukan di outlet aktif.`);
         }
         const qty = Math.round(Number(reqItem.qty));
         if (!Number.isInteger(qty) || qty <= 0) {
@@ -412,10 +627,11 @@ app.post('/api/transactions', (req, res) => {
           image: prod.image,
         });
 
-        db.prepare('UPDATE products SET stok = stok - ? WHERE id = ?').run(qty, prod.id);
+        db.prepare('UPDATE products SET stok = stok - ? WHERE id = ? AND tenantId = ?').run(qty, prod.id, tenantId);
       }
 
-      const tax = Math.round(subtotal * 0.11);
+      const storeSettings = getStoreSettings(tenantId);
+      const tax = storeSettings.enablePpn ? Math.round(subtotal * (storeSettings.ppnPercent / 100)) : 0;
       const grandTotal = subtotal + tax;
       const now = new Date();
       const dateNum = now.toISOString().slice(0, 10).replace(/-/g, '');
@@ -469,10 +685,11 @@ app.post('/api/transactions', (req, res) => {
       };
 
       db.prepare(
-        `INSERT INTO transactions (id, invoiceNo, dateTime, dateStr, timeStr, cashier, customerId, customerName, totalQty, totalBerat, subtotal, tax, grandTotal, paymentMethod, paymentDetailsJson)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO transactions (id, tenantId, invoiceNo, dateTime, dateStr, timeStr, cashier, customerId, customerName, totalQty, totalBerat, subtotal, tax, grandTotal, paymentMethod, paymentDetailsJson)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         newTx.id,
+        tenantId,
         newTx.invoiceNo,
         newTx.dateTime,
         newTx.dateStr,
@@ -523,8 +740,9 @@ app.delete('/api/transactions/:id', (_req, res) => {
   });
 });
 
-app.post('/api/transactions/:id/void', (req, res) => {
+app.post('/api/transactions/:id/void', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const tenantId = getAuth(req).activeTenantId;
     const { id } = req.params;
     const body = (req.body ?? {}) as { reason?: string; restoreStock?: boolean };
     const reason = (body.reason ?? '').trim();
@@ -535,11 +753,11 @@ app.post('/api/transactions/:id/void', (req, res) => {
     const restoreStock = body.restoreStock !== false;
 
     const existing = db
-      .prepare("SELECT id, COALESCE(status, 'completed') AS status FROM transactions WHERE id = ?")
-      .get(id) as { id: string; status: string } | undefined;
+      .prepare("SELECT id, COALESCE(status, 'completed') AS status FROM transactions WHERE id = ? AND tenantId = ?")
+      .get(id, tenantId) as { id: string; status: string } | undefined;
 
     if (!existing) {
-      res.status(404).json({ error: 'Transaksi tidak ditemukan.' });
+      res.status(404).json({ error: 'Transaksi tidak ditemukan di outlet aktif.' });
       return;
     }
     if (existing.status === 'void') {
@@ -549,25 +767,26 @@ app.post('/api/transactions/:id/void', (req, res) => {
 
     const voidedAt = new Date().toISOString();
     const voidTx = db.transaction(() => {
-      db.prepare("UPDATE transactions SET status = 'void', voidReason = ?, voidedAt = ? WHERE id = ?").run(
+      db.prepare("UPDATE transactions SET status = 'void', voidReason = ?, voidedAt = ? WHERE id = ? AND tenantId = ?").run(
         reason,
         voidedAt,
-        id
+        id,
+        tenantId
       );
 
       if (restoreStock) {
         const items = db
           .prepare('SELECT productId, qty FROM transaction_items WHERE transactionId = ?')
           .all(id) as Array<{ productId: number; qty: number }>;
-        const restoreStmt = db.prepare('UPDATE products SET stok = stok + ? WHERE id = ?');
+        const restoreStmt = db.prepare('UPDATE products SET stok = stok + ? WHERE id = ? AND tenantId = ?');
         for (const it of items) {
-          restoreStmt.run(it.qty, it.productId);
+          restoreStmt.run(it.qty, it.productId, tenantId);
         }
       }
     });
 
     voidTx();
-    const updated = getTransactionById(id);
+    const updated = getTransactionById(String(id));
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal melakukan void transaksi.' });
@@ -579,13 +798,14 @@ app.post('/api/transactions/:id/void', (req, res) => {
 // ============================================================
 app.get('/api/buybacks', (req, res) => {
   try {
+    const { activeTenantId } = getAuth(req);
     const page = Number(req.query.page ?? 1) || 1;
     const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
     const method = String(req.query.method ?? 'all');
     const sortBy = String(req.query.sortBy ?? 'newest');
     const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
-    res.json(queryBuybacks({ page, pageSize, search, method, sortBy, sortDir }));
+    res.json(queryBuybacks({ page, pageSize, search, method, sortBy, sortDir, tenantId: activeTenantId }));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat data buyback.' });
   }
@@ -593,9 +813,10 @@ app.get('/api/buybacks', (req, res) => {
 
 app.get('/api/buybacks/:id', (req, res) => {
   try {
-    const item = getBuybackById(req.params.id);
+    const { activeTenantId } = getAuth(req);
+    const item = getBuybackById(req.params.id, activeTenantId);
     if (!item) {
-      res.status(404).json({ error: 'Data buyback tidak ditemukan.' });
+      res.status(404).json({ error: 'Data buyback tidak ditemukan di outlet aktif.' });
       return;
     }
     res.json(item);
@@ -606,6 +827,11 @@ app.get('/api/buybacks/:id', (req, res) => {
 
 app.post('/api/buybacks', (req, res) => {
   try {
+    const auth = getAuth(req);
+    const tenantId = auth.activeTenantId;
+    const activeTenantRow = db
+      .prepare('SELECT branchName FROM tenants WHERE id = ?')
+      .get(tenantId) as { branchName: string } | undefined;
     const body = req.body as BuybackCreatePayload;
     if (!body.customerName?.trim() || !body.customerPhone?.trim()) {
       res.status(400).json({ error: 'Nama dan nomor HP nasabah wajib diisi.' });
@@ -711,14 +937,14 @@ app.post('/api/buybacks', (req, res) => {
 
       db.prepare(
         `INSERT INTO buybacks (
-          id, invoiceNo, date, timeStr, branchName, cashierName,
+          id, tenantId, invoiceNo, date, createdAt, timeStr, branchName, cashierName,
           customerId, customerName, customerPhone, customerNik, customerNpwp, customerAddress,
           sourceNote, itemType, kadar, beratKotor, potonganBatu, beratBersih,
           hargaPerGram, biayaLebur, kondisi, totalKotor, potonganBiaya, pph22,
           totalBayar, paymentMethod, bankName, accountNo, accountHolder,
           catatan, fotoKtp, fotoEmas, ttdNasabah, ttdPetugas, isAgreedLegal, itemsJson
         ) VALUES (
-          @id, @invoiceNo, @date, @timeStr, @branchName, @cashierName,
+          @id, @tenantId, @invoiceNo, @date, @createdAt, @timeStr, @branchName, @cashierName,
           @customerId, @customerName, @customerPhone, @customerNik, @customerNpwp, @customerAddress,
           @sourceNote, @itemType, @kadar, @beratKotor, @potonganBatu, @beratBersih,
           @hargaPerGram, @biayaLebur, @kondisi, @totalKotor, @potonganBiaya, @pph22,
@@ -727,11 +953,13 @@ app.post('/api/buybacks', (req, res) => {
         )`
       ).run({
         id,
+        tenantId,
         invoiceNo,
         date: dateStr,
+        createdAt: now.toISOString(),
         timeStr: body.timeStr ?? null,
-        branchName: body.branchName ?? null,
-        cashierName: body.cashierName ?? null,
+        branchName: body.branchName?.trim() || activeTenantRow?.branchName || null,
+        cashierName: auth.user.fullName || body.cashierName || null,
         customerId: resolvedCustomerId,
         customerName: cleanName,
         customerPhone: cleanPhone,
@@ -785,8 +1013,9 @@ app.delete('/api/buybacks/:id', (_req, res) => {
   });
 });
 
-app.post('/api/buybacks/:id/void', (req, res) => {
+app.post('/api/buybacks/:id/void', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const tenantId = getAuth(req).activeTenantId;
     const { id } = req.params;
     const body = (req.body ?? {}) as { reason?: string };
     const reason = (body.reason ?? '').trim();
@@ -795,24 +1024,27 @@ app.post('/api/buybacks/:id/void', (req, res) => {
       return;
     }
 
-    const existing = getBuybackById(id);
-    if (!existing) {
-      res.status(404).json({ error: 'Data buyback tidak ditemukan.' });
+    const row = db
+      .prepare('SELECT id, COALESCE(status, \'completed\') as status FROM buybacks WHERE id = ? AND tenantId = ?')
+      .get(id, tenantId) as { id: string; status: string } | undefined;
+    if (!row) {
+      res.status(404).json({ error: 'Data buyback tidak ditemukan di outlet aktif.' });
       return;
     }
-    if (existing.status === 'void') {
+    if (row.status === 'void') {
       res.status(409).json({ error: 'Nota buyback ini sudah berstatus VOID.' });
       return;
     }
 
     const voidedAt = new Date().toISOString();
-    db.prepare("UPDATE buybacks SET status = 'void', voidReason = ?, voidedAt = ? WHERE id = ?").run(
+    db.prepare("UPDATE buybacks SET status = 'void', voidReason = ?, voidedAt = ? WHERE id = ? AND tenantId = ?").run(
       reason,
       voidedAt,
-      id
+      id,
+      tenantId
     );
 
-    const updated = getBuybackById(id);
+    const updated = getBuybackById(String(id), tenantId);
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal melakukan void buyback.' });
@@ -943,7 +1175,7 @@ app.put('/api/customers/:id', (req, res) => {
   }
 });
 
-app.delete('/api/customers/:id', (req, res) => {
+app.delete('/api/customers/:id', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
     const existing = db
       .prepare('SELECT id, name, totalTransactions FROM customers WHERE id = ?')
@@ -985,35 +1217,46 @@ app.delete('/api/customers/:id', (req, res) => {
 // ============================================================
 // PROMOS CRUD (PAGINATED)
 // ============================================================
-app.get('/api/promos', (req, res) => {
+app.get('/api/promos', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const { activeTenantId } = getAuth(req);
     const page = Number(req.query.page ?? 1) || 1;
     const pageSize = Number(req.query.pageSize ?? 10) || 10;
     const search = String(req.query.search ?? '');
     const status = String(req.query.status ?? 'all');
     const sortBy = String(req.query.sortBy ?? 'newest');
     const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
-    res.json(queryPromos({ page, pageSize, search, status, sortBy, sortDir }));
+    res.json(queryPromos({ page, pageSize, search, status, sortBy, sortDir, tenantId: activeTenantId }));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat promo.' });
   }
 });
 
-app.post('/api/promos', (req, res) => {
+app.post('/api/promos', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const tenantId = getAuth(req).activeTenantId;
     const p = req.body as PromoCampaign;
     if (!p.name?.trim() || !p.code?.trim()) {
       res.status(400).json({ error: 'Nama dan kode promo wajib diisi.' });
       return;
     }
+    const cleanCode = p.code.trim().toUpperCase();
+    const dupCode = db
+      .prepare('SELECT id FROM promos WHERE tenantId = ? AND LOWER(code) = LOWER(?)')
+      .get(tenantId, cleanCode);
+    if (dupCode) {
+      res.status(409).json({ error: `Kode promo "${cleanCode}" sudah digunakan di outlet ini.` });
+      return;
+    }
     const id = p.id || `PRM-${Date.now()}`;
     db.prepare(
-      `INSERT INTO promos (id, name, code, discountPercent, label, startDate, endDate, productIdsJson, isActive, minPurchase, description)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO promos (id, tenantId, name, code, discountPercent, label, startDate, endDate, productIdsJson, isActive, minPurchase, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
+      tenantId,
       p.name.trim(),
-      p.code.trim().toUpperCase(),
+      cleanCode,
       Number(p.discountPercent) || 0,
       p.label || `Diskon ${p.discountPercent}%`,
       p.startDate,
@@ -1054,10 +1297,11 @@ app.post('/api/promos', (req, res) => {
   }
 });
 
-app.put('/api/promos/:id', (req, res) => {
+app.put('/api/promos/:id', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const tenantId = getAuth(req).activeTenantId;
     const { id } = req.params;
-    const existingRow = db.prepare('SELECT * FROM promos WHERE id = ?').get(id) as
+    const existingRow = db.prepare('SELECT * FROM promos WHERE id = ? AND tenantId = ?').get(id, tenantId) as
       | {
           id: string;
           name: string;
@@ -1073,16 +1317,24 @@ app.put('/api/promos/:id', (req, res) => {
         }
       | undefined;
     if (!existingRow) {
-      res.status(404).json({ error: 'Promo tidak ditemukan.' });
+      res.status(404).json({ error: 'Promo tidak ditemukan di outlet aktif.' });
       return;
     }
     const p = req.body as Partial<PromoCampaign>;
+    const cleanCode = (p.code ?? existingRow.code).trim().toUpperCase();
+    const dupCode = db
+      .prepare('SELECT id FROM promos WHERE tenantId = ? AND LOWER(code) = LOWER(?) AND id != ?')
+      .get(tenantId, cleanCode, id);
+    if (dupCode) {
+      res.status(409).json({ error: `Kode promo "${cleanCode}" sudah digunakan di outlet ini.` });
+      return;
+    }
     const existingProductIds = JSON.parse(existingRow.productIdsJson || '[]') as number[];
     db.prepare(
-      `UPDATE promos SET name = ?, code = ?, discountPercent = ?, label = ?, startDate = ?, endDate = ?, productIdsJson = ?, isActive = ?, minPurchase = ?, description = ? WHERE id = ?`
+      `UPDATE promos SET name = ?, code = ?, discountPercent = ?, label = ?, startDate = ?, endDate = ?, productIdsJson = ?, isActive = ?, minPurchase = ?, description = ? WHERE id = ? AND tenantId = ?`
     ).run(
       (p.name ?? existingRow.name).trim(),
-      (p.code ?? existingRow.code).trim().toUpperCase(),
+      cleanCode,
       p.discountPercent !== undefined ? Number(p.discountPercent) : existingRow.discountPercent,
       p.label ?? existingRow.label,
       p.startDate ?? existingRow.startDate,
@@ -1091,7 +1343,8 @@ app.put('/api/promos/:id', (req, res) => {
       (p.isActive !== undefined ? p.isActive : Boolean(existingRow.isActive)) ? 1 : 0,
       p.minPurchase !== undefined ? p.minPurchase : existingRow.minPurchase ?? null,
       p.description !== undefined ? p.description : existingRow.description ?? null,
-      id
+      id,
+      tenantId
     );
     const updatedRow = db.prepare('SELECT * FROM promos WHERE id = ?').get(id) as typeof existingRow;
     res.json({
@@ -1112,16 +1365,19 @@ app.put('/api/promos/:id', (req, res) => {
   }
 });
 
-app.patch('/api/promos/:id/toggle', (req, res) => {
+app.patch('/api/promos/:id/toggle', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
+    const tenantId = getAuth(req).activeTenantId;
     const { id } = req.params;
-    const existing = db.prepare('SELECT isActive FROM promos WHERE id = ?').get(id) as { isActive: number } | undefined;
+    const existing = db
+      .prepare('SELECT isActive FROM promos WHERE id = ? AND tenantId = ?')
+      .get(id, tenantId) as { isActive: number } | undefined;
     if (!existing) {
-      res.status(404).json({ error: 'Promo tidak ditemukan.' });
+      res.status(404).json({ error: 'Promo tidak ditemukan di outlet aktif.' });
       return;
     }
     const nextState = existing.isActive ? 0 : 1;
-    db.prepare('UPDATE promos SET isActive = ? WHERE id = ?').run(nextState, id);
+    db.prepare('UPDATE promos SET isActive = ? WHERE id = ? AND tenantId = ?').run(nextState, id, tenantId);
     const updatedRow = db.prepare('SELECT * FROM promos WHERE id = ?').get(id) as {
       id: string;
       name: string;
@@ -1153,11 +1409,12 @@ app.patch('/api/promos/:id/toggle', (req, res) => {
   }
 });
 
-app.delete('/api/promos/:id', (req, res) => {
+app.delete('/api/promos/:id', requireRoles('owner', 'branch_manager'), (req, res) => {
   try {
-    const result = db.prepare('DELETE FROM promos WHERE id = ?').run(req.params.id);
+    const tenantId = getAuth(req).activeTenantId;
+    const result = db.prepare('DELETE FROM promos WHERE id = ? AND tenantId = ?').run(req.params.id, tenantId);
     if (result.changes === 0) {
-      res.status(404).json({ error: 'Promo tidak ditemukan.' });
+      res.status(404).json({ error: 'Promo tidak ditemukan di outlet aktif.' });
       return;
     }
     res.json({ deletedId: req.params.id });
@@ -1169,22 +1426,44 @@ app.delete('/api/promos/:id', (req, res) => {
 // ============================================================
 // TENANTS CRUD
 // ============================================================
-app.get('/api/tenants', (_req, res) => {
-  res.json(getAllTenants());
+app.get('/api/tenants', (req, res) => {
+  const auth = getAuth(req);
+  res.json(getAccessibleTenantsForUser(auth.user));
 });
 
-app.post('/api/tenants', (req, res) => {
+app.post('/api/tenants', requireRoles('owner'), (req, res) => {
   try {
+    const auth = getAuth(req);
     const t = req.body as Tenant;
+    if (!t.name?.trim() || !t.code?.trim() || !t.branchName?.trim()) {
+      res.status(400).json({ error: 'Nama toko, kode outlet, dan nama cabang wajib diisi.' });
+      return;
+    }
+    const cleanCode = t.code.trim().toUpperCase();
+    const dupCode = db
+      .prepare('SELECT id, name FROM tenants WHERE LOWER(code) = LOWER(?)')
+      .get(cleanCode) as { id: string; name: string } | undefined;
+    if (dupCode) {
+      res.status(409).json({ error: `Kode outlet "${cleanCode}" sudah terdaftar pada "${dupCode.name}".` });
+      return;
+    }
+
+    const newTenant: Tenant = {
+      ...t,
+      name: t.name.trim(),
+      code: cleanCode,
+      branchName: t.branchName.trim(),
+      productCount: 0,
+    };
     const insertTx = db.transaction(() => {
       db.prepare(
         `INSERT INTO tenants (id, name, code, branchName, address, city, plan, cashierCount, productCount, phone, email, slug, logoInitial, databaseSchema, status)
          VALUES (@id, @name, @code, @branchName, @address, @city, @plan, @cashierCount, @productCount, @phone, @email, @slug, @logoInitial, @databaseSchema, @status)`
-      ).run(t);
-      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('activeTenantId', t.id);
+      ).run(newTenant);
+      updateSessionTenant(auth.token, newTenant.id);
     });
     insertTx();
-    res.status(201).json(t);
+    res.status(201).json(newTenant);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal mendaftarkan outlet.' });
   }
@@ -1192,15 +1471,119 @@ app.post('/api/tenants', (req, res) => {
 
 app.patch('/api/tenants/active', (req, res) => {
   try {
-    const tenantId = String((req.body as { tenantId?: string }).tenantId ?? '');
+    const auth = getAuth(req);
+    const tenantId = String((req.body as { tenantId?: string }).tenantId ?? '').trim();
     if (!tenantId) {
       res.status(400).json({ error: 'tenantId wajib diisi.' });
       return;
     }
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('activeTenantId', tenantId);
+    const exists = db.prepare('SELECT id FROM tenants WHERE id = ?').get(tenantId) as { id: string } | undefined;
+    if (!exists) {
+      res.status(404).json({ error: 'Outlet tidak ditemukan.' });
+      return;
+    }
+    if (!isTenantAllowedForUser(auth.user, tenantId)) {
+      res.status(403).json({ error: 'Akun Anda tidak memiliki hak akses ke outlet tersebut.' });
+      return;
+    }
+    updateSessionTenant(auth.token, tenantId);
     res.json({ activeTenantId: tenantId });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memilih outlet aktif.' });
+  }
+});
+
+// ============================================================
+// STORE SETTINGS & SHIFT CLOSING (TAHAP 3)
+// ============================================================
+app.get('/api/settings', (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(auth.activeTenantId) as Tenant | undefined;
+    res.json({
+      tenant: tenant ?? null,
+      storeSettings: getStoreSettings(auth.activeTenantId),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat pengaturan toko.' });
+  }
+});
+
+app.put('/api/settings', requireRoles('owner', 'branch_manager'), (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const result = updateStoreSettings(
+      auth.activeTenantId,
+      req.body as StoreSettingsUpdatePayload,
+      auth.user.fullName
+    );
+    res.json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Gagal menyimpan pengaturan toko.';
+    res.status(400).json({ error: msg });
+  }
+});
+
+app.get('/api/shifts/summary', (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const date = String(req.query.date ?? '').trim() || new Date().toISOString().slice(0, 10);
+    const requestedScope = req.query.scope === 'my' ? 'my' : 'outlet';
+    const effectiveScope: 'my' | 'outlet' = auth.user.role === 'cashier' ? 'my' : requestedScope;
+
+    res.json(
+      getLiveShiftSummary({
+        tenantId: auth.activeTenantId,
+        date,
+        scope: effectiveScope,
+        cashierName: auth.user.fullName,
+        cashierId: auth.user.id,
+      })
+    );
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat ringkasan shift kasir.' });
+  }
+});
+
+app.get('/api/shifts', (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const page = Number(req.query.page ?? 1) || 1;
+    const pageSize = Number(req.query.pageSize ?? 10) || 10;
+    const search = String(req.query.search ?? '');
+    const varianceFilter = String(req.query.varianceFilter ?? 'all');
+    const sortBy = String(req.query.sortBy ?? 'newest');
+    const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
+
+    res.json(
+      queryShiftClosings({
+        tenantId: auth.activeTenantId,
+        page,
+        pageSize,
+        search,
+        varianceFilter,
+        cashierId: auth.user.role === 'cashier' ? auth.user.id : undefined,
+        sortBy,
+        sortDir,
+      })
+    );
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat riwayat tutup kasir.' });
+  }
+});
+
+app.post('/api/shifts/close', (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const created = createShiftClosing({
+      tenantId: auth.activeTenantId,
+      user: auth.user,
+      payload: req.body as ShiftClosingCreatePayload,
+    });
+    res.status(201).json(created);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Gagal menyimpan laporan tutup kasir.';
+    res.status(400).json({ error: msg });
   }
 });
 

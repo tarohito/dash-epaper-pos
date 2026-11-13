@@ -30,7 +30,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({
           onClick={onRetry}
           className="h-8 px-3 bg-white hover:bg-red-100/70 text-red-700 border border-red-200 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
         >
-          <RefreshCw size={13} />
+          <RefreshCw size={13} className="shrink-0" />
           <span>Muat Ulang</span>
         </button>
       )}

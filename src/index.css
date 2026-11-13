@@ -22,13 +22,18 @@
   }
 
   body {
-    font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
     font-size: 0.875rem; /* 14px enterprise default */
     line-height: 1.5;
+    color: #111827;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
   }
 
   code, kbd, samp, pre, .font-mono {
-    font-family: 'Roboto Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 
@@ -163,7 +168,19 @@
   body.printing-barcode #printable-receipt,
   body.printing-barcode #printable-receipt *,
   body.printing-barcode #printable-buyback-receipt,
-  body.printing-barcode #printable-buyback-receipt * {
+  body.printing-barcode #printable-buyback-receipt *,
+  body.printing-barcode #printable-shift-report,
+  body.printing-barcode #printable-shift-report * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.printing-shift #printable-receipt,
+  body.printing-shift #printable-receipt *,
+  body.printing-shift #printable-buyback-receipt,
+  body.printing-shift #printable-buyback-receipt *,
+  body.printing-shift #printable-barcode-sheet,
+  body.printing-shift #printable-barcode-sheet * {
     display: none !important;
     visibility: hidden !important;
   }
@@ -173,6 +190,13 @@
     display: none !important;
     visibility: hidden !important;
   }
+
+  body:not(.printing-shift) #printable-shift-report,
+  body:not(.printing-shift) #printable-shift-report * {
+    display: none !important;
+    visibility: hidden !important;
+  }
 }
+
 
 

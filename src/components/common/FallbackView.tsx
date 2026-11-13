@@ -13,7 +13,7 @@ export const FallbackView: React.FC<FallbackViewProps> = ({ title, onBackToPos }
         <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6">
           <Settings2 size={32} className="text-orange-500" />
         </div>
-        <h2 className="text-2xl font-extrabold text-gray-800 mb-2">{title}</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-2">{title}</h2>
         <p className="text-gray-500 text-sm">
           Halaman modul <span className="font-semibold text-gray-700">{title}</span> saat ini siap digunakan atau
           kembali ke Kasir POS.

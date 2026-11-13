@@ -7,6 +7,7 @@ import {
   Trash2,
   Crown,
   Loader2,
+  Plus,
 } from 'lucide-react';
 import { Customer, CustomerStatsSummary, CustomerWithStats } from '../../types';
 import { formatIDR } from '../../utils/formatters';
@@ -30,12 +31,14 @@ interface CustomerViewProps {
   refreshTrigger: number;
   onSaveCustomer: (customer: Customer, isEdit?: boolean) => Promise<void>;
   onDeleteCustomer: (id: string) => Promise<void>;
+  canDelete?: boolean;
 }
 
 export const CustomerView: React.FC<CustomerViewProps> = ({
   refreshTrigger,
   onSaveCustomer,
   onDeleteCustomer,
+  canDelete = true,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 220);
@@ -153,9 +156,10 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
               setEditingCustomer(null);
               setIsAddModalOpen(true);
             }}
-            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs shrink-0 inline-flex items-center justify-center active:scale-[0.98]"
+            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors cursor-pointer shadow-xs shrink-0 inline-flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
-            Tambah Pelanggan Baru
+            <Plus size={16} />
+            <span>Tambah Pelanggan Baru</span>
           </button>
         </div>
       </div>
@@ -442,24 +446,26 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                               </button>
                             </Tooltip>
 
-                            <Tooltip
-                              content={
-                                c.computedTx > 0 || c.buybackCount > 0
-                                  ? 'Ada riwayat transaksi'
-                                  : 'Hapus Pelanggan'
-                              }
-                              side="top"
-                            >
-                              <button
-                                type="button"
-                                disabled={c.computedTx > 0 || c.buybackCount > 0}
-                                onClick={() => handleDelete(c)}
-                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                                aria-label="Hapus Pelanggan"
+                            {canDelete && (
+                              <Tooltip
+                                content={
+                                  c.computedTx > 0 || c.buybackCount > 0
+                                    ? 'Ada riwayat transaksi'
+                                    : 'Hapus Pelanggan'
+                                }
+                                side="top"
                               >
-                                <Trash2 size={15} />
-                              </button>
-                            </Tooltip>
+                                <button
+                                  type="button"
+                                  disabled={c.computedTx > 0 || c.buybackCount > 0}
+                                  onClick={() => handleDelete(c)}
+                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
+                                  aria-label="Hapus Pelanggan"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </Tooltip>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -563,24 +569,26 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                             <Pencil size={15} />
                           </button>
                         </Tooltip>
-                        <Tooltip
-                          content={
-                            c.computedTx > 0 || c.buybackCount > 0
-                              ? 'Ada riwayat transaksi'
-                              : 'Hapus Pelanggan'
-                          }
-                          side="top"
-                        >
-                          <button
-                            type="button"
-                            disabled={c.computedTx > 0 || c.buybackCount > 0}
-                            onClick={() => handleDelete(c)}
-                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                            aria-label="Hapus Pelanggan"
+                        {canDelete && (
+                          <Tooltip
+                            content={
+                              c.computedTx > 0 || c.buybackCount > 0
+                                ? 'Ada riwayat transaksi'
+                                : 'Hapus Pelanggan'
+                            }
+                            side="top"
                           >
-                            <Trash2 size={15} />
-                          </button>
-                        </Tooltip>
+                            <button
+                              type="button"
+                              disabled={c.computedTx > 0 || c.buybackCount > 0}
+                              onClick={() => handleDelete(c)}
+                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
+                              aria-label="Hapus Pelanggan"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </Tooltip>
+                        )}
                     </div>
                   </div>
                 );

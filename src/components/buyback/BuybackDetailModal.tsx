@@ -1,14 +1,5 @@
 import React from 'react';
-import {
-  Printer,
-  User,
-  Coins,
-  CreditCard,
-  FileText,
-  Image as ImageIcon,
-  PenTool,
-  Layers,
-} from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { BuybackItem } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import {
@@ -62,7 +53,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
               onClose();
               onPrintReceipt(item);
             }}
-            className={MODAL_BTN_PRIMARY_CLASS}
+            className={`${MODAL_BTN_PRIMARY_CLASS} gap-1.5`}
           >
             <Printer size={15} className="shrink-0" />
             <span>Cetak Nota Buyback</span>
@@ -121,9 +112,8 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {/* Card 1: Data Nasabah */}
             <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
-                <User size={14} className="text-orange-500" />
-                <span>Identitas Nasabah</span>
+              <div className="text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
+                Identitas Nasabah
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between gap-2">
@@ -159,9 +149,8 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
 
             {/* Card 2: Rincian Barang Emas */}
             <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
-                <Coins size={14} className="text-orange-500" />
-                <span>Spesifikasi &amp; Kondisi Emas</span>
+              <div className="text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
+                Spesifikasi &amp; Kondisi Emas
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between gap-2">
@@ -192,10 +181,9 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
           {item.items && item.items.length > 0 && (
             <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-gray-200/60 mb-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
-                  <Layers size={14} className="text-orange-500" />
-                  <span>Rincian Item Emas ({item.items.length} Item)</span>
-                </div>
+                <span className="text-xs font-bold text-gray-800">
+                  Rincian Item Emas ({item.items.length} Item)
+                </span>
               </div>
               <div className="bg-white rounded-lg border border-gray-200/70 divide-y divide-gray-100 overflow-hidden">
                 {item.items.map((gold, idx) => (
@@ -237,9 +225,8 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
 
           {/* Card 3: Rincian Berat & Kalkulasi Keuangan */}
           <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
-              <FileText size={14} className="text-orange-500" />
-              <span>Rincian Berat &amp; Perhitungan Harga</span>
+            <div className="text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
+              Rincian Berat &amp; Perhitungan Harga
             </div>
 
             <div className="grid grid-cols-3 gap-2 p-2.5 bg-white rounded-lg border border-gray-200/60 text-center mb-3">
@@ -312,9 +299,8 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
           {/* Card 4: Info Rekening Transfer (Jika ada) */}
           {item.paymentMethod === 'transfer' && (
             <div className="bg-blue-50/60 border border-blue-200/80 rounded-xl p-3.5 text-xs">
-              <div className="flex items-center gap-1.5 font-bold text-blue-900 mb-2">
-                <CreditCard size={14} className="text-blue-600" />
-                <span>Rincian Rekening Transfer Bank</span>
+              <div className="font-bold text-blue-900 mb-2">
+                Rincian Rekening Transfer Bank
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
@@ -338,9 +324,8 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
           {/* Card 5: Lampiran Foto & Tanda Tangan (Jika ada) */}
           {hasAttachments && (
             <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
-                <ImageIcon size={14} className="text-orange-500" />
-                <span>Lampiran Dokumen &amp; Tanda Tangan</span>
+              <div className="text-xs font-bold text-gray-800 pb-2 border-b border-gray-200/60 mb-2.5">
+                Lampiran Dokumen &amp; Tanda Tangan
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {item.fotoKtp && (
@@ -365,8 +350,8 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 )}
                 {item.ttdNasabah && (
                   <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
-                    <span className="text-[11px] font-semibold text-gray-500 flex items-center justify-center gap-1 mb-1.5">
-                      <PenTool size={11} /> TTD Nasabah
+                    <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">
+                      TTD Nasabah
                     </span>
                     <img
                       src={item.ttdNasabah}
@@ -377,8 +362,8 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 )}
                 {item.ttdPetugas && (
                   <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
-                    <span className="text-[11px] font-semibold text-gray-500 flex items-center justify-center gap-1 mb-1.5">
-                      <PenTool size={11} /> TTD Petugas
+                    <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">
+                      TTD Petugas
                     </span>
                     <img
                       src={item.ttdPetugas}

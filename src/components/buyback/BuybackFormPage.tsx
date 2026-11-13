@@ -1,23 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Building2,
   User,
   CreditCard,
   Phone,
   MapPin,
-  Coins,
   Upload,
-  CheckCircle2,
-  ShieldCheck,
   FileText,
-  Clock,
-  Store,
-  Sparkles,
   AlertCircle,
   Plus,
   Trash2,
-  ArrowLeft,
   Printer,
+  Save,
+  Loader2,
 } from 'lucide-react';
 import { BuybackCreatePayload, BuybackGoldItem, BuybackItem } from '../../types';
 import { formatIDR } from '../../utils/formatters';
@@ -709,7 +703,7 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                 onClick={() => handleAddItem('Logam Mulia Batangan')}
                 className="h-9 px-3.5 text-xs sm:text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
-                <Plus size={15} />
+                <Plus size={14} className="shrink-0" />
                 <span>Emas Batangan</span>
               </button>
               <button
@@ -717,7 +711,7 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                 onClick={() => handleAddItem('Perhiasan')}
                 className="h-9 px-3.5 text-xs sm:text-sm font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
-                <Plus size={15} />
+                <Plus size={14} className="shrink-0" />
                 <span>Perhiasan</span>
               </button>
             </div>
@@ -748,9 +742,9 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(item)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-md transition-colors cursor-pointer border border-transparent hover:border-red-200"
+                        className="text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-md transition-colors cursor-pointer border border-transparent hover:border-red-200 inline-flex items-center gap-1"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={14} className="shrink-0" />
                         <span>Hapus Item</span>
                       </button>
                     )}
@@ -1018,26 +1012,24 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('transfer')}
-                    className={`h-11 px-4 text-sm font-bold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    className={`h-11 px-4 text-sm font-bold rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
                       paymentMethod === 'transfer'
                         ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    <Building2 size={16} />
-                    <span>Transfer Bank</span>
+                    Transfer Bank
                   </button>
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('cash')}
-                    className={`h-11 px-4 text-sm font-bold rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    className={`h-11 px-4 text-sm font-bold rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
                       paymentMethod === 'cash'
                         ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    <Coins size={16} />
-                    <span>Uang Tunai (Cash)</span>
+                    Uang Tunai (Cash)
                   </button>
                 </div>
               </div>
@@ -1263,17 +1255,22 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 sm:flex-none h-11 px-5 text-xs sm:text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 text-center shadow-xs"
+              className="flex-1 sm:flex-none h-11 px-5 text-xs sm:text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center text-center shadow-xs"
             >
-              <ArrowLeft size={16} className="text-gray-500" />
-              <span>Batal / Kembali</span>
+              Batal / Kembali
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 sm:flex-none h-11 px-6 text-xs sm:text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-60 rounded-lg transition-colors cursor-pointer shadow-xs inline-flex items-center justify-center gap-2 active:scale-[0.98]"
             >
-              <Printer size={16} />
+              {isSubmitting ? (
+                <Loader2 size={16} className="animate-spin shrink-0" />
+              ) : editingItem ? (
+                <Save size={16} className="shrink-0" />
+              ) : (
+                <Printer size={16} className="shrink-0" />
+              )}
               <span>
                 {isSubmitting
                   ? 'Menyimpan...'

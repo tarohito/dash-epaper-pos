@@ -654,9 +654,8 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                       </td>
 
                       <td className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 font-mono text-xs font-bold">
-                          <Package size={12} className="text-orange-500" />
-                          <span>{promo.productIds.length} SKU</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 font-mono text-xs font-bold tabular-nums">
+                          {promo.productIds.length} SKU
                         </span>
                       </td>
 
@@ -836,9 +835,8 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
             {/* Product List */}
             <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-gray-200/60 mb-2.5">
-                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                  <Package size={14} className="text-orange-500" />
-                  <span>Daftar Perhiasan dalam Promo ({detailPromo.productIds.length})</span>
+                <span className="text-xs font-bold text-gray-800">
+                  Daftar Perhiasan dalam Promo ({detailPromo.productIds.length})
                 </span>
               </div>
               {detailProducts.length === 0 ? (

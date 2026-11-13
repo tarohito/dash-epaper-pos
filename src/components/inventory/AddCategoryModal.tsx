@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import {
   ModalShell,
@@ -82,8 +82,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
             disabled={isSubmitting}
             className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={15} className="text-gray-500 shrink-0" />
-            <span>Batal</span>
+            Batal
           </button>
           <button
             type="submit"
@@ -91,8 +90,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
             disabled={isSubmitting}
             className={MODAL_BTN_PRIMARY_CLASS}
           >
-            <Save size={15} className="shrink-0" />
-            <span>{isSubmitting ? 'Menyimpan...' : editingCategory ? 'Simpan Perubahan' : 'Simpan Kategori'}</span>
+            {isSubmitting ? 'Menyimpan...' : editingCategory ? 'Simpan Perubahan' : 'Simpan Kategori'}
           </button>
         </div>
       }

@@ -264,9 +264,167 @@ export interface DashboardSummaryResponse {
   trxData: number[];
 }
 
+export type UserRole = 'owner' | 'branch_manager' | 'cashier';
+
+export interface UserAccount {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  shiftLabel: string;
+  allowedTenantIds: string[];
+  defaultTenantId?: string;
+  isActive: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface UserCreatePayload {
+  username: string;
+  email: string;
+  fullName: string;
+  password: string;
+  role: UserRole;
+  shiftLabel: string;
+  allowedTenantIds: string[];
+  defaultTenantId?: string;
+  isActive: boolean;
+}
+
+export interface UserUpdatePayload {
+  email?: string;
+  fullName?: string;
+  password?: string;
+  role?: UserRole;
+  shiftLabel?: string;
+  allowedTenantIds?: string[];
+  defaultTenantId?: string;
+  isActive?: boolean;
+}
+
+export interface UsersPageResponse extends PaginatedResponse<UserAccount> {
+  stats: {
+    totalUsers: number;
+    activeUsers: number;
+    managerCount: number;
+    cashierCount: number;
+  };
+}
+
+export interface AuthLoginResponse {
+  token: string;
+  user: UserAccount;
+  tenants: Tenant[];
+  activeTenantId: string;
+}
+
+export interface StoreSettings {
+  tenantId: string;
+  ppnPercent: number;
+  enablePpn: boolean;
+  goldPrice24kBuyback: number;
+  goldPrice22kBuyback: number;
+  goldPrice18kBuyback: number;
+  goldPrice16kBuyback: number;
+  receiptTagline: string;
+  receiptFooterNote: string;
+  autoPrintReceipt: boolean;
+  requireCustomerOnSale: boolean;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+export interface StoreSettingsUpdatePayload {
+  tenantProfile?: {
+    name?: string;
+    branchName?: string;
+    address?: string;
+    city?: string;
+    phone?: string;
+    email?: string;
+    status?: 'Aktif' | 'Trial' | 'Nonaktif';
+  };
+  settings: Partial<Omit<StoreSettings, 'tenantId' | 'updatedAt' | 'updatedBy'>>;
+}
+
+export interface ShiftLiveSummary {
+  date: string;
+  scope: 'my' | 'outlet';
+  cashierName?: string;
+  totalSalesCount: number;
+  totalSalesAmount: number;
+  totalSalesGrams: number;
+  salesCash: number;
+  salesDebit: number;
+  salesTransfer: number;
+  salesQris: number;
+  totalBuybackCount: number;
+  totalBuybackAmount: number;
+  totalBuybackGrams: number;
+  buybackCash: number;
+  buybackTransfer: number;
+  voidSalesCount: number;
+  voidBuybackCount: number;
+  netCashMovement: number;
+  alreadyClosedCount: number;
+}
+
+export interface ShiftClosingRecord {
+  id: string;
+  tenantId: string;
+  shiftCode: string;
+  shiftDate: string;
+  shiftLabel: string;
+  cashierId: string;
+  cashierName: string;
+  openingCash: number;
+  totalSalesCount: number;
+  totalSalesAmount: number;
+  totalSalesGrams: number;
+  salesCash: number;
+  salesDebit: number;
+  salesTransfer: number;
+  salesQris: number;
+  totalBuybackCount: number;
+  totalBuybackAmount: number;
+  totalBuybackGrams: number;
+  buybackCash: number;
+  buybackTransfer: number;
+  voidSalesCount: number;
+  voidBuybackCount: number;
+  expectedCash: number;
+  actualCash: number;
+  cashVariance: number;
+  notes?: string;
+  status: 'closed';
+  closedAt: string;
+}
+
+export interface ShiftClosingCreatePayload {
+  shiftDate: string;
+  shiftLabel?: string;
+  scope?: 'my' | 'outlet';
+  openingCash: number;
+  actualCash: number;
+  notes?: string;
+}
+
+export interface ShiftClosingsPageResponse extends PaginatedResponse<ShiftClosingRecord> {
+  stats: {
+    totalClosings: number;
+    exactMatchCount: number;
+    totalRecordedSales: number;
+    totalVariance: number;
+  };
+}
+
 export interface BootstrapPayload {
+  user: UserAccount;
   categories: string[];
   tenants: Tenant[];
   activeTenantId: string;
   activePromos: PromoCampaign[];
+  storeSettings: StoreSettings;
 }
+

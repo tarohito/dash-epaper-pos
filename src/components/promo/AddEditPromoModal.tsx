@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Package, AlertCircle, Save, Search, Loader2 } from 'lucide-react';
+import { Check, AlertCircle, Search, Loader2 } from 'lucide-react';
 import { PromoCampaign, Product } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import { NumericInput } from '../common/NumericInput';
@@ -212,8 +212,7 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
             disabled={isSaving}
             className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={15} className="text-gray-500 shrink-0" />
-            <span>Batal</span>
+            Batal
           </button>
           <button
             type="submit"
@@ -221,8 +220,7 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
             disabled={isSaving}
             className={MODAL_BTN_PRIMARY_CLASS}
           >
-            {isSaving ? <Loader2 size={15} className="animate-spin shrink-0" /> : <Save size={15} className="shrink-0" />}
-            <span>{isSaving ? 'Menyimpan...' : editingPromo ? 'Simpan Perubahan' : 'Buat Promo'}</span>
+            {isSaving ? 'Menyimpan...' : editingPromo ? 'Simpan Perubahan' : 'Buat Promo'}
           </button>
         </div>
       }
@@ -349,8 +347,7 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
           {/* Section: Product Selection */}
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <label className="text-xs sm:text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                <Package size={16} className="text-orange-500" />
+              <label className="text-xs sm:text-sm font-semibold text-gray-800">
                 Pilih Perhiasan ({selectedProductIds.length} terpilih dari {totalProducts} katalog)
               </label>
               <button

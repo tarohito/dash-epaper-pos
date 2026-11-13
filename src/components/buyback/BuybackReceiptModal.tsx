@@ -1,6 +1,6 @@
 import React from 'react';
 import { Printer } from 'lucide-react';
-import { BuybackItem } from '../../types';
+import { BuybackItem, Tenant, StoreSettings } from '../../types';
 import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
 import {
   ModalShell,
@@ -12,6 +12,8 @@ interface BuybackReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
   receipt: BuybackItem | null;
+  activeTenant?: Tenant;
+  storeSettings?: StoreSettings;
   onPrint: () => void;
 }
 
@@ -19,6 +21,8 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
   isOpen,
   onClose,
   receipt,
+  activeTenant,
+  storeSettings,
   onPrint,
 }) => {
   if (!isOpen || !receipt) return null;
@@ -36,7 +40,7 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
           <button
             type="button"
             onClick={onPrint}
-            className={MODAL_BTN_PRIMARY_CLASS}
+            className={`${MODAL_BTN_PRIMARY_CLASS} gap-1.5`}
           >
             <Printer size={15} className="shrink-0" />
             <span>Cetak Nota Buyback</span>
@@ -45,7 +49,12 @@ export const BuybackReceiptModal: React.FC<BuybackReceiptModalProps> = ({
       }
     >
       <div className="min-w-0 w-full overflow-x-auto flex justify-center">
-        <GoldInvoiceDocument receipt={receipt} type="buyback" />
+        <GoldInvoiceDocument
+          receipt={receipt}
+          type="buyback"
+          activeTenant={activeTenant}
+          storeSettings={storeSettings}
+        />
       </div>
     </ModalShell>
   );

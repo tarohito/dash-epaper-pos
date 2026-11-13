@@ -1,4 +1,5 @@
 import type {
+  AuthLoginResponse,
   BootstrapPayload,
   BuybackCreatePayload,
   BuybackItem,
@@ -7,16 +8,56 @@ import type {
   Customer,
   CustomersPageResponse,
   DashboardSummaryResponse,
-  PaginatedResponse,
   PaymentDetails,
   Product,
   ProductsPageResponse,
   PromoCampaign,
   PromosPageResponse,
+  ShiftClosingCreatePayload,
+  ShiftClosingRecord,
+  ShiftClosingsPageResponse,
+  ShiftLiveSummary,
+  StoreSettings,
+  StoreSettingsUpdatePayload,
   Tenant,
   Transaction,
   TransactionsPageResponse,
+  UserAccount,
+  UserCreatePayload,
+  UsersPageResponse,
+  UserUpdatePayload,
 } from '../types';
+
+const AUTH_TOKEN_KEY = 'epaper_auth_token';
+let unauthorizedHandler: (() => void) | null = null;
+
+export function getAuthToken(): string | null {
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string): void {
+  try {
+    window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } catch {
+    // Abaikan jika storage tidak tersedia
+  }
+}
+
+export function clearAuthToken(): void {
+  try {
+    window.localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch {
+    // Abaikan jika storage tidak tersedia
+  }
+}
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
 
 function toQueryString(params: Record<string, string | number | boolean | undefined>): string {
   const sp = new URLSearchParams();
@@ -30,16 +71,27 @@ function toQueryString(params: Record<string, string | number | boolean | undefi
 }
 
 async function requestJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...((options?.headers as Record<string, string> | undefined) ?? {}),
+  };
+  if (token && !headers.Authorization) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const res = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers ?? {}),
-    },
+    credentials: 'same-origin',
     ...options,
+    headers,
   });
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401 && !url.startsWith('/api/auth/login')) {
+      clearAuthToken();
+      unauthorizedHandler?.();
+    }
     const message = (data as { error?: string }).error || `Request gagal (${res.status})`;
     throw new Error(message);
   }
@@ -47,7 +99,65 @@ async function requestJson<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const posApi = {
+  // Authentication & Session
+  login: async (identifier: string, password: string): Promise<AuthLoginResponse> => {
+    const res = await requestJson<AuthLoginResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ identifier, password }),
+    });
+    setAuthToken(res.token);
+    return res;
+  },
+  logout: async (): Promise<void> => {
+    try {
+      await requestJson<{ ok: boolean }>('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Tetap bersihkan token lokal meskipun server sudah clear session
+    } finally {
+      clearAuthToken();
+    }
+  },
+  getMe: () => requestJson<{ user: UserAccount; tenants: Tenant[]; activeTenantId: string }>('/api/auth/me'),
+
   bootstrap: () => requestJson<BootstrapPayload>('/api/bootstrap'),
+
+  // Users CRUD (Owner only)
+  getUsers: (
+    params: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      role?: string;
+      sortBy?: string;
+      sortDir?: 'asc' | 'desc';
+    } = {},
+    signal?: AbortSignal
+  ) =>
+    requestJson<UsersPageResponse>(
+      `/api/users${toQueryString({
+        page: params.page ?? 1,
+        pageSize: params.pageSize ?? 10,
+        search: params.search,
+        role: params.role,
+        sortBy: params.sortBy,
+        sortDir: params.sortDir,
+      })}`,
+      { signal }
+    ),
+  createUser: (payload: UserCreatePayload) =>
+    requestJson<UserAccount>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateUser: (id: string, payload: UserUpdatePayload) =>
+    requestJson<UserAccount>(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteUser: (id: string) =>
+    requestJson<{ deletedId: string }>(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
 
   // Dashboard Summary (Server-side aggregation)
   getDashboardSummary: (period: 'HARI' | 'BULAN', signal?: AbortSignal) =>
@@ -277,6 +387,7 @@ export const posApi = {
     }),
 
   // Tenants
+  getTenants: () => requestJson<Tenant[]>('/api/tenants'),
   registerTenant: (payload: Tenant) =>
     requestJson<Tenant>('/api/tenants', {
       method: 'POST',
@@ -287,4 +398,51 @@ export const posApi = {
       method: 'PATCH',
       body: JSON.stringify({ tenantId }),
     }),
+
+  // Store Settings (Tahap 3)
+  getStoreSettings: (signal?: AbortSignal) =>
+    requestJson<{ tenant: Tenant | null; storeSettings: StoreSettings }>('/api/settings', { signal }),
+  updateStoreSettings: (payload: StoreSettingsUpdatePayload) =>
+    requestJson<{ tenant: Tenant; storeSettings: StoreSettings }>('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  // Shift Closing / Rekap Shift (Tahap 3)
+  getShiftSummary: (params: { date?: string; scope?: 'my' | 'outlet' } = {}, signal?: AbortSignal) =>
+    requestJson<ShiftLiveSummary>(
+      `/api/shifts/summary${toQueryString({
+        date: params.date,
+        scope: params.scope,
+      })}`,
+      { signal }
+    ),
+  getShiftClosings: (
+    params: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      varianceFilter?: string;
+      sortBy?: string;
+      sortDir?: 'asc' | 'desc';
+    } = {},
+    signal?: AbortSignal
+  ) =>
+    requestJson<ShiftClosingsPageResponse>(
+      `/api/shifts${toQueryString({
+        page: params.page ?? 1,
+        pageSize: params.pageSize ?? 10,
+        search: params.search,
+        varianceFilter: params.varianceFilter,
+        sortBy: params.sortBy,
+        sortDir: params.sortDir,
+      })}`,
+      { signal }
+    ),
+  closeShift: (payload: ShiftClosingCreatePayload) =>
+    requestJson<ShiftClosingRecord>('/api/shifts/close', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
+

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Store, ChevronDown, Check, Plus, ShieldCheck, ArrowRight, Building2 } from 'lucide-react';
+import { Store, ChevronDown, Check, ShieldCheck, Building2, Plus } from 'lucide-react';
 import { Tenant } from '../../types';
 
 interface TenantSwitcherDropdownProps {
@@ -104,8 +104,8 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
                 }}
                 className="w-full py-1.5 px-2 text-xs font-bold text-orange-600 hover:bg-orange-50 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Plus size={13} />
-                Daftar Tenant Baru
+                <Plus size={14} className="shrink-0" />
+                <span>Daftar Tenant Baru</span>
               </button>
             </div>
           </div>
@@ -129,7 +129,7 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
         </div>
         <div className="hidden sm:flex flex-col min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-extrabold text-gray-900 group-hover:text-orange-600 transition-colors truncate max-w-[130px] md:max-w-[170px] lg:max-w-[200px]">
+            <span className="text-xs font-bold text-gray-900 group-hover:text-orange-600 transition-colors truncate max-w-[130px] md:max-w-[170px] lg:max-w-[200px]">
               {activeTenant.name}
             </span>
             <span className="text-xs font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded border border-orange-200/50">
@@ -168,7 +168,7 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
               <span className="text-gray-500 font-medium">Tenant Aktif Saat Ini:</span>
               <span className="font-mono font-bold text-orange-700">{activeTenant.code}</span>
             </div>
-            <p className="text-xs font-black text-gray-900">{activeTenant.name}</p>
+            <p className="text-xs font-bold text-gray-900">{activeTenant.name}</p>
             <p className="text-xs text-gray-600 mt-0.5">{activeTenant.address}</p>
             <div className="mt-2 flex items-center gap-2 text-xs">
               <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-100/80 px-2 py-0.5 rounded">
@@ -241,10 +241,10 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
                 setIsOpen(false);
                 onOpenRegisterModal();
               }}
-              className="w-full py-2 px-3 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2 px-3 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Plus size={14} />
-              Daftar / Tambah Tenant Baru
+              <Plus size={14} className="shrink-0" />
+              <span>Daftar / Tambah Tenant Baru</span>
             </button>
 
             <button
@@ -253,10 +253,9 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
                 setIsOpen(false);
                 onNavigateToManagement();
               }}
-              className="w-full py-2 px-3 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 px-3 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center justify-center cursor-pointer"
             >
-              <span>Kelola Semua Tenant & Outlet</span>
-              <ArrowRight size={13} />
+              Kelola Semua Tenant &amp; Outlet
             </button>
           </div>
         </div>

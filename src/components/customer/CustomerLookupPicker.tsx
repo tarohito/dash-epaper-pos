@@ -120,10 +120,9 @@ export const CustomerLookupPicker: React.FC<CustomerLookupPickerProps> = ({
             setQuery('');
             onClearSelection();
           }}
-          className="h-7 px-2.5 text-xs font-semibold text-emerald-800 hover:text-red-700 bg-white hover:bg-red-50 border border-emerald-200 hover:border-red-200 rounded-md inline-flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+          className="h-7 px-2.5 text-xs font-semibold text-emerald-800 hover:text-red-700 bg-white hover:bg-red-50 border border-emerald-200 hover:border-red-200 rounded-md inline-flex items-center justify-center transition-colors cursor-pointer shrink-0"
         >
-          <X size={13} />
-          <span>Ganti</span>
+          Ganti
         </button>
       </div>
     );

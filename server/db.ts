@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import crypto from 'node:crypto';
 import fs from 'fs';
 import path from 'path';
 import type {
@@ -17,10 +18,21 @@ import type {
   ProductsPageResponse,
   PromoCampaign,
   PromosPageResponse,
+  ShiftClosingCreatePayload,
+  ShiftClosingRecord,
+  ShiftClosingsPageResponse,
+  ShiftLiveSummary,
+  StoreSettings,
+  StoreSettingsUpdatePayload,
   Tenant,
   Transaction,
   TransactionItem,
   TransactionsPageResponse,
+  UserAccount,
+  UserCreatePayload,
+  UserRole,
+  UsersPageResponse,
+  UserUpdatePayload,
 } from '../src/types/index.ts';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
@@ -174,6 +186,77 @@ db.exec(`
     description TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    fullName TEXT NOT NULL,
+    passwordHash TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('owner', 'branch_manager', 'cashier')),
+    shiftLabel TEXT NOT NULL DEFAULT 'Shift 1 (08:00 - 16:00)',
+    allowedTenantIdsJson TEXT NOT NULL DEFAULT '[]',
+    defaultTenantId TEXT,
+    isActive INTEGER NOT NULL DEFAULT 1,
+    createdAt TEXT NOT NULL,
+    lastLoginAt TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    activeTenantId TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    expiresAt TEXT NOT NULL,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS store_settings (
+    tenantId TEXT PRIMARY KEY,
+    ppnPercent REAL NOT NULL DEFAULT 11,
+    enablePpn INTEGER NOT NULL DEFAULT 1,
+    goldPrice24kBuyback INTEGER NOT NULL DEFAULT 2350000,
+    goldPrice22kBuyback INTEGER NOT NULL DEFAULT 1950000,
+    goldPrice18kBuyback INTEGER NOT NULL DEFAULT 1420000,
+    goldPrice16kBuyback INTEGER NOT NULL DEFAULT 1180000,
+    receiptTagline TEXT NOT NULL DEFAULT 'GOLD & JEWELLERY',
+    receiptFooterNote TEXT NOT NULL DEFAULT 'Barang yang sudah dibeli dapat dijual kembali (buyback) dengan menyertakan surat nota resmi ini.',
+    autoPrintReceipt INTEGER NOT NULL DEFAULT 0,
+    requireCustomerOnSale INTEGER NOT NULL DEFAULT 0,
+    updatedAt TEXT NOT NULL,
+    updatedBy TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS shift_closings (
+    id TEXT PRIMARY KEY,
+    tenantId TEXT NOT NULL,
+    shiftCode TEXT UNIQUE NOT NULL,
+    shiftDate TEXT NOT NULL,
+    shiftLabel TEXT NOT NULL,
+    cashierId TEXT NOT NULL,
+    cashierName TEXT NOT NULL,
+    openingCash INTEGER NOT NULL DEFAULT 0,
+    totalSalesCount INTEGER NOT NULL DEFAULT 0,
+    totalSalesAmount INTEGER NOT NULL DEFAULT 0,
+    totalSalesGrams REAL NOT NULL DEFAULT 0,
+    salesCash INTEGER NOT NULL DEFAULT 0,
+    salesDebit INTEGER NOT NULL DEFAULT 0,
+    salesTransfer INTEGER NOT NULL DEFAULT 0,
+    salesQris INTEGER NOT NULL DEFAULT 0,
+    totalBuybackCount INTEGER NOT NULL DEFAULT 0,
+    totalBuybackAmount INTEGER NOT NULL DEFAULT 0,
+    totalBuybackGrams REAL NOT NULL DEFAULT 0,
+    buybackCash INTEGER NOT NULL DEFAULT 0,
+    buybackTransfer INTEGER NOT NULL DEFAULT 0,
+    voidSalesCount INTEGER NOT NULL DEFAULT 0,
+    voidBuybackCount INTEGER NOT NULL DEFAULT 0,
+    expectedCash INTEGER NOT NULL DEFAULT 0,
+    actualCash INTEGER NOT NULL DEFAULT 0,
+    cashVariance INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'closed',
+    closedAt TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
   CREATE INDEX IF NOT EXISTS idx_products_sku_lower ON products(LOWER(sku));
   CREATE INDEX IF NOT EXISTS idx_products_name_lower ON products(LOWER(name));
@@ -186,6 +269,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_customers_type ON customers(type);
   CREATE INDEX IF NOT EXISTS idx_customers_name_lower ON customers(LOWER(name));
   CREATE INDEX IF NOT EXISTS idx_promos_active ON promos(isActive);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users(LOWER(username));
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(userId);
+  CREATE INDEX IF NOT EXISTS idx_shift_closings_tenant ON shift_closings(tenantId);
+  CREATE INDEX IF NOT EXISTS idx_shift_closings_date ON shift_closings(shiftDate DESC);
+  CREATE INDEX IF NOT EXISTS idx_shift_closings_cashier ON shift_closings(cashierId);
 `);
 
 function ensureColumn(table: string, column: string, definition: string): void {
@@ -204,15 +293,106 @@ ensureColumn('buybacks', 'status', "TEXT NOT NULL DEFAULT 'completed'");
 ensureColumn('buybacks', 'voidReason', 'TEXT');
 ensureColumn('buybacks', 'voidedAt', 'TEXT');
 ensureColumn('buybacks', 'customerId', 'TEXT');
+ensureColumn('buybacks', 'createdAt', 'TEXT');
 
 ensureColumn('customers', 'npwp', 'TEXT');
 ensureColumn('customers', 'goldColor', 'TEXT');
 ensureColumn('customers', 'braceletSize', 'TEXT');
 ensureColumn('customers', 'birthDate', 'TEXT');
 
+ensureColumn('products', 'tenantId', "TEXT NOT NULL DEFAULT 'tenant-tms-001'");
+ensureColumn('transactions', 'tenantId', "TEXT NOT NULL DEFAULT 'tenant-tms-001'");
+ensureColumn('buybacks', 'tenantId', "TEXT NOT NULL DEFAULT 'tenant-tms-001'");
+ensureColumn('promos', 'tenantId', "TEXT NOT NULL DEFAULT 'tenant-tms-001'");
+
+// Backfill buybacks.createdAt from invoiceNo (BB-YYYYMMDD-xxx) for historical rows
+const nullCreatedBuybacks = db
+  .prepare("SELECT id, invoiceNo FROM buybacks WHERE createdAt IS NULL OR TRIM(createdAt) = ''")
+  .all() as Array<{ id: string; invoiceNo: string }>;
+if (nullCreatedBuybacks.length > 0) {
+  const updCreated = db.prepare('UPDATE buybacks SET createdAt = ? WHERE id = ?');
+  for (const b of nullCreatedBuybacks) {
+    const m = /^BB-(\d{4})(\d{2})(\d{2})-/.exec(b.invoiceNo || '');
+    const iso = m ? `${m[1]}-${m[2]}-${m[3]}T12:00:00.000Z` : '2026-11-11T12:00:00.000Z';
+    updCreated.run(iso, b.id);
+  }
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_buybacks_created_at ON buybacks(createdAt);');
+
+function migrateMultiTenantSchema(): void {
+  const migratedRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('migrated_multitenant_v1') as
+    | { value: string }
+    | undefined;
+  if (migratedRow?.value === '1') {
+    return;
+  }
+
+  db.pragma('foreign_keys = OFF');
+  const migrateTx = db.transaction(() => {
+    // Recreate products without global UNIQUE(sku) so each outlet can maintain its own SKUs
+    db.exec(`
+      CREATE TABLE products_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenantId TEXT NOT NULL DEFAULT 'tenant-tms-001',
+        sku TEXT NOT NULL,
+        name TEXT NOT NULL,
+        berat REAL NOT NULL,
+        harga INTEGER NOT NULL,
+        stok INTEGER NOT NULL DEFAULT 0,
+        category TEXT NOT NULL,
+        image TEXT NOT NULL
+      );
+      INSERT INTO products_new (id, tenantId, sku, name, berat, harga, stok, category, image)
+      SELECT id, COALESCE(NULLIF(TRIM(tenantId), ''), 'tenant-tms-001'), sku, name, berat, harga, stok, category, image
+      FROM products;
+      DROP TABLE products;
+      ALTER TABLE products_new RENAME TO products;
+
+      CREATE TABLE promos_new (
+        id TEXT PRIMARY KEY,
+        tenantId TEXT NOT NULL DEFAULT 'tenant-tms-001',
+        name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        discountPercent REAL NOT NULL,
+        label TEXT NOT NULL,
+        startDate TEXT NOT NULL,
+        endDate TEXT NOT NULL,
+        productIdsJson TEXT NOT NULL DEFAULT '[]',
+        isActive INTEGER NOT NULL DEFAULT 1,
+        minPurchase INTEGER,
+        description TEXT
+      );
+      INSERT INTO promos_new (id, tenantId, name, code, discountPercent, label, startDate, endDate, productIdsJson, isActive, minPurchase, description)
+      SELECT id, COALESCE(NULLIF(TRIM(tenantId), ''), 'tenant-tms-001'), name, code, discountPercent, label, startDate, endDate, productIdsJson, isActive, minPurchase, description
+      FROM promos;
+      DROP TABLE promos;
+      ALTER TABLE promos_new RENAME TO promos;
+    `);
+
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('migrated_multitenant_v1', '1');
+  });
+
+  try {
+    migrateTx();
+  } finally {
+    db.pragma('foreign_keys = ON');
+  }
+}
+
+migrateMultiTenantSchema();
+
 db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_products_tenant ON products(tenantId);
+  CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+  CREATE INDEX IF NOT EXISTS idx_products_sku_lower ON products(LOWER(sku));
+  CREATE INDEX IF NOT EXISTS idx_products_name_lower ON products(LOWER(name));
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_products_tenant_sku_lower ON products(tenantId, LOWER(sku));
+  CREATE INDEX IF NOT EXISTS idx_transactions_tenant ON transactions(tenantId);
   CREATE INDEX IF NOT EXISTS idx_transactions_customer_id ON transactions(customerId);
+  CREATE INDEX IF NOT EXISTS idx_buybacks_tenant ON buybacks(tenantId);
   CREATE INDEX IF NOT EXISTS idx_buybacks_customer_id ON buybacks(customerId);
+  CREATE INDEX IF NOT EXISTS idx_promos_tenant ON promos(tenantId);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_promos_tenant_code_lower ON promos(tenantId, LOWER(code));
   CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_nik_unique ON customers(nik) WHERE nik IS NOT NULL AND TRIM(nik) != '';
 `);
 
@@ -225,11 +405,262 @@ function safeJsonParse<T>(raw: string | null | undefined, fallback: T): T {
   }
 }
 
+function seedSecondaryOutletsIfNeeded(): void {
+  const alreadySeeded = db.prepare('SELECT value FROM settings WHERE key = ?').get('seeded_multitenant_outlets_v1') as
+    | { value: string }
+    | undefined;
+  if (alreadySeeded?.value === '1') {
+    return;
+  }
+
+  const IMG = {
+    ring1: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80',
+    ring2: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&w=300&q=80',
+    bracelet1: 'https://images.unsplash.com/photo-1611591475711-d0b16f39e38d?auto=format&fit=crop&w=300&q=80',
+    bracelet2: 'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&w=300&q=80',
+    necklace1: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=300&q=80',
+    pendant1: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=300&q=80',
+    earring1: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=300&q=80',
+    brooch1: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=300&q=80',
+    bullion1: 'https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=300&q=80',
+  };
+
+  const secondaryTx = db.transaction(() => {
+    const insertProd = db.prepare(`
+      INSERT INTO products (tenantId, sku, name, berat, harga, stok, category, image)
+      VALUES (@tenantId, @sku, @name, @berat, @harga, @stok, @category, @image)
+    `);
+
+    const tmjProducts = [
+      { tenantId: 'tenant-tmj-002', sku: 'MJ-CN-22K-01', name: 'Cincin Solitaire Paris 22K', berat: 2.4, harga: 5450000, stok: 8, category: 'Cincin', image: IMG.ring2 },
+      { tenantId: 'tenant-tmj-002', sku: 'MJ-GL-18K-02', name: 'Gelang Rantai Bandung 18K', berat: 4.8, harga: 9120000, stok: 5, category: 'Gelang', image: IMG.bracelet1 },
+      { tenantId: 'tenant-tmj-002', sku: 'MJ-KL-17K-03', name: 'Kalung Milano Rose Gold 17K', berat: 3.9, harga: 7350000, stok: 6, category: 'Kalung', image: IMG.necklace1 },
+      { tenantId: 'tenant-tmj-002', sku: 'MJ-AN-16K-04', name: 'Anting Giwang Mutiara 16K', berat: 1.65, harga: 2850000, stok: 12, category: 'Anting', image: IMG.earring1 },
+      { tenantId: 'tenant-tmj-002', sku: 'MJ-LM-ANT-05', name: 'Logam Mulia Antam 5 Gr (PVJ)', berat: 5.0, harga: 12550000, stok: 9, category: 'Logam Mulia', image: IMG.bullion1 },
+      { tenantId: 'tenant-tmj-002', sku: 'MJ-LN-18K-06', name: 'Liontin Berlian Oval 18K', berat: 2.1, harga: 5600000, stok: 4, category: 'Liontin', image: IMG.pendant1 },
+    ];
+
+    const lkeProducts = [
+      { tenantId: 'tenant-lke-003', sku: 'LKE-LM-010', name: 'Logam Mulia Antam 10 Gr (SBY)', berat: 10.0, harga: 24950000, stok: 6, category: 'Logam Mulia', image: IMG.bullion1 },
+      { tenantId: 'tenant-lke-003', sku: 'LKE-LM-025', name: 'Logam Mulia Antam 25 Gr (SBY)', berat: 25.0, harga: 62100000, stok: 3, category: 'Logam Mulia', image: IMG.bullion1 },
+      { tenantId: 'tenant-lke-003', sku: 'LKE-CN-22K-01', name: 'Cincin Kawin Ukir Kencana 22K', berat: 5.2, harga: 11850000, stok: 7, category: 'Cincin', image: IMG.ring1 },
+      { tenantId: 'tenant-lke-003', sku: 'LKE-KL-24K-02', name: 'Kalung Emas Murni Rantai 24K', berat: 11.5, harga: 28750000, stok: 3, category: 'Kalung', image: IMG.necklace1 },
+      { tenantId: 'tenant-lke-003', sku: 'LKE-GL-22K-03', name: 'Gelang Bangle Kencana 22K', berat: 8.4, harga: 19200000, stok: 5, category: 'Gelang', image: IMG.bracelet2 },
+      { tenantId: 'tenant-lke-003', sku: 'LKE-BR-18K-04', name: 'Bros Kebaya Mahkota 18K', berat: 4.1, harga: 7890000, stok: 4, category: 'Bros', image: IMG.brooch1 },
+    ];
+
+    const tmjIds: number[] = [];
+    const existingTmjCount = (db.prepare('SELECT COUNT(*) as cnt FROM products WHERE tenantId = ?').get('tenant-tmj-002') as { cnt: number }).cnt;
+    if (existingTmjCount === 0) {
+      for (const p of tmjProducts) {
+        const info = insertProd.run(p);
+        tmjIds.push(Number(info.lastInsertRowid));
+      }
+    }
+
+    const lkeIds: number[] = [];
+    const existingLkeCount = (db.prepare('SELECT COUNT(*) as cnt FROM products WHERE tenantId = ?').get('tenant-lke-003') as { cnt: number }).cnt;
+    if (existingLkeCount === 0) {
+      for (const p of lkeProducts) {
+        const info = insertProd.run(p);
+        lkeIds.push(Number(info.lastInsertRowid));
+      }
+    }
+
+    // Starter Promos per Outlet
+    const insertPromo = db.prepare(`
+      INSERT OR IGNORE INTO promos (id, tenantId, name, code, discountPercent, label, startDate, endDate, productIdsJson, isActive, minPurchase, description)
+      VALUES (@id, @tenantId, @name, @code, @discountPercent, @label, @startDate, @endDate, @productIdsJson, @isActive, @minPurchase, @description)
+    `);
+    if (tmjIds.length > 0) {
+      insertPromo.run({
+        id: 'PRM-TMJ-001',
+        tenantId: 'tenant-tmj-002',
+        name: 'Promo Opening PVJ Bandung',
+        code: 'PVJ10',
+        discountPercent: 10,
+        label: 'Diskon 10%',
+        startDate: '2026-11-01',
+        endDate: '2026-11-30',
+        productIdsJson: JSON.stringify([tmjIds[0], tmjIds[2]].filter(Boolean)),
+        isActive: 1,
+        minPurchase: 3000000,
+        description: 'Promo khusus cabang Paris Van Java Bandung untuk koleksi cincin & kalung.',
+      });
+    }
+    if (lkeIds.length > 0) {
+      insertPromo.run({
+        id: 'PRM-LKE-001',
+        tenantId: 'tenant-lke-003',
+        name: 'Special Bullion Tunjungan Plaza',
+        code: 'TP3GOLD',
+        discountPercent: 5,
+        label: 'Diskon 5%',
+        startDate: '2026-11-01',
+        endDate: '2026-11-30',
+        productIdsJson: JSON.stringify([lkeIds[2], lkeIds[4]].filter(Boolean)),
+        isActive: 1,
+        minPurchase: 5000000,
+        description: 'Potongan spesial cabang Tunjungan Plaza Surabaya untuk perhiasan 22K.',
+      });
+    }
+
+    // Starter Transactions per Outlet
+    const insertTx = db.prepare(`
+      INSERT OR IGNORE INTO transactions (id, tenantId, invoiceNo, dateTime, dateStr, timeStr, cashier, customerId, customerName, totalQty, totalBerat, subtotal, tax, grandTotal, paymentMethod, paymentDetailsJson)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertTxItem = db.prepare(`
+      INSERT INTO transaction_items (transactionId, productId, sku, name, berat, harga, qty, subtotal, image)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    if (tmjIds.length >= 2) {
+      const p0 = tmjProducts[0];
+      const sub0 = p0.harga;
+      const tax0 = Math.round(sub0 * 0.11);
+      const txId = 'TRX-TMJ-20261111-001';
+      if (!db.prepare('SELECT id FROM transactions WHERE id = ?').get(txId)) {
+        insertTx.run(
+          txId,
+          'tenant-tmj-002',
+          'TRX-20261111-101',
+          '2026-11-11T10:15:00.000Z',
+          '11 Nov 2026',
+          '10:15:00',
+          'Rina Kasir (PVJ)',
+          'CUST-001',
+          'Hj. Siti Rahmah',
+          1,
+          p0.berat,
+          sub0,
+          tax0,
+          sub0 + tax0,
+          'qris',
+          JSON.stringify({ qrisNmid: 'ID102003928192', qrisRrn: 'RRNPVJ001' })
+        );
+        insertTxItem.run(txId, tmjIds[0], p0.sku, p0.name, p0.berat, p0.harga, 1, sub0, p0.image);
+      }
+    }
+
+    if (lkeIds.length >= 2) {
+      const p0 = lkeProducts[0];
+      const sub0 = p0.harga;
+      const tax0 = Math.round(sub0 * 0.11);
+      const txId = 'TRX-LKE-20261111-001';
+      if (!db.prepare('SELECT id FROM transactions WHERE id = ?').get(txId)) {
+        insertTx.run(
+          txId,
+          'tenant-lke-003',
+          'TRX-20261111-201',
+          '2026-11-11T11:40:00.000Z',
+          '11 Nov 2026',
+          '11:40:00',
+          'Budi Kasir (TP3)',
+          'CUST-002',
+          'Bpk. Hendra Wijaya',
+          1,
+          p0.berat,
+          sub0,
+          tax0,
+          sub0 + tax0,
+          'transfer',
+          JSON.stringify({ transferBank: 'BCA', transferRef: 'TRF-SBY-8821' })
+        );
+        insertTxItem.run(txId, lkeIds[0], p0.sku, p0.name, p0.berat, p0.harga, 1, sub0, p0.image);
+      }
+    }
+
+    // Starter Buyback per Outlet
+    const insertBb = db.prepare(`
+      INSERT OR IGNORE INTO buybacks (
+        id, tenantId, invoiceNo, date, timeStr, branchName, cashierName,
+        customerId, customerName, customerPhone, customerNik, customerAddress,
+        sourceNote, itemType, kadar, beratKotor, potonganBatu, beratBersih,
+        hargaPerGram, biayaLebur, kondisi, totalKotor, potonganBiaya, pph22,
+        totalBayar, paymentMethod, bankName, accountNo, accountHolder,
+        catatan, isAgreedLegal
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `);
+    insertBb.run(
+      'bb-tmj-001',
+      'tenant-tmj-002',
+      'BB-20261111-101',
+      '11 Nov 2026, 13:20',
+      '13:20',
+      'Cabang Paris Van Java (PVJ)',
+      'Rina Kasir (PVJ)',
+      'CUST-003',
+      'Ibu Ratna Dewi',
+      '085612349876',
+      '3273016405850003',
+      'Komplek Permata Buah Batu Blok C-8, Bandung',
+      'Nota Mulia Jaya',
+      'Perhiasan (Gelang)',
+      '18K (75.0%)',
+      4.5,
+      0.1,
+      4.4,
+      1420000,
+      75000,
+      'Baik / Utuh',
+      6248000,
+      75000,
+      0,
+      6173000,
+      'transfer',
+      'BCA',
+      '7770291823',
+      'Ratna Dewi',
+      'Buyback cabang Bandung kondisi mulus.'
+    );
+    insertBb.run(
+      'bb-lke-001',
+      'tenant-lke-003',
+      'BB-20261111-201',
+      '11 Nov 2026, 15:05',
+      '15:05',
+      'Cabang Tunjungan Plaza 3',
+      'Budi Kasir (TP3)',
+      'CUST-001',
+      'Hj. Siti Rahmah',
+      '081234567890',
+      '3201124508780001',
+      'Jl. Riau No. 45, Bandung',
+      'Sertifikat Antam',
+      'Logam Mulia Batangan',
+      '24K (99.9%)',
+      5.0,
+      0,
+      5.0,
+      2350000,
+      0,
+      'Baik / Utuh',
+      11750000,
+      0,
+      0,
+      11750000,
+      'cash',
+      null,
+      null,
+      null,
+      'Penerimaan LM Antam 5gr di cabang Surabaya.'
+    );
+
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('seeded_multitenant_outlets_v1', '1');
+  });
+
+  secondaryTx();
+}
+
 export function seedInitialDataIfEmpty(): void {
   const seededV3Row = db.prepare('SELECT value FROM settings WHERE key = ?').get('seeded_v3') as
     | { value: string }
     | undefined;
   if (seededV3Row?.value === '1') {
+    seedSecondaryOutletsIfNeeded();
+    seedUsersIfNeeded();
+    seedShiftClosingsIfNeeded();
     return;
   }
 
@@ -1387,13 +1818,21 @@ export function seedInitialDataIfEmpty(): void {
   });
 
   seedTx();
+  seedSecondaryOutletsIfNeeded();
+  seedUsersIfNeeded();
+  db.exec(`
+    UPDATE buybacks
+    SET createdAt = substr(invoiceNo, 4, 4) || '-' || substr(invoiceNo, 8, 2) || '-' || substr(invoiceNo, 10, 2) || 'T12:00:00.000Z'
+    WHERE (createdAt IS NULL OR TRIM(createdAt) = '') AND invoiceNo LIKE 'BB-________-%';
+  `);
+  seedShiftClosingsIfNeeded();
 }
 
 // Query Helpers
-export function getAllProducts(): Product[] {
+export function getAllProducts(tenantId: string = getActiveTenantId()): Product[] {
   return db
-    .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products ORDER BY id DESC')
-    .all() as Product[];
+    .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE tenantId = ? ORDER BY id DESC')
+    .all(tenantId) as Product[];
 }
 
 export function getAllCategories(): string[] {
@@ -1401,12 +1840,12 @@ export function getAllCategories(): string[] {
   return rows.map(r => r.name);
 }
 
-export function getAllTransactions(): Transaction[] {
+export function getAllTransactions(tenantId: string = getActiveTenantId()): Transaction[] {
   const txRows = db
     .prepare(
-      'SELECT id, invoiceNo, dateTime, dateStr, timeStr, cashier, customerName, totalQty, totalBerat, subtotal, tax, grandTotal, paymentMethod, paymentDetailsJson FROM transactions ORDER BY dateTime DESC'
+      'SELECT id, invoiceNo, dateTime, dateStr, timeStr, cashier, customerName, totalQty, totalBerat, subtotal, tax, grandTotal, paymentMethod, paymentDetailsJson FROM transactions WHERE tenantId = ? ORDER BY dateTime DESC'
     )
-    .all() as Array<{
+    .all(tenantId) as Array<{
     id: string;
     invoiceNo: string;
     dateTime: string;
@@ -1472,8 +1911,8 @@ export function getAllTransactions(): Transaction[] {
   }));
 }
 
-export function getAllBuybacks(): BuybackItem[] {
-  const rows = db.prepare('SELECT * FROM buybacks ORDER BY rowid DESC').all() as Array<{
+export function getAllBuybacks(tenantId: string = getActiveTenantId()): BuybackItem[] {
+  const rows = db.prepare('SELECT * FROM buybacks WHERE tenantId = ? ORDER BY rowid DESC').all(tenantId) as Array<{
     id: string;
     invoiceNo: string;
     date: string;
@@ -1615,8 +2054,8 @@ export function generateNextMemberCode(): string {
   return candidate;
 }
 
-export function getAllPromos(): PromoCampaign[] {
-  const rows = db.prepare('SELECT * FROM promos ORDER BY rowid DESC').all() as Array<{
+export function getAllPromos(tenantId: string = getActiveTenantId()): PromoCampaign[] {
+  const rows = db.prepare('SELECT * FROM promos WHERE tenantId = ? ORDER BY rowid DESC').all(tenantId) as Array<{
     id: string;
     name: string;
     code: string;
@@ -1646,7 +2085,15 @@ export function getAllPromos(): PromoCampaign[] {
 }
 
 export function getAllTenants(): Tenant[] {
-  return db.prepare('SELECT * FROM tenants ORDER BY rowid ASC').all() as Tenant[];
+  const tenants = db.prepare('SELECT * FROM tenants ORDER BY rowid ASC').all() as Tenant[];
+  const counts = db
+    .prepare('SELECT tenantId, COUNT(*) as cnt FROM products GROUP BY tenantId')
+    .all() as Array<{ tenantId: string; cnt: number }>;
+  const countMap = new Map(counts.map(c => [c.tenantId, c.cnt]));
+  return tenants.map(t => ({
+    ...t,
+    productCount: countMap.get(t.id) ?? 0,
+  }));
 }
 
 export function getActiveTenantId(): string {
@@ -1656,8 +2103,10 @@ export function getActiveTenantId(): string {
   return row?.value ?? 'tenant-tms-001';
 }
 
-export function getActivePromos(): PromoCampaign[] {
-  const rows = db.prepare('SELECT * FROM promos WHERE isActive = 1 ORDER BY rowid DESC').all() as Array<{
+export function getActivePromos(tenantId: string = getActiveTenantId()): PromoCampaign[] {
+  const rows = db
+    .prepare('SELECT * FROM promos WHERE tenantId = ? AND isActive = 1 ORDER BY rowid DESC')
+    .all(tenantId) as Array<{
     id: string;
     name: string;
     code: string;
@@ -1686,8 +2135,8 @@ export function getActivePromos(): PromoCampaign[] {
   }));
 }
 
-function buildActivePromoMap(): Map<number, PromoCampaign> {
-  const activePromos = getActivePromos();
+function buildActivePromoMap(tenantId: string = getActiveTenantId()): Map<number, PromoCampaign> {
+  const activePromos = getActivePromos(tenantId);
   const map = new Map<number, PromoCampaign>();
   for (const promo of activePromos) {
     for (const prodId of promo.productIds) {
@@ -1729,7 +2178,9 @@ export function queryProducts(opts: {
   promoOnly?: boolean;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
+  tenantId?: string;
 }): ProductsPageResponse {
+  const tenantId = opts.tenantId ?? getActiveTenantId();
   const page = Math.max(1, Math.floor(opts.page ?? 1));
   const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
@@ -1760,11 +2211,11 @@ export function queryProducts(opts: {
       break;
   }
 
-  const promoMap = buildActivePromoMap();
+  const promoMap = buildActivePromoMap(tenantId);
   const promoProductIds = Array.from(promoMap.keys());
 
-  const conditions: string[] = [];
-  const params: Array<string | number> = [];
+  const conditions: string[] = ['tenantId = ?'];
+  const params: Array<string | number> = [tenantId];
 
   if (search) {
     const like = `%${search}%`;
@@ -1805,7 +2256,7 @@ export function queryProducts(opts: {
          FROM transaction_items
          GROUP BY productId
        ) si ON si.productId = p.id
-       ${whereSql.replace(/\b(name|sku|category|id)\b/g, 'p.$1')}
+       ${whereSql.replace(/\b(tenantId|name|sku|category|id)\b/g, 'p.$1')}
        ORDER BY ${orderBySql.replace(/\b(harga|berat|stok|id)\b/g, 'p.$1').replace(/LOWER\((name|sku)\)/g, 'LOWER(p.$1)')}
        LIMIT ? OFFSET ?`
     )
@@ -1813,9 +2264,9 @@ export function queryProducts(opts: {
 
   const catRows = db
     .prepare(
-      'SELECT category, COUNT(*) as cnt, COALESCE(SUM(stok), 0) as stokSum, COALESCE(SUM(berat * stok), 0) as weightSum, COALESCE(SUM(harga * stok), 0) as assetSum FROM products GROUP BY category'
+      'SELECT category, COUNT(*) as cnt, COALESCE(SUM(stok), 0) as stokSum, COALESCE(SUM(berat * stok), 0) as weightSum, COALESCE(SUM(harga * stok), 0) as assetSum FROM products WHERE tenantId = ? GROUP BY category'
     )
-    .all() as Array<{
+    .all(tenantId) as Array<{
     category: string;
     cnt: number;
     stokSum: number;
@@ -1841,8 +2292,8 @@ export function queryProducts(opts: {
   if (promoProductIds.length > 0) {
     promoCount = (
       db
-        .prepare(`SELECT COUNT(*) as cnt FROM products WHERE id IN (${promoProductIds.map(() => '?').join(', ')})`)
-        .get(...promoProductIds) as { cnt: number }
+        .prepare(`SELECT COUNT(*) as cnt FROM products WHERE tenantId = ? AND id IN (${promoProductIds.map(() => '?').join(', ')})`)
+        .get(tenantId, ...promoProductIds) as { cnt: number }
     ).cnt;
   }
 
@@ -1884,47 +2335,47 @@ function normalizeBarcodePayload(rawCode: string): string {
   return clean.toLowerCase();
 }
 
-export function lookupProductByCode(rawCode: string): Product | null {
+export function lookupProductByCode(rawCode: string, tenantId: string = getActiveTenantId()): Product | null {
   const clean = normalizeBarcodePayload(rawCode);
   if (!clean) return null;
 
   let product = db
-    .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE LOWER(sku) = ? LIMIT 1')
-    .get(clean) as Product | undefined;
+    .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE tenantId = ? AND LOWER(sku) = ? LIMIT 1')
+    .get(tenantId, clean) as Product | undefined;
 
   if (!product && /^\d+$/.test(clean)) {
     product = db
-      .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE id = ? LIMIT 1')
-      .get(Number(clean)) as Product | undefined;
+      .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE tenantId = ? AND id = ? LIMIT 1')
+      .get(tenantId, Number(clean)) as Product | undefined;
   }
 
   if (!product) {
     product = db
-      .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE LOWER(name) = ? LIMIT 1')
-      .get(clean) as Product | undefined;
+      .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE tenantId = ? AND LOWER(name) = ? LIMIT 1')
+      .get(tenantId, clean) as Product | undefined;
   }
 
   if (!product) {
     const alphaNum = clean.replace(/[^a-z0-9]/g, '');
     if (alphaNum.length >= 3) {
       const allSkus = db
-        .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products')
-        .all() as Product[];
+        .prepare('SELECT id, sku, name, berat, harga, stok, category, image FROM products WHERE tenantId = ?')
+        .all(tenantId) as Product[];
       product = allSkus.find(p => p.sku.toLowerCase().replace(/[^a-z0-9]/g, '') === alphaNum);
     }
   }
 
   if (!product) return null;
-  return attachPromoFlags(product, buildActivePromoMap());
+  return attachPromoFlags(product, buildActivePromoMap(tenantId));
 }
 
-export function getCategoriesWithStats(): CategoriesWithStatsResponse {
+export function getCategoriesWithStats(tenantId: string = getActiveTenantId()): CategoriesWithStatsResponse {
   const categories = getAllCategories();
   const rows = db
     .prepare(
-      'SELECT category, COUNT(*) as count, COALESCE(SUM(stok), 0) as totalStok, COALESCE(SUM(berat * stok), 0) as totalGram FROM products GROUP BY category'
+      'SELECT category, COUNT(*) as count, COALESCE(SUM(stok), 0) as totalStok, COALESCE(SUM(berat * stok), 0) as totalGram FROM products WHERE tenantId = ? GROUP BY category'
     )
-    .all() as Array<{ category: string; count: number; totalStok: number; totalGram: number }>;
+    .all(tenantId) as Array<{ category: string; count: number; totalStok: number; totalGram: number }>;
 
   const stats: Record<string, CategoryStatsItem> = {};
   for (const r of rows) {
@@ -1944,7 +2395,9 @@ export function queryTransactions(opts: {
   method?: string;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
+  tenantId?: string;
 }): TransactionsPageResponse {
+  const tenantId = opts.tenantId ?? getActiveTenantId();
   const page = Math.max(1, Math.floor(opts.page ?? 1));
   const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
@@ -1974,8 +2427,8 @@ export function queryTransactions(opts: {
       break;
   }
 
-  const conditions: string[] = [];
-  const params: Array<string | number> = [];
+  const conditions: string[] = ['tenantId = ?'];
+  const params: Array<string | number> = [tenantId];
 
   if (search) {
     const like = `%${search}%`;
@@ -2064,9 +2517,9 @@ export function queryTransactions(opts: {
 
   const agg = db
     .prepare(
-      "SELECT COALESCE(SUM(grandTotal), 0) as totalOmzet, COALESCE(SUM(totalBerat), 0) as totalBerat, COUNT(*) as totalCount FROM transactions WHERE COALESCE(status, 'completed') != 'void'"
+      "SELECT COALESCE(SUM(grandTotal), 0) as totalOmzet, COALESCE(SUM(totalBerat), 0) as totalBerat, COUNT(*) as totalCount FROM transactions WHERE tenantId = ? AND COALESCE(status, 'completed') != 'void'"
     )
-    .get() as { totalOmzet: number; totalBerat: number; totalCount: number };
+    .get(tenantId) as { totalOmzet: number; totalBerat: number; totalCount: number };
 
   return {
     items: txRows.map(tx => ({
@@ -2271,7 +2724,9 @@ export function queryBuybacks(opts: {
   method?: string;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
+  tenantId?: string;
 }): BuybacksPageResponse {
+  const tenantId = opts.tenantId ?? getActiveTenantId();
   const page = Math.max(1, Math.floor(opts.page ?? 1));
   const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
@@ -2301,8 +2756,8 @@ export function queryBuybacks(opts: {
       break;
   }
 
-  const conditions: string[] = [];
-  const params: Array<string | number> = [];
+  const conditions: string[] = ['tenantId = ?'];
+  const params: Array<string | number> = [tenantId];
 
   if (search) {
     const like = `%${search}%`;
@@ -2340,9 +2795,9 @@ export function queryBuybacks(opts: {
 
   const agg = db
     .prepare(
-      "SELECT COALESCE(SUM(totalBayar), 0) as totalDana, COALESCE(SUM(beratBersih), 0) as totalBerat, COUNT(*) as totalCount FROM buybacks WHERE COALESCE(status, 'completed') != 'void'"
+      "SELECT COALESCE(SUM(totalBayar), 0) as totalDana, COALESCE(SUM(beratBersih), 0) as totalBerat, COUNT(*) as totalCount FROM buybacks WHERE tenantId = ? AND COALESCE(status, 'completed') != 'void'"
     )
-    .get() as { totalDana: number; totalBerat: number; totalCount: number };
+    .get(tenantId) as { totalDana: number; totalBerat: number; totalCount: number };
 
   return {
     items: rows.map(mapBuybackRow),
@@ -2359,10 +2814,12 @@ export function queryBuybacks(opts: {
   };
 }
 
-export function getBuybackById(id: string): BuybackItem | null {
-  const row = db.prepare('SELECT * FROM buybacks WHERE id = ?').get(id) as
-    | Parameters<typeof mapBuybackRow>[0]
-    | undefined;
+export function getBuybackById(id: string, tenantId?: string): BuybackItem | null {
+  const row = (
+    tenantId
+      ? db.prepare('SELECT * FROM buybacks WHERE id = ? AND tenantId = ?').get(id, tenantId)
+      : db.prepare('SELECT * FROM buybacks WHERE id = ?').get(id)
+  ) as Parameters<typeof mapBuybackRow>[0] | undefined;
   return row ? mapBuybackRow(row) : null;
 }
 
@@ -2541,7 +2998,9 @@ export function queryPromos(opts: {
   status?: string;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
+  tenantId?: string;
 }): PromosPageResponse {
+  const tenantId = opts.tenantId ?? getActiveTenantId();
   const page = Math.max(1, Math.floor(opts.page ?? 1));
   const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
   const search = (opts.search ?? '').trim().toLowerCase();
@@ -2557,8 +3016,8 @@ export function queryPromos(opts: {
   };
   const sortCol = sortMap[opts.sortBy ?? 'newest'] ?? 'rowid';
 
-  const conditions: string[] = [];
-  const params: Array<string | number> = [];
+  const conditions: string[] = ['tenantId = ?'];
+  const params: Array<string | number> = [tenantId];
 
   if (search) {
     const like = `%${search}%`;
@@ -2596,8 +3055,8 @@ export function queryPromos(opts: {
     description: string | null;
   }>;
 
-  const allActive = getActivePromos();
-  const totalPromos = (db.prepare('SELECT COUNT(*) as cnt FROM promos').get() as { cnt: number }).cnt;
+  const allActive = getActivePromos(tenantId);
+  const totalPromos = (db.prepare('SELECT COUNT(*) as cnt FROM promos WHERE tenantId = ?').get(tenantId) as { cnt: number }).cnt;
   const productSet = new Set<number>();
   let discountSum = 0;
   for (const p of allActive) {
@@ -2634,16 +3093,16 @@ export function queryPromos(opts: {
   };
 }
 
-export function getDashboardSummary(period: 'HARI' | 'BULAN'): DashboardSummaryResponse {
+export function getDashboardSummary(period: 'HARI' | 'BULAN', tenantId: string = getActiveTenantId()): DashboardSummaryResponse {
   const txAgg = db
     .prepare(
-      "SELECT COALESCE(SUM(grandTotal), 0) as totalOmzet, COALESCE(SUM(subtotal), 0) as totalSubtotal, COALESCE(SUM(totalQty), 0) as totalProduk, COUNT(*) as countTransaksi FROM transactions WHERE COALESCE(status, 'completed') != 'void'"
+      "SELECT COALESCE(SUM(grandTotal), 0) as totalOmzet, COALESCE(SUM(subtotal), 0) as totalSubtotal, COALESCE(SUM(totalQty), 0) as totalProduk, COUNT(*) as countTransaksi FROM transactions WHERE tenantId = ? AND COALESCE(status, 'completed') != 'void'"
     )
-    .get() as { totalOmzet: number; totalSubtotal: number; totalProduk: number; countTransaksi: number };
+    .get(tenantId) as { totalOmzet: number; totalSubtotal: number; totalProduk: number; countTransaksi: number };
 
   const bbAgg = db
-    .prepare("SELECT COALESCE(SUM(totalBayar), 0) as totalBuybackBayar FROM buybacks WHERE COALESCE(status, 'completed') != 'void'")
-    .get() as { totalBuybackBayar: number };
+    .prepare("SELECT COALESCE(SUM(totalBayar), 0) as totalBuybackBayar FROM buybacks WHERE tenantId = ? AND COALESCE(status, 'completed') != 'void'")
+    .get(tenantId) as { totalBuybackBayar: number };
 
   const totalPenjualan = txAgg.totalOmzet;
   const penjualanKotor = txAgg.totalSubtotal > 0 ? txAgg.totalSubtotal : txAgg.totalOmzet;
@@ -2661,8 +3120,8 @@ export function getDashboardSummary(period: 'HARI' | 'BULAN'): DashboardSummaryR
   const trxArr = Array<number>(labels.length).fill(0);
 
   const txTimes = db
-    .prepare("SELECT dateTime, timeStr, grandTotal FROM transactions WHERE COALESCE(status, 'completed') != 'void'")
-    .all() as Array<{ dateTime: string; timeStr: string; grandTotal: number }>;
+    .prepare("SELECT dateTime, timeStr, grandTotal FROM transactions WHERE tenantId = ? AND COALESCE(status, 'completed') != 'void'")
+    .all(tenantId) as Array<{ dateTime: string; timeStr: string; grandTotal: number }>;
 
   if (period === 'HARI') {
     for (const tx of txTimes) {
@@ -2718,4 +3177,1130 @@ export function getDashboardSummary(period: 'HARI' | 'BULAN'): DashboardSummaryR
     trxData: trxArr,
   };
 }
+
+// ============================================================
+// AUTHENTICATION, SESSIONS & USER MANAGEMENT (RBAC)
+// ============================================================
+export function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${derived}`;
+}
+
+export function verifyPassword(password: string, storedHash: string): boolean {
+  const parts = storedHash.split(':');
+  if (parts.length !== 2) return false;
+  const [salt, keyHex] = parts;
+  if (!salt || !keyHex) return false;
+  try {
+    const keyBuf = Buffer.from(keyHex, 'hex');
+    const derived = crypto.scryptSync(password, salt, 64);
+    if (keyBuf.length !== derived.length) return false;
+    return crypto.timingSafeEqual(keyBuf, derived);
+  } catch {
+    return false;
+  }
+}
+
+interface UserDbRow {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  passwordHash: string;
+  role: UserRole;
+  shiftLabel: string;
+  allowedTenantIdsJson: string;
+  defaultTenantId: string | null;
+  isActive: number;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+function mapUserRow(row: UserDbRow): UserAccount {
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    fullName: row.fullName,
+    role: row.role,
+    shiftLabel: row.shiftLabel,
+    allowedTenantIds: safeJsonParse<string[]>(row.allowedTenantIdsJson, []),
+    defaultTenantId: row.defaultTenantId ?? undefined,
+    isActive: Boolean(row.isActive),
+    createdAt: row.createdAt,
+    lastLoginAt: row.lastLoginAt ?? undefined,
+  };
+}
+
+export function seedUsersIfNeeded(): void {
+  const alreadySeeded = db.prepare('SELECT value FROM settings WHERE key = ?').get('seeded_users_v1') as
+    | { value: string }
+    | undefined;
+  if (alreadySeeded?.value === '1') {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const starterUsers = [
+    {
+      id: 'USR-001',
+      username: 'owner',
+      email: 'owner@tokomas.id',
+      fullName: 'H. Ahmad Fauzi',
+      passwordHash: hashPassword('owner123'),
+      role: 'owner' as UserRole,
+      shiftLabel: 'Full Day (Owner)',
+      allowedTenantIdsJson: JSON.stringify([]),
+      defaultTenantId: 'tenant-tms-001',
+      isActive: 1,
+      createdAt: now,
+    },
+    {
+      id: 'USR-002',
+      username: 'kepala.jkt',
+      email: 'kepala.jkt@tokomas.id',
+      fullName: 'Dewi Lestari',
+      passwordHash: hashPassword('cabang123'),
+      role: 'branch_manager' as UserRole,
+      shiftLabel: 'Shift 1 (08:00 - 16:00)',
+      allowedTenantIdsJson: JSON.stringify(['tenant-tms-001', 'tenant-tmj-002']),
+      defaultTenantId: 'tenant-tms-001',
+      isActive: 1,
+      createdAt: now,
+    },
+    {
+      id: 'USR-003',
+      username: 'kasir.jkt',
+      email: 'kasir.jkt@tokomas.id',
+      fullName: 'Andi Pratama',
+      passwordHash: hashPassword('kasir123'),
+      role: 'cashier' as UserRole,
+      shiftLabel: 'Shift 1 (08:00 - 16:00)',
+      allowedTenantIdsJson: JSON.stringify(['tenant-tms-001']),
+      defaultTenantId: 'tenant-tms-001',
+      isActive: 1,
+      createdAt: now,
+    },
+    {
+      id: 'USR-004',
+      username: 'kasir.bdg',
+      email: 'kasir.bdg@tokomas.id',
+      fullName: 'Rina Kusuma',
+      passwordHash: hashPassword('kasir123'),
+      role: 'cashier' as UserRole,
+      shiftLabel: 'Shift 2 (13:00 - 21:00)',
+      allowedTenantIdsJson: JSON.stringify(['tenant-tmj-002']),
+      defaultTenantId: 'tenant-tmj-002',
+      isActive: 1,
+      createdAt: now,
+    },
+  ];
+
+  const seedTx = db.transaction(() => {
+    const insertUser = db.prepare(`
+      INSERT OR IGNORE INTO users (
+        id, username, email, fullName, passwordHash, role, shiftLabel, allowedTenantIdsJson, defaultTenantId, isActive, createdAt
+      ) VALUES (
+        @id, @username, @email, @fullName, @passwordHash, @role, @shiftLabel, @allowedTenantIdsJson, @defaultTenantId, @isActive, @createdAt
+      )
+    `);
+    for (const u of starterUsers) {
+      insertUser.run(u);
+    }
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('seeded_users_v1', '1');
+  });
+
+  seedTx();
+}
+
+export function getAccessibleTenantsForUser(user: UserAccount): Tenant[] {
+  const all = getAllTenants();
+  if (user.role === 'owner') {
+    return all;
+  }
+  const allowedSet = new Set(user.allowedTenantIds);
+  return all.filter(t => allowedSet.has(t.id));
+}
+
+export function isTenantAllowedForUser(user: UserAccount, tenantId: string): boolean {
+  const tenantExists = db.prepare('SELECT 1 FROM tenants WHERE id = ?').get(tenantId);
+  if (!tenantExists) return false;
+  if (user.role === 'owner') return true;
+  return user.allowedTenantIds.includes(tenantId);
+}
+
+export function resolveActiveTenantForUser(user: UserAccount, requestedTenantId?: string): string {
+  const accessible = getAccessibleTenantsForUser(user);
+  if (requestedTenantId && accessible.some(t => t.id === requestedTenantId)) {
+    return requestedTenantId;
+  }
+  if (user.defaultTenantId && accessible.some(t => t.id === user.defaultTenantId)) {
+    return user.defaultTenantId;
+  }
+  return accessible[0]?.id ?? getActiveTenantId();
+}
+
+export function authenticateUser(identifier: string, password: string): UserAccount | null {
+  const cleanId = identifier.trim();
+  if (!cleanId || !password) return null;
+
+  const row = db
+    .prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1')
+    .get(cleanId, cleanId) as UserDbRow | undefined;
+
+  if (!row || row.isActive !== 1) return null;
+  if (!verifyPassword(password, row.passwordHash)) return null;
+
+  const nowIso = new Date().toISOString();
+  db.prepare('UPDATE users SET lastLoginAt = ? WHERE id = ?').run(nowIso, row.id);
+  return mapUserRow({ ...row, lastLoginAt: nowIso });
+}
+
+export function createSession(user: UserAccount): { token: string; activeTenantId: string } {
+  const token = crypto.randomBytes(32).toString('hex');
+  const activeTenantId = resolveActiveTenantForUser(user);
+  const now = new Date();
+  const expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  db.prepare('DELETE FROM sessions WHERE expiresAt <= ?').run(now.toISOString());
+  db.prepare(
+    'INSERT INTO sessions (token, userId, activeTenantId, createdAt, expiresAt) VALUES (?, ?, ?, ?, ?)'
+  ).run(token, user.id, activeTenantId, now.toISOString(), expires.toISOString());
+
+  return { token, activeTenantId };
+}
+
+export function getSessionContext(token: string): { token: string; user: UserAccount; activeTenantId: string } | null {
+  const cleanToken = token.trim();
+  if (!cleanToken) return null;
+
+  const sessionRow = db
+    .prepare('SELECT token, userId, activeTenantId, expiresAt FROM sessions WHERE token = ?')
+    .get(cleanToken) as { token: string; userId: string; activeTenantId: string; expiresAt: string } | undefined;
+
+  if (!sessionRow) return null;
+  if (sessionRow.expiresAt <= new Date().toISOString()) {
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(cleanToken);
+    return null;
+  }
+
+  const userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(sessionRow.userId) as UserDbRow | undefined;
+  if (!userRow || userRow.isActive !== 1) {
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(cleanToken);
+    return null;
+  }
+
+  const user = mapUserRow(userRow);
+  const resolvedTenantId = resolveActiveTenantForUser(user, sessionRow.activeTenantId);
+  if (resolvedTenantId !== sessionRow.activeTenantId) {
+    db.prepare('UPDATE sessions SET activeTenantId = ? WHERE token = ?').run(resolvedTenantId, cleanToken);
+  }
+
+  return {
+    token: cleanToken,
+    user,
+    activeTenantId: resolvedTenantId,
+  };
+}
+
+export function updateSessionTenant(token: string, tenantId: string): void {
+  db.prepare('UPDATE sessions SET activeTenantId = ? WHERE token = ?').run(tenantId, token);
+}
+
+export function deleteSession(token: string): void {
+  db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+}
+
+export function getUserById(id: string): UserAccount | null {
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserDbRow | undefined;
+  return row ? mapUserRow(row) : null;
+}
+
+export function queryUsers(opts: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  role?: string;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+}): UsersPageResponse {
+  const page = Math.max(1, Math.floor(opts.page ?? 1));
+  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
+  const search = (opts.search ?? '').trim().toLowerCase();
+  const role = (opts.role ?? 'all').trim();
+  const sortDir = normalizeSortDir(opts.sortDir);
+
+  let orderBySql = `rowid ${sortDir}`;
+  switch (opts.sortBy) {
+    case 'fullName':
+      orderBySql = `LOWER(fullName) ${sortDir}, rowid DESC`;
+      break;
+    case 'username':
+      orderBySql = `LOWER(username) ${sortDir}, rowid DESC`;
+      break;
+    case 'role':
+      orderBySql = `role ${sortDir}, LOWER(fullName) ASC`;
+      break;
+    case 'isActive':
+      orderBySql = `isActive ${sortDir}, rowid DESC`;
+      break;
+    case 'newest':
+    default:
+      orderBySql = `rowid ${sortDir}`;
+      break;
+  }
+
+  const conditions: string[] = [];
+  const params: Array<string | number> = [];
+
+  if (search) {
+    const like = `%${search}%`;
+    conditions.push('(LOWER(fullName) LIKE ? OR LOWER(username) LIKE ? OR LOWER(email) LIKE ? OR LOWER(shiftLabel) LIKE ?)');
+    params.push(like, like, like, like);
+  }
+
+  if (role && role !== 'all') {
+    conditions.push('role = ?');
+    params.push(role);
+  }
+
+  const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const total = (db.prepare(`SELECT COUNT(*) as cnt FROM users ${whereSql}`).get(...params) as { cnt: number }).cnt;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+
+  const rows = db
+    .prepare(`SELECT * FROM users ${whereSql} ORDER BY ${orderBySql} LIMIT ? OFFSET ?`)
+    .all(...params, pageSize, offset) as UserDbRow[];
+
+  const agg = db
+    .prepare(
+      `SELECT COUNT(*) as totalUsers,
+              SUM(CASE WHEN isActive = 1 THEN 1 ELSE 0 END) as activeUsers,
+              SUM(CASE WHEN role = 'branch_manager' THEN 1 ELSE 0 END) as managerCount,
+              SUM(CASE WHEN role = 'cashier' THEN 1 ELSE 0 END) as cashierCount
+       FROM users`
+    )
+    .get() as { totalUsers: number; activeUsers: number | null; managerCount: number | null; cashierCount: number | null };
+
+  return {
+    items: rows.map(mapUserRow),
+    total,
+    page: safePage,
+    pageSize,
+    totalPages,
+    stats: {
+      totalUsers: agg.totalUsers,
+      activeUsers: agg.activeUsers ?? 0,
+      managerCount: agg.managerCount ?? 0,
+      cashierCount: agg.cashierCount ?? 0,
+    },
+  };
+}
+
+export function createUserAccount(payload: UserCreatePayload): UserAccount {
+  const username = (payload.username ?? '').trim().toLowerCase();
+  const email = (payload.email ?? '').trim().toLowerCase();
+  const fullName = (payload.fullName ?? '').trim();
+  const password = payload.password ?? '';
+  const role: UserRole = payload.role;
+  const shiftLabel = (payload.shiftLabel ?? '').trim() || 'Shift 1 (08:00 - 16:00)';
+  const allowedTenantIds = Array.from(new Set((payload.allowedTenantIds ?? []).filter(Boolean)));
+  const isActive = payload.isActive !== false;
+
+  if (!username || !/^[a-z0-9._-]{3,32}$/.test(username)) {
+    throw new Error('Username wajib 3-32 karakter (huruf kecil, angka, titik, garis bawah, atau strip).');
+  }
+  if (!email || !email.includes('@')) {
+    throw new Error('Alamat email pengguna tidak valid.');
+  }
+  if (!fullName) {
+    throw new Error('Nama lengkap pengguna wajib diisi.');
+  }
+  if (password.length < 6) {
+    throw new Error('Kata sandi minimal 6 karakter.');
+  }
+  if (!['owner', 'branch_manager', 'cashier'].includes(role)) {
+    throw new Error('Role pengguna tidak valid.');
+  }
+  if (role !== 'owner' && allowedTenantIds.length === 0) {
+    throw new Error('Pilih minimal 1 outlet yang boleh diakses oleh akun ini.');
+  }
+
+  const dupUsername = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(username);
+  if (dupUsername) {
+    throw new Error(`Username "${username}" sudah digunakan.`);
+  }
+  const dupEmail = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').get(email);
+  if (dupEmail) {
+    throw new Error(`Email "${email}" sudah digunakan.`);
+  }
+
+  const allTenantIds = new Set((db.prepare('SELECT id FROM tenants').all() as Array<{ id: string }>).map(t => t.id));
+  const validAllowed = role === 'owner' ? [] : allowedTenantIds.filter(tid => allTenantIds.has(tid));
+  if (role !== 'owner' && validAllowed.length === 0) {
+    throw new Error('Outlet yang dipilih tidak ditemukan.');
+  }
+
+  const defaultTenantId =
+    payload.defaultTenantId && (role === 'owner' ? allTenantIds.has(payload.defaultTenantId) : validAllowed.includes(payload.defaultTenantId))
+      ? payload.defaultTenantId
+      : validAllowed[0] ?? 'tenant-tms-001';
+
+  const id = `USR-${Date.now().toString().slice(-6)}`;
+  const createdAt = new Date().toISOString();
+
+  db.prepare(
+    `INSERT INTO users (id, username, email, fullName, passwordHash, role, shiftLabel, allowedTenantIdsJson, defaultTenantId, isActive, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    username,
+    email,
+    fullName,
+    hashPassword(password),
+    role,
+    shiftLabel,
+    JSON.stringify(validAllowed),
+    defaultTenantId,
+    isActive ? 1 : 0,
+    createdAt
+  );
+
+  return getUserById(id)!;
+}
+
+export function updateUserAccount(id: string, payload: UserUpdatePayload, actorUserId: string): UserAccount {
+  const existingRow = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserDbRow | undefined;
+  if (!existingRow) {
+    throw new Error('Akun pengguna tidak ditemukan.');
+  }
+
+  const nextEmail = payload.email !== undefined ? payload.email.trim().toLowerCase() : existingRow.email;
+  const nextFullName = payload.fullName !== undefined ? payload.fullName.trim() : existingRow.fullName;
+  const nextRole: UserRole = payload.role !== undefined ? payload.role : existingRow.role;
+  const nextShift = payload.shiftLabel !== undefined ? payload.shiftLabel.trim() || existingRow.shiftLabel : existingRow.shiftLabel;
+  const nextIsActive = payload.isActive !== undefined ? Boolean(payload.isActive) : Boolean(existingRow.isActive);
+
+  if (!nextEmail || !nextEmail.includes('@')) {
+    throw new Error('Alamat email pengguna tidak valid.');
+  }
+  if (!nextFullName) {
+    throw new Error('Nama lengkap pengguna wajib diisi.');
+  }
+  if (!['owner', 'branch_manager', 'cashier'].includes(nextRole)) {
+    throw new Error('Role pengguna tidak valid.');
+  }
+
+  if (id === actorUserId) {
+    if (!nextIsActive) {
+      throw new Error('Anda tidak dapat menonaktifkan akun Anda sendiri yang sedang login.');
+    }
+    if (existingRow.role === 'owner' && nextRole !== 'owner') {
+      throw new Error('Anda tidak dapat menurunkan role Owner dari akun Anda sendiri.');
+    }
+  }
+
+  if (existingRow.role === 'owner' && (nextRole !== 'owner' || !nextIsActive)) {
+    const activeOwnersCount = (
+      db.prepare("SELECT COUNT(*) as cnt FROM users WHERE role = 'owner' AND isActive = 1 AND id != ?").get(id) as {
+        cnt: number;
+      }
+    ).cnt;
+    if (activeOwnersCount === 0) {
+      throw new Error('Minimal harus ada 1 akun Owner yang aktif.');
+    }
+  }
+
+  const dupEmail = db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND id != ?').get(nextEmail, id);
+  if (dupEmail) {
+    throw new Error(`Email "${nextEmail}" sudah digunakan oleh akun lain.`);
+  }
+
+  const allTenantIds = new Set((db.prepare('SELECT id FROM tenants').all() as Array<{ id: string }>).map(t => t.id));
+  const rawAllowed =
+    payload.allowedTenantIds !== undefined
+      ? Array.from(new Set(payload.allowedTenantIds.filter(Boolean)))
+      : safeJsonParse<string[]>(existingRow.allowedTenantIdsJson, []);
+  const validAllowed = nextRole === 'owner' ? [] : rawAllowed.filter(tid => allTenantIds.has(tid));
+
+  if (nextRole !== 'owner' && validAllowed.length === 0) {
+    throw new Error('Pilih minimal 1 outlet yang boleh diakses oleh akun ini.');
+  }
+
+  const candidateDefault = payload.defaultTenantId !== undefined ? payload.defaultTenantId : existingRow.defaultTenantId;
+  const nextDefaultTenantId =
+    candidateDefault && (nextRole === 'owner' ? allTenantIds.has(candidateDefault) : validAllowed.includes(candidateDefault))
+      ? candidateDefault
+      : validAllowed[0] ?? 'tenant-tms-001';
+
+  let nextPasswordHash = existingRow.passwordHash;
+  if (payload.password !== undefined && payload.password.trim().length > 0) {
+    if (payload.password.trim().length < 6) {
+      throw new Error('Kata sandi baru minimal 6 karakter.');
+    }
+    nextPasswordHash = hashPassword(payload.password.trim());
+  }
+
+  db.prepare(
+    `UPDATE users
+     SET email = ?, fullName = ?, passwordHash = ?, role = ?, shiftLabel = ?, allowedTenantIdsJson = ?, defaultTenantId = ?, isActive = ?
+     WHERE id = ?`
+  ).run(
+    nextEmail,
+    nextFullName,
+    nextPasswordHash,
+    nextRole,
+    nextShift,
+    JSON.stringify(validAllowed),
+    nextDefaultTenantId,
+    nextIsActive ? 1 : 0,
+    id
+  );
+
+  if (!nextIsActive) {
+    db.prepare('DELETE FROM sessions WHERE userId = ?').run(id);
+  }
+
+  return getUserById(id)!;
+}
+
+export function deleteUserAccount(id: string, actorUserId: string): void {
+  if (id === actorUserId) {
+    throw new Error('Anda tidak dapat menghapus akun yang sedang digunakan untuk login.');
+  }
+  const existingRow = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserDbRow | undefined;
+  if (!existingRow) {
+    throw new Error('Akun pengguna tidak ditemukan.');
+  }
+  if (existingRow.role === 'owner' && existingRow.isActive === 1) {
+    const activeOwnersCount = (
+      db.prepare("SELECT COUNT(*) as cnt FROM users WHERE role = 'owner' AND isActive = 1 AND id != ?").get(id) as {
+        cnt: number;
+      }
+    ).cnt;
+    if (activeOwnersCount === 0) {
+      throw new Error('Minimal harus ada 1 akun Owner yang aktif.');
+    }
+  }
+  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+}
+
+// ============================================================
+// STORE SETTINGS & SHIFT CLOSING (TAHAP 3)
+// ============================================================
+interface StoreSettingsDbRow {
+  tenantId: string;
+  ppnPercent: number;
+  enablePpn: number;
+  goldPrice24kBuyback: number;
+  goldPrice22kBuyback: number;
+  goldPrice18kBuyback: number;
+  goldPrice16kBuyback: number;
+  receiptTagline: string;
+  receiptFooterNote: string;
+  autoPrintReceipt: number;
+  requireCustomerOnSale: number;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
+function mapStoreSettingsRow(row: StoreSettingsDbRow): StoreSettings {
+  return {
+    tenantId: row.tenantId,
+    ppnPercent: Number(row.ppnPercent),
+    enablePpn: Boolean(row.enablePpn),
+    goldPrice24kBuyback: Number(row.goldPrice24kBuyback),
+    goldPrice22kBuyback: Number(row.goldPrice22kBuyback),
+    goldPrice18kBuyback: Number(row.goldPrice18kBuyback),
+    goldPrice16kBuyback: Number(row.goldPrice16kBuyback),
+    receiptTagline: row.receiptTagline || 'GOLD & JEWELLERY',
+    receiptFooterNote:
+      row.receiptFooterNote ||
+      'Barang yang sudah dibeli dapat dijual kembali (buyback) dengan menyertakan surat nota resmi ini.',
+    autoPrintReceipt: Boolean(row.autoPrintReceipt),
+    requireCustomerOnSale: Boolean(row.requireCustomerOnSale),
+    updatedAt: row.updatedAt,
+    updatedBy: row.updatedBy ?? undefined,
+  };
+}
+
+export function getStoreSettings(tenantId: string): StoreSettings {
+  const existing = db
+    .prepare('SELECT * FROM store_settings WHERE tenantId = ?')
+    .get(tenantId) as StoreSettingsDbRow | undefined;
+  if (existing) {
+    return mapStoreSettingsRow(existing);
+  }
+
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT OR IGNORE INTO store_settings (
+      tenantId, ppnPercent, enablePpn,
+      goldPrice24kBuyback, goldPrice22kBuyback, goldPrice18kBuyback, goldPrice16kBuyback,
+      receiptTagline, receiptFooterNote, autoPrintReceipt, requireCustomerOnSale, updatedAt, updatedBy
+    ) VALUES (?, 11, 1, 2350000, 1950000, 1420000, 1180000, 'GOLD & JEWELLERY', 'Barang yang sudah dibeli dapat dijual kembali (buyback) dengan menyertakan surat nota resmi ini.', 0, 0, ?, 'System')`
+  ).run(tenantId, now);
+
+  const created = db
+    .prepare('SELECT * FROM store_settings WHERE tenantId = ?')
+    .get(tenantId) as StoreSettingsDbRow;
+  return mapStoreSettingsRow(created);
+}
+
+export function updateStoreSettings(
+  tenantId: string,
+  payload: StoreSettingsUpdatePayload,
+  updatedBy: string
+): { tenant: Tenant; storeSettings: StoreSettings } {
+  const existingTenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenantId) as Tenant | undefined;
+  if (!existingTenant) {
+    throw new Error('Outlet tidak ditemukan.');
+  }
+
+  const currentSettings = getStoreSettings(tenantId);
+  const s = payload.settings ?? {};
+  const ppnPercent = s.ppnPercent !== undefined ? Number(s.ppnPercent) : currentSettings.ppnPercent;
+  if (!Number.isFinite(ppnPercent) || ppnPercent < 0 || ppnPercent > 30) {
+    throw new Error('Tarif PPN harus antara 0% hingga 30%.');
+  }
+
+  const next24 = s.goldPrice24kBuyback !== undefined ? Math.round(Number(s.goldPrice24kBuyback)) : currentSettings.goldPrice24kBuyback;
+  const next22 = s.goldPrice22kBuyback !== undefined ? Math.round(Number(s.goldPrice22kBuyback)) : currentSettings.goldPrice22kBuyback;
+  const next18 = s.goldPrice18kBuyback !== undefined ? Math.round(Number(s.goldPrice18kBuyback)) : currentSettings.goldPrice18kBuyback;
+  const next16 = s.goldPrice16kBuyback !== undefined ? Math.round(Number(s.goldPrice16kBuyback)) : currentSettings.goldPrice16kBuyback;
+
+  if ([next24, next22, next18, next16].some(v => !Number.isFinite(v) || v < 0)) {
+    throw new Error('Harga acuan buyback per gram tidak valid.');
+  }
+
+  const nextEnablePpn = s.enablePpn !== undefined ? Boolean(s.enablePpn) : currentSettings.enablePpn;
+  const nextTagline =
+    (s.receiptTagline !== undefined ? s.receiptTagline : currentSettings.receiptTagline).trim() || 'GOLD & JEWELLERY';
+  const nextFooterNote =
+    (s.receiptFooterNote !== undefined ? s.receiptFooterNote : currentSettings.receiptFooterNote).trim() ||
+    currentSettings.receiptFooterNote;
+  const nextAutoPrint =
+    s.autoPrintReceipt !== undefined ? Boolean(s.autoPrintReceipt) : currentSettings.autoPrintReceipt;
+  const nextRequireCust =
+    s.requireCustomerOnSale !== undefined ? Boolean(s.requireCustomerOnSale) : currentSettings.requireCustomerOnSale;
+
+  const tp = payload.tenantProfile;
+  const nextTenantName = tp?.name !== undefined ? tp.name.trim() || existingTenant.name : existingTenant.name;
+  const nextBranchName =
+    tp?.branchName !== undefined ? tp.branchName.trim() || existingTenant.branchName : existingTenant.branchName;
+  const nextAddress = tp?.address !== undefined ? tp.address.trim() : existingTenant.address;
+  const nextCity = tp?.city !== undefined ? tp.city.trim() : existingTenant.city;
+  const nextPhone = tp?.phone !== undefined ? tp.phone.trim() : existingTenant.phone;
+  const nextEmail = tp?.email !== undefined ? tp.email.trim() : existingTenant.email;
+  const nextStatus = tp?.status !== undefined ? tp.status : existingTenant.status;
+
+  const nowIso = new Date().toISOString();
+
+  const updateTx = db.transaction(() => {
+    db.prepare(
+      `UPDATE tenants
+       SET name = ?, branchName = ?, address = ?, city = ?, phone = ?, email = ?, status = ?
+       WHERE id = ?`
+    ).run(nextTenantName, nextBranchName, nextAddress, nextCity, nextPhone, nextEmail, nextStatus, tenantId);
+
+    db.prepare(
+      `INSERT OR REPLACE INTO store_settings (
+        tenantId, ppnPercent, enablePpn,
+        goldPrice24kBuyback, goldPrice22kBuyback, goldPrice18kBuyback, goldPrice16kBuyback,
+        receiptTagline, receiptFooterNote, autoPrintReceipt, requireCustomerOnSale, updatedAt, updatedBy
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      tenantId,
+      Number(ppnPercent.toFixed(2)),
+      nextEnablePpn ? 1 : 0,
+      next24,
+      next22,
+      next18,
+      next16,
+      nextTagline,
+      nextFooterNote,
+      nextAutoPrint ? 1 : 0,
+      nextRequireCust ? 1 : 0,
+      nowIso,
+      updatedBy
+    );
+  });
+
+  updateTx();
+
+  const updatedTenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenantId) as Tenant;
+  const updatedSettings = getStoreSettings(tenantId);
+  return { tenant: updatedTenant, storeSettings: updatedSettings };
+}
+
+export function getLiveShiftSummary(opts: {
+  tenantId: string;
+  date?: string;
+  scope?: 'my' | 'outlet';
+  cashierName?: string;
+  cashierId?: string;
+}): ShiftLiveSummary {
+  const date = (opts.date ?? '').trim() || new Date().toISOString().slice(0, 10);
+  const scope: 'my' | 'outlet' = opts.scope === 'my' ? 'my' : 'outlet';
+
+  const txConds = ['tenantId = ?'];
+  const txParams: Array<string> = [opts.tenantId];
+  if (date !== 'all') {
+    txConds.push('substr(dateTime, 1, 10) = ?');
+    txParams.push(date);
+  }
+  if (scope === 'my' && opts.cashierName) {
+    txConds.push('LOWER(cashier) = LOWER(?)');
+    txParams.push(opts.cashierName);
+  }
+
+  const txAgg = db
+    .prepare(
+      `SELECT
+        SUM(CASE WHEN COALESCE(status, 'completed') != 'void' THEN 1 ELSE 0 END) AS totalSalesCount,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' THEN grandTotal ELSE 0 END), 0) AS totalSalesAmount,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' THEN totalBerat ELSE 0 END), 0) AS totalSalesGrams,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' AND paymentMethod = 'cash' THEN grandTotal ELSE 0 END), 0) AS salesCash,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' AND paymentMethod = 'debit' THEN grandTotal ELSE 0 END), 0) AS salesDebit,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' AND paymentMethod = 'transfer' THEN grandTotal ELSE 0 END), 0) AS salesTransfer,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' AND paymentMethod = 'qris' THEN grandTotal ELSE 0 END), 0) AS salesQris,
+        SUM(CASE WHEN COALESCE(status, 'completed') = 'void' THEN 1 ELSE 0 END) AS voidSalesCount
+       FROM transactions
+       WHERE ${txConds.join(' AND ')}`
+    )
+    .get(...txParams) as {
+    totalSalesCount: number | null;
+    totalSalesAmount: number;
+    totalSalesGrams: number;
+    salesCash: number;
+    salesDebit: number;
+    salesTransfer: number;
+    salesQris: number;
+    voidSalesCount: number | null;
+  };
+
+  const bbConds = ['tenantId = ?'];
+  const bbParams: Array<string> = [opts.tenantId];
+  if (date !== 'all') {
+    bbConds.push("substr(COALESCE(createdAt, ''), 1, 10) = ?");
+    bbParams.push(date);
+  }
+  if (scope === 'my' && opts.cashierName) {
+    bbConds.push("LOWER(COALESCE(cashierName, '')) = LOWER(?)");
+    bbParams.push(opts.cashierName);
+  }
+
+  const bbAgg = db
+    .prepare(
+      `SELECT
+        SUM(CASE WHEN COALESCE(status, 'completed') != 'void' THEN 1 ELSE 0 END) AS totalBuybackCount,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' THEN totalBayar ELSE 0 END), 0) AS totalBuybackAmount,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' THEN beratBersih ELSE 0 END), 0) AS totalBuybackGrams,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' AND paymentMethod = 'cash' THEN totalBayar ELSE 0 END), 0) AS buybackCash,
+        COALESCE(SUM(CASE WHEN COALESCE(status, 'completed') != 'void' AND paymentMethod = 'transfer' THEN totalBayar ELSE 0 END), 0) AS buybackTransfer,
+        SUM(CASE WHEN COALESCE(status, 'completed') = 'void' THEN 1 ELSE 0 END) AS voidBuybackCount
+       FROM buybacks
+       WHERE ${bbConds.join(' AND ')}`
+    )
+    .get(...bbParams) as {
+    totalBuybackCount: number | null;
+    totalBuybackAmount: number;
+    totalBuybackGrams: number;
+    buybackCash: number;
+    buybackTransfer: number;
+    voidBuybackCount: number | null;
+  };
+
+  const closeConds = ['tenantId = ?'];
+  const closeParams: Array<string> = [opts.tenantId];
+  if (date !== 'all') {
+    closeConds.push('shiftDate = ?');
+    closeParams.push(date);
+  }
+  if (scope === 'my' && opts.cashierId) {
+    closeConds.push('cashierId = ?');
+    closeParams.push(opts.cashierId);
+  }
+
+  const alreadyClosedCount = (
+    db.prepare(`SELECT COUNT(*) as cnt FROM shift_closings WHERE ${closeConds.join(' AND ')}`).get(...closeParams) as {
+      cnt: number;
+    }
+  ).cnt;
+
+  const salesCash = txAgg.salesCash ?? 0;
+  const buybackCash = bbAgg.buybackCash ?? 0;
+
+  return {
+    date,
+    scope,
+    cashierName: scope === 'my' ? opts.cashierName : undefined,
+    totalSalesCount: txAgg.totalSalesCount ?? 0,
+    totalSalesAmount: txAgg.totalSalesAmount ?? 0,
+    totalSalesGrams: Number((txAgg.totalSalesGrams ?? 0).toFixed(2)),
+    salesCash,
+    salesDebit: txAgg.salesDebit ?? 0,
+    salesTransfer: txAgg.salesTransfer ?? 0,
+    salesQris: txAgg.salesQris ?? 0,
+    totalBuybackCount: bbAgg.totalBuybackCount ?? 0,
+    totalBuybackAmount: bbAgg.totalBuybackAmount ?? 0,
+    totalBuybackGrams: Number((bbAgg.totalBuybackGrams ?? 0).toFixed(2)),
+    buybackCash,
+    buybackTransfer: bbAgg.buybackTransfer ?? 0,
+    voidSalesCount: txAgg.voidSalesCount ?? 0,
+    voidBuybackCount: bbAgg.voidBuybackCount ?? 0,
+    netCashMovement: salesCash - buybackCash,
+    alreadyClosedCount,
+  };
+}
+
+interface ShiftClosingDbRow {
+  id: string;
+  tenantId: string;
+  shiftCode: string;
+  shiftDate: string;
+  shiftLabel: string;
+  cashierId: string;
+  cashierName: string;
+  openingCash: number;
+  totalSalesCount: number;
+  totalSalesAmount: number;
+  totalSalesGrams: number;
+  salesCash: number;
+  salesDebit: number;
+  salesTransfer: number;
+  salesQris: number;
+  totalBuybackCount: number;
+  totalBuybackAmount: number;
+  totalBuybackGrams: number;
+  buybackCash: number;
+  buybackTransfer: number;
+  voidSalesCount: number;
+  voidBuybackCount: number;
+  expectedCash: number;
+  actualCash: number;
+  cashVariance: number;
+  notes: string | null;
+  status: string;
+  closedAt: string;
+}
+
+function mapShiftClosingRow(r: ShiftClosingDbRow): ShiftClosingRecord {
+  return {
+    id: r.id,
+    tenantId: r.tenantId,
+    shiftCode: r.shiftCode,
+    shiftDate: r.shiftDate,
+    shiftLabel: r.shiftLabel,
+    cashierId: r.cashierId,
+    cashierName: r.cashierName,
+    openingCash: r.openingCash,
+    totalSalesCount: r.totalSalesCount,
+    totalSalesAmount: r.totalSalesAmount,
+    totalSalesGrams: Number(r.totalSalesGrams),
+    salesCash: r.salesCash,
+    salesDebit: r.salesDebit,
+    salesTransfer: r.salesTransfer,
+    salesQris: r.salesQris,
+    totalBuybackCount: r.totalBuybackCount,
+    totalBuybackAmount: r.totalBuybackAmount,
+    totalBuybackGrams: Number(r.totalBuybackGrams),
+    buybackCash: r.buybackCash,
+    buybackTransfer: r.buybackTransfer,
+    voidSalesCount: r.voidSalesCount,
+    voidBuybackCount: r.voidBuybackCount,
+    expectedCash: r.expectedCash,
+    actualCash: r.actualCash,
+    cashVariance: r.cashVariance,
+    notes: r.notes ?? undefined,
+    status: 'closed',
+    closedAt: r.closedAt,
+  };
+}
+
+export function createShiftClosing(opts: {
+  tenantId: string;
+  user: UserAccount;
+  payload: ShiftClosingCreatePayload;
+}): ShiftClosingRecord {
+  const shiftDate = (opts.payload.shiftDate ?? '').trim() || new Date().toISOString().slice(0, 10);
+  const openingCash = Math.round(Number(opts.payload.openingCash));
+  const actualCash = Math.round(Number(opts.payload.actualCash));
+
+  if (!Number.isFinite(openingCash) || openingCash < 0) {
+    throw new Error('Modal awal kasir harus bernilai Rp 0 atau lebih.');
+  }
+  if (!Number.isFinite(actualCash) || actualCash < 0) {
+    throw new Error('Jumlah kas fisik di laci harus bernilai Rp 0 atau lebih.');
+  }
+
+  const effectiveScope: 'my' | 'outlet' =
+    opts.user.role === 'cashier' ? 'my' : opts.payload.scope === 'my' ? 'my' : 'outlet';
+
+  const summary = getLiveShiftSummary({
+    tenantId: opts.tenantId,
+    date: shiftDate,
+    scope: effectiveScope,
+    cashierName: opts.user.fullName,
+    cashierId: opts.user.id,
+  });
+
+  const expectedCash = openingCash + summary.salesCash - summary.buybackCash;
+  const cashVariance = actualCash - expectedCash;
+  const dateCompact = shiftDate.replace(/[^0-9]/g, '').slice(0, 8) || new Date().toISOString().slice(0, 10).replace(/-/g, '');
+
+  const existingCount = (
+    db.prepare('SELECT COUNT(*) as cnt FROM shift_closings WHERE shiftCode LIKE ?').get(`SHF-${dateCompact}-%`) as {
+      cnt: number;
+    }
+  ).cnt;
+
+  let seq = existingCount + 1;
+  let shiftCode = `SHF-${dateCompact}-${String(seq).padStart(3, '0')}`;
+  while (db.prepare('SELECT id FROM shift_closings WHERE shiftCode = ?').get(shiftCode)) {
+    seq += 1;
+    shiftCode = `SHF-${dateCompact}-${String(seq).padStart(3, '0')}`;
+  }
+
+  const id = `SHF-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+  const shiftLabel = (opts.payload.shiftLabel ?? '').trim() || opts.user.shiftLabel || 'Shift Harian';
+  const notes = (opts.payload.notes ?? '').trim() || null;
+  const closedAt = new Date().toISOString();
+
+  db.prepare(
+    `INSERT INTO shift_closings (
+      id, tenantId, shiftCode, shiftDate, shiftLabel, cashierId, cashierName,
+      openingCash, totalSalesCount, totalSalesAmount, totalSalesGrams,
+      salesCash, salesDebit, salesTransfer, salesQris,
+      totalBuybackCount, totalBuybackAmount, totalBuybackGrams,
+      buybackCash, buybackTransfer, voidSalesCount, voidBuybackCount,
+      expectedCash, actualCash, cashVariance, notes, status, closedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'closed', ?)`
+  ).run(
+    id,
+    opts.tenantId,
+    shiftCode,
+    shiftDate,
+    effectiveScope === 'outlet' ? `${shiftLabel} (Seluruh Outlet)` : shiftLabel,
+    opts.user.id,
+    opts.user.fullName,
+    openingCash,
+    summary.totalSalesCount,
+    summary.totalSalesAmount,
+    summary.totalSalesGrams,
+    summary.salesCash,
+    summary.salesDebit,
+    summary.salesTransfer,
+    summary.salesQris,
+    summary.totalBuybackCount,
+    summary.totalBuybackAmount,
+    summary.totalBuybackGrams,
+    summary.buybackCash,
+    summary.buybackTransfer,
+    summary.voidSalesCount,
+    summary.voidBuybackCount,
+    expectedCash,
+    actualCash,
+    cashVariance,
+    notes,
+    closedAt
+  );
+
+  const row = db.prepare('SELECT * FROM shift_closings WHERE id = ?').get(id) as ShiftClosingDbRow;
+  return mapShiftClosingRow(row);
+}
+
+export function queryShiftClosings(opts: {
+  tenantId: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  varianceFilter?: string;
+  cashierId?: string;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+}): ShiftClosingsPageResponse {
+  const page = Math.max(1, Math.floor(opts.page ?? 1));
+  const pageSize = Math.min(200, Math.max(1, Math.floor(opts.pageSize ?? 10)));
+  const search = (opts.search ?? '').trim().toLowerCase();
+  const varianceFilter = (opts.varianceFilter ?? 'all').trim();
+  const sortDir = normalizeSortDir(opts.sortDir);
+
+  let orderBySql = `closedAt ${sortDir}, rowid DESC`;
+  switch (opts.sortBy) {
+    case 'shiftDate':
+      orderBySql = `shiftDate ${sortDir}, closedAt DESC`;
+      break;
+    case 'totalSalesAmount':
+      orderBySql = `totalSalesAmount ${sortDir}, closedAt DESC`;
+      break;
+    case 'cashVariance':
+      orderBySql = `cashVariance ${sortDir}, closedAt DESC`;
+      break;
+    case 'cashierName':
+      orderBySql = `LOWER(cashierName) ${sortDir}, closedAt DESC`;
+      break;
+    case 'newest':
+    default:
+      orderBySql = `closedAt ${sortDir}, rowid DESC`;
+      break;
+  }
+
+  const baseConds: string[] = ['tenantId = ?'];
+  const baseParams: Array<string | number> = [opts.tenantId];
+  if (opts.cashierId) {
+    baseConds.push('cashierId = ?');
+    baseParams.push(opts.cashierId);
+  }
+
+  const conds = [...baseConds];
+  const params = [...baseParams];
+
+  if (search) {
+    const like = `%${search}%`;
+    conds.push(
+      "(LOWER(shiftCode) LIKE ? OR LOWER(cashierName) LIKE ? OR LOWER(shiftLabel) LIKE ? OR LOWER(shiftDate) LIKE ? OR LOWER(COALESCE(notes, '')) LIKE ?)"
+    );
+    params.push(like, like, like, like, like);
+  }
+
+  if (varianceFilter === 'exact') {
+    conds.push('cashVariance = 0');
+  } else if (varianceFilter === 'surplus') {
+    conds.push('cashVariance > 0');
+  } else if (varianceFilter === 'shortage') {
+    conds.push('cashVariance < 0');
+  }
+
+  const whereSql = `WHERE ${conds.join(' AND ')}`;
+  const total = (db.prepare(`SELECT COUNT(*) as cnt FROM shift_closings ${whereSql}`).get(...params) as { cnt: number }).cnt;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+
+  const rows = db
+    .prepare(`SELECT * FROM shift_closings ${whereSql} ORDER BY ${orderBySql} LIMIT ? OFFSET ?`)
+    .all(...params, pageSize, offset) as ShiftClosingDbRow[];
+
+  const agg = db
+    .prepare(
+      `SELECT COUNT(*) as totalClosings,
+              SUM(CASE WHEN cashVariance = 0 THEN 1 ELSE 0 END) as exactMatchCount,
+              COALESCE(SUM(totalSalesAmount), 0) as totalRecordedSales,
+              COALESCE(SUM(cashVariance), 0) as totalVariance
+       FROM shift_closings
+       WHERE ${baseConds.join(' AND ')}`
+    )
+    .get(...baseParams) as {
+    totalClosings: number;
+    exactMatchCount: number | null;
+    totalRecordedSales: number;
+    totalVariance: number;
+  };
+
+  return {
+    items: rows.map(mapShiftClosingRow),
+    total,
+    page: safePage,
+    pageSize,
+    totalPages,
+    stats: {
+      totalClosings: agg.totalClosings,
+      exactMatchCount: agg.exactMatchCount ?? 0,
+      totalRecordedSales: agg.totalRecordedSales,
+      totalVariance: agg.totalVariance,
+    },
+  };
+}
+
+export function seedShiftClosingsIfNeeded(): void {
+  const alreadySeeded = db.prepare('SELECT value FROM settings WHERE key = ?').get('seeded_shift_closings_v1') as
+    | { value: string }
+    | undefined;
+  if (alreadySeeded?.value === '1') {
+    return;
+  }
+
+  const tx = db.transaction(() => {
+    const insertShift = db.prepare(
+      `INSERT OR IGNORE INTO shift_closings (
+        id, tenantId, shiftCode, shiftDate, shiftLabel, cashierId, cashierName,
+        openingCash, totalSalesCount, totalSalesAmount, totalSalesGrams,
+        salesCash, salesDebit, salesTransfer, salesQris,
+        totalBuybackCount, totalBuybackAmount, totalBuybackGrams,
+        buybackCash, buybackTransfer, voidSalesCount, voidBuybackCount,
+        expectedCash, actualCash, cashVariance, notes, status, closedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'closed', ?)`
+    );
+
+    insertShift.run(
+      'SHF-SEED-TMS-001',
+      'tenant-tms-001',
+      'SHF-20261112-001',
+      '2026-11-12',
+      'Shift 1 (08:00 - 16:00)',
+      'USR-003',
+      'Andi Pratama',
+      5000000,
+      4,
+      89355000,
+      30.45,
+      19758000,
+      27528000,
+      24890000,
+      17179000,
+      1,
+      4200000,
+      2.1,
+      4200000,
+      0,
+      0,
+      0,
+      20558000,
+      20558000,
+      0,
+      'Kasir laci utama klop dengan rekap nota & bukti EDC.',
+      '2026-11-12T16:15:00.000Z'
+    );
+
+    insertShift.run(
+      'SHF-SEED-TMJ-001',
+      'tenant-tmj-002',
+      'SHF-20261111-001',
+      '2026-11-11',
+      'Shift 2 (13:00 - 21:00)',
+      'USR-004',
+      'Rina Kusuma',
+      3000000,
+      1,
+      6049500,
+      2.4,
+      0,
+      0,
+      0,
+      6049500,
+      1,
+      6173000,
+      4.4,
+      0,
+      6173000,
+      0,
+      0,
+      3000000,
+      3050000,
+      50000,
+      'Selisih lebih Rp 50.000 dari uang kembalian pecahan.',
+      '2026-11-11T21:10:00.000Z'
+    );
+
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('seeded_shift_closings_v1', '1');
+  });
+
+  tx();
+}
+
+
 

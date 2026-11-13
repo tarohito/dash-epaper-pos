@@ -3,7 +3,6 @@ import {
   Coins,
   Scale,
   ReceiptText,
-  Calendar,
   Building2,
   Plus,
   Printer,
@@ -34,6 +33,7 @@ interface DailyTransactionsViewProps {
   onSelectReceipt: (tx: Transaction) => void;
   onVoidTransaction: (id: string, reason: string, restoreStock: boolean) => Promise<void>;
   onNavigateToPos: () => void;
+  canVoid?: boolean;
 }
 
 export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
@@ -41,6 +41,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
   onSelectReceipt,
   onVoidTransaction,
   onNavigateToPos,
+  canVoid = true,
 }) => {
   const [txFilterMethod, setTxFilterMethod] = useState<string>('semua');
   const [txSearchQuery, setTxSearchQuery] = useState<string>('');
@@ -398,8 +399,8 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                               </span>
                             )}
                           </div>
-                          <span className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Calendar size={12} /> {tx.dateStr} &bull; {tx.timeStr}
+                          <span className="text-xs text-gray-500 block mt-0.5 tabular-nums">
+                            {tx.dateStr} &bull; {tx.timeStr}
                           </span>
                           {isVoid && tx.voidReason && (
                             <span className="text-xs text-red-600 block mt-0.5 max-w-[200px] truncate" title={tx.voidReason}>
@@ -465,17 +466,19 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                               </button>
                             </Tooltip>
 
-                            <Tooltip content={isVoid ? 'Sudah Di-void' : 'Void Transaksi'} side="top">
-                              <button
-                                type="button"
-                                disabled={isVoid}
-                                onClick={() => setVoidingTx(tx)}
-                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-amber-50 text-gray-600 hover:text-amber-700 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                                aria-label="Void Transaksi"
-                              >
-                                <RotateCcw size={15} />
-                              </button>
-                            </Tooltip>
+                            {canVoid && (
+                              <Tooltip content={isVoid ? 'Sudah Di-void' : 'Void Transaksi'} side="top">
+                                <button
+                                  type="button"
+                                  disabled={isVoid}
+                                  onClick={() => setVoidingTx(tx)}
+                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-amber-50 text-gray-600 hover:text-amber-700 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
+                                  aria-label="Void Transaksi"
+                                >
+                                  <RotateCcw size={15} />
+                                </button>
+                              </Tooltip>
+                            )}
 
                             <Tooltip content="Cetak Nota" side="top">
                               <button

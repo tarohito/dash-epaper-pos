@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, RefreshCw, AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Product } from '../../types';
 import { CustomSelect } from '../common/CustomSelect';
 import { NumericInput } from '../common/NumericInput';
@@ -178,8 +178,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             disabled={isSubmitting}
             className={MODAL_BTN_SECONDARY_CLASS}
           >
-            <X size={15} className="text-gray-500 shrink-0" />
-            <span>Batal</span>
+            Batal
           </button>
           <button
             type="submit"
@@ -187,8 +186,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             disabled={isSubmitting}
             className={MODAL_BTN_PRIMARY_CLASS}
           >
-            <Save size={15} className="shrink-0" />
-            <span>{isSubmitting ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan Barang'}</span>
+            {isSubmitting ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan Barang'}
           </button>
         </div>
       }
@@ -210,10 +208,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 <button
                   type="button"
                   onClick={handleRegenerateSku}
-                  className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-semibold text-orange-600 hover:text-orange-700 cursor-pointer inline-flex items-center gap-1"
                   title="Generate kode SKU standar toko emas (Kadar-Kategori-Urut)"
                 >
-                  <RefreshCw size={11} />
+                  <RefreshCw size={12} className="shrink-0" />
                   <span>Auto SKU</span>
                 </button>
               </div>
