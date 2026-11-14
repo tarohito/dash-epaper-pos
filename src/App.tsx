@@ -25,6 +25,7 @@ import {
   UserAccount,
   UserRole,
   StoreSettings,
+  ReceiptPaperSize,
   ShiftClosingRecord,
 } from './types';
 import { playScannerBeep, playCashRegisterChime } from './utils/audio';
@@ -82,6 +83,34 @@ const DEFAULT_STORE_SETTINGS: StoreSettings = {
   receiptTagline: 'GOLD & JEWELLERY',
   receiptFooterNote:
     'Simpan surat resmi ini dengan baik. Pembelian & buyback mengikuti ketentuan harga pasar emas berjalan.',
+  receiptSaleTitle: 'FAKTUR PENJUALAN EMAS',
+  receiptBuybackTitle: 'SURAT PEMBELIAN KEMBALI (BUYBACK)',
+  receiptHeaderExtra: '',
+  receiptTheme: 'classic_gold',
+  receiptDefaultPaperSize: 'a5',
+  receiptLogoPreset: 'crown',
+  receiptCustomLogoUrl: '',
+  receiptShowWatermark: true,
+  receiptWatermarkOpacity: 6,
+  receiptShowStoreAddress: true,
+  receiptShowBarcode: true,
+  receiptShowQrCode: true,
+  receiptShowPhoto: true,
+  receiptShowItemSku: true,
+  receiptShowTaxLine: true,
+  receiptShowCashierName: true,
+  receiptShowTerms: true,
+  receiptTermsTitle: 'Perhatian :',
+  receiptTermsText: [
+    'Wajib membawa surat ini saat jual kembali atau tukar tambah barang.',
+    'Barang dari {TOKO} diterima kembali sesuai ketentuan harga & potongan toko.',
+    'Jika rusak/cacat atau mata hilang dikenakan potongan tambahan sesuai kondisi.',
+    'Pesanan khusus (custom order), batu, dan ongkos lebur tidak dapat dikembalikan.',
+  ].join('\n'),
+  receiptShowSignatures: true,
+  receiptSignatureGreeting: 'Hormat Kami,',
+  receiptCustomerSignLabel: 'Customer',
+  receiptCashierSignLabel: 'Kasir / Gold Advisor',
   autoPrintReceipt: false,
   requireCustomerOnSale: false,
   updatedAt: '',
@@ -153,7 +182,13 @@ const App: React.FC = () => {
   const [activeTenantId, setActiveTenantId] = useState<string>('tenant-tms-001');
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS);
   const [printingShift, setPrintingShift] = useState<ShiftClosingRecord | null>(null);
-  const [receiptPaperSize, setReceiptPaperSize] = useState<'a5' | 'a6'>('a5');
+  const [receiptPaperSize, setReceiptPaperSize] = useState<ReceiptPaperSize>('a5');
+
+  useEffect(() => {
+    if (storeSettings.receiptDefaultPaperSize) {
+      setReceiptPaperSize(storeSettings.receiptDefaultPaperSize);
+    }
+  }, [storeSettings.receiptDefaultPaperSize, storeSettings.tenantId]);
 
   // View-level invalidation counters so only active/affected views refresh from SQLite
   const [productsRefreshKey, setProductsRefreshKey] = useState(0);

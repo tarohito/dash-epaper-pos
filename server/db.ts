@@ -24,6 +24,9 @@ import type {
   PromoBroadcastRecord,
   PromoCampaign,
   PromosPageResponse,
+  ReceiptLogoPreset,
+  ReceiptPaperSize,
+  ReceiptTheme,
   ShiftClosingCreatePayload,
   ShiftClosingRecord,
   ShiftClosingsPageResponse,
@@ -230,6 +233,29 @@ db.exec(`
     goldPrice16kBuyback INTEGER NOT NULL DEFAULT 1180000,
     receiptTagline TEXT NOT NULL DEFAULT 'GOLD & JEWELLERY',
     receiptFooterNote TEXT NOT NULL DEFAULT 'Barang yang sudah dibeli dapat dijual kembali (buyback) dengan menyertakan surat nota resmi ini.',
+    receiptSaleTitle TEXT NOT NULL DEFAULT 'FAKTUR PENJUALAN EMAS',
+    receiptBuybackTitle TEXT NOT NULL DEFAULT 'SURAT PEMBELIAN KEMBALI (BUYBACK)',
+    receiptHeaderExtra TEXT NOT NULL DEFAULT '',
+    receiptTheme TEXT NOT NULL DEFAULT 'classic_gold',
+    receiptDefaultPaperSize TEXT NOT NULL DEFAULT 'a5',
+    receiptLogoPreset TEXT NOT NULL DEFAULT 'crown',
+    receiptCustomLogoUrl TEXT NOT NULL DEFAULT '',
+    receiptShowWatermark INTEGER NOT NULL DEFAULT 1,
+    receiptWatermarkOpacity INTEGER NOT NULL DEFAULT 6,
+    receiptShowStoreAddress INTEGER NOT NULL DEFAULT 1,
+    receiptShowBarcode INTEGER NOT NULL DEFAULT 1,
+    receiptShowQrCode INTEGER NOT NULL DEFAULT 1,
+    receiptShowPhoto INTEGER NOT NULL DEFAULT 1,
+    receiptShowItemSku INTEGER NOT NULL DEFAULT 1,
+    receiptShowTaxLine INTEGER NOT NULL DEFAULT 1,
+    receiptShowCashierName INTEGER NOT NULL DEFAULT 1,
+    receiptShowTerms INTEGER NOT NULL DEFAULT 1,
+    receiptTermsTitle TEXT NOT NULL DEFAULT 'Perhatian :',
+    receiptTermsText TEXT NOT NULL DEFAULT '',
+    receiptShowSignatures INTEGER NOT NULL DEFAULT 1,
+    receiptSignatureGreeting TEXT NOT NULL DEFAULT 'Hormat Kami,',
+    receiptCustomerSignLabel TEXT NOT NULL DEFAULT 'Customer',
+    receiptCashierSignLabel TEXT NOT NULL DEFAULT 'Kasir / Gold Advisor',
     autoPrintReceipt INTEGER NOT NULL DEFAULT 0,
     requireCustomerOnSale INTEGER NOT NULL DEFAULT 0,
     updatedAt TEXT NOT NULL,
@@ -3778,6 +3804,50 @@ export function deleteUserAccount(id: string, actorUserId: string): void {
 // ============================================================
 // STORE SETTINGS & SHIFT CLOSING (TAHAP 3)
 // ============================================================
+export const DEFAULT_RECEIPT_TERMS_TEXT = [
+  'Wajib membawa surat ini saat jual kembali atau tukar tambah barang.',
+  'Barang dari {TOKO} diterima kembali sesuai ketentuan harga & potongan toko.',
+  'Jika rusak/cacat atau mata hilang dikenakan potongan tambahan sesuai kondisi.',
+  'Pesanan khusus (custom order), batu, dan ongkos lebur tidak dapat dikembalikan.',
+].join('\n');
+
+const STORE_SETTINGS_EXTRA_COLUMNS: Array<{ name: string; definition: string }> = [
+  { name: 'receiptSaleTitle', definition: "TEXT NOT NULL DEFAULT 'FAKTUR PENJUALAN EMAS'" },
+  { name: 'receiptBuybackTitle', definition: "TEXT NOT NULL DEFAULT 'SURAT PEMBELIAN KEMBALI (BUYBACK)'" },
+  { name: 'receiptHeaderExtra', definition: "TEXT NOT NULL DEFAULT ''" },
+  { name: 'receiptTheme', definition: "TEXT NOT NULL DEFAULT 'classic_gold'" },
+  { name: 'receiptDefaultPaperSize', definition: "TEXT NOT NULL DEFAULT 'a5'" },
+  { name: 'receiptLogoPreset', definition: "TEXT NOT NULL DEFAULT 'crown'" },
+  { name: 'receiptCustomLogoUrl', definition: "TEXT NOT NULL DEFAULT ''" },
+  { name: 'receiptShowWatermark', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptWatermarkOpacity', definition: 'INTEGER NOT NULL DEFAULT 6' },
+  { name: 'receiptShowStoreAddress', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptShowBarcode', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptShowQrCode', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptShowPhoto', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptShowItemSku', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptShowTaxLine', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptShowCashierName', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptShowTerms', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptTermsTitle', definition: "TEXT NOT NULL DEFAULT 'Perhatian :'" },
+  { name: 'receiptTermsText', definition: "TEXT NOT NULL DEFAULT ''" },
+  { name: 'receiptShowSignatures', definition: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'receiptSignatureGreeting', definition: "TEXT NOT NULL DEFAULT 'Hormat Kami,'" },
+  { name: 'receiptCustomerSignLabel', definition: "TEXT NOT NULL DEFAULT 'Customer'" },
+  { name: 'receiptCashierSignLabel', definition: "TEXT NOT NULL DEFAULT 'Kasir / Gold Advisor'" },
+];
+
+(function ensureStoreSettingsColumns() {
+  const existingCols = new Set(
+    (db.prepare('PRAGMA table_info(store_settings)').all() as Array<{ name: string }>).map(c => c.name)
+  );
+  for (const col of STORE_SETTINGS_EXTRA_COLUMNS) {
+    if (!existingCols.has(col.name)) {
+      db.exec(`ALTER TABLE store_settings ADD COLUMN ${col.name} ${col.definition}`);
+    }
+  }
+})();
+
 interface StoreSettingsDbRow {
   tenantId: string;
   ppnPercent: number;
@@ -3788,13 +3858,66 @@ interface StoreSettingsDbRow {
   goldPrice16kBuyback: number;
   receiptTagline: string;
   receiptFooterNote: string;
+  receiptSaleTitle?: string | null;
+  receiptBuybackTitle?: string | null;
+  receiptHeaderExtra?: string | null;
+  receiptTheme?: string | null;
+  receiptDefaultPaperSize?: string | null;
+  receiptLogoPreset?: string | null;
+  receiptCustomLogoUrl?: string | null;
+  receiptShowWatermark?: number | null;
+  receiptWatermarkOpacity?: number | null;
+  receiptShowStoreAddress?: number | null;
+  receiptShowBarcode?: number | null;
+  receiptShowQrCode?: number | null;
+  receiptShowPhoto?: number | null;
+  receiptShowItemSku?: number | null;
+  receiptShowTaxLine?: number | null;
+  receiptShowCashierName?: number | null;
+  receiptShowTerms?: number | null;
+  receiptTermsTitle?: string | null;
+  receiptTermsText?: string | null;
+  receiptShowSignatures?: number | null;
+  receiptSignatureGreeting?: string | null;
+  receiptCustomerSignLabel?: string | null;
+  receiptCashierSignLabel?: string | null;
   autoPrintReceipt: number;
   requireCustomerOnSale: number;
   updatedAt: string;
   updatedBy: string | null;
 }
 
+const VALID_RECEIPT_THEMES: ReceiptTheme[] = [
+  'classic_gold',
+  'royal_emerald',
+  'midnight_navy',
+  'rose_gold',
+  'monochrome',
+];
+
+const VALID_RECEIPT_PAPER_SIZES: ReceiptPaperSize[] = ['a5', 'a6', '80mm'];
+const VALID_RECEIPT_LOGO_PRESETS: ReceiptLogoPreset[] = ['crown', 'diamond', 'monogram', 'custom', 'none'];
+
+function normalizeReceiptTheme(val?: string | null): ReceiptTheme {
+  return VALID_RECEIPT_THEMES.includes(val as ReceiptTheme) ? (val as ReceiptTheme) : 'classic_gold';
+}
+
+function normalizeReceiptPaperSize(val?: string | null): ReceiptPaperSize {
+  return VALID_RECEIPT_PAPER_SIZES.includes(val as ReceiptPaperSize) ? (val as ReceiptPaperSize) : 'a5';
+}
+
+function normalizeReceiptLogoPreset(val?: string | null): ReceiptLogoPreset {
+  return VALID_RECEIPT_LOGO_PRESETS.includes(val as ReceiptLogoPreset)
+    ? (val as ReceiptLogoPreset)
+    : 'crown';
+}
+
 function mapStoreSettingsRow(row: StoreSettingsDbRow): StoreSettings {
+  const rawWatermarkOpacity = Number(row.receiptWatermarkOpacity ?? 6);
+  const clampedWatermarkOpacity = Number.isFinite(rawWatermarkOpacity)
+    ? Math.max(2, Math.min(20, Math.round(rawWatermarkOpacity)))
+    : 6;
+
   return {
     tenantId: row.tenantId,
     ppnPercent: Number(row.ppnPercent),
@@ -3804,9 +3927,33 @@ function mapStoreSettingsRow(row: StoreSettingsDbRow): StoreSettings {
     goldPrice18kBuyback: Number(row.goldPrice18kBuyback),
     goldPrice16kBuyback: Number(row.goldPrice16kBuyback),
     receiptTagline: row.receiptTagline || 'GOLD & JEWELLERY',
-    receiptFooterNote:
-      row.receiptFooterNote ||
-      'Barang yang sudah dibeli dapat dijual kembali (buyback) dengan menyertakan surat nota resmi ini.',
+    receiptFooterNote: row.receiptFooterNote ?? '',
+    receiptSaleTitle: row.receiptSaleTitle ?? 'FAKTUR PENJUALAN EMAS',
+    receiptBuybackTitle: row.receiptBuybackTitle ?? 'SURAT PEMBELIAN KEMBALI (BUYBACK)',
+    receiptHeaderExtra: row.receiptHeaderExtra ?? '',
+    receiptTheme: normalizeReceiptTheme(row.receiptTheme),
+    receiptDefaultPaperSize: normalizeReceiptPaperSize(row.receiptDefaultPaperSize),
+    receiptLogoPreset: normalizeReceiptLogoPreset(row.receiptLogoPreset),
+    receiptCustomLogoUrl: row.receiptCustomLogoUrl ?? '',
+    receiptShowWatermark: row.receiptShowWatermark === undefined || row.receiptShowWatermark === null ? true : Boolean(row.receiptShowWatermark),
+    receiptWatermarkOpacity: clampedWatermarkOpacity,
+    receiptShowStoreAddress: row.receiptShowStoreAddress === undefined || row.receiptShowStoreAddress === null ? true : Boolean(row.receiptShowStoreAddress),
+    receiptShowBarcode: row.receiptShowBarcode === undefined || row.receiptShowBarcode === null ? true : Boolean(row.receiptShowBarcode),
+    receiptShowQrCode: row.receiptShowQrCode === undefined || row.receiptShowQrCode === null ? true : Boolean(row.receiptShowQrCode),
+    receiptShowPhoto: row.receiptShowPhoto === undefined || row.receiptShowPhoto === null ? true : Boolean(row.receiptShowPhoto),
+    receiptShowItemSku: row.receiptShowItemSku === undefined || row.receiptShowItemSku === null ? true : Boolean(row.receiptShowItemSku),
+    receiptShowTaxLine: row.receiptShowTaxLine === undefined || row.receiptShowTaxLine === null ? true : Boolean(row.receiptShowTaxLine),
+    receiptShowCashierName: row.receiptShowCashierName === undefined || row.receiptShowCashierName === null ? true : Boolean(row.receiptShowCashierName),
+    receiptShowTerms: row.receiptShowTerms === undefined || row.receiptShowTerms === null ? true : Boolean(row.receiptShowTerms),
+    receiptTermsTitle: row.receiptTermsTitle ?? 'Perhatian :',
+    receiptTermsText:
+      row.receiptTermsText && row.receiptTermsText.trim().length > 0
+        ? row.receiptTermsText
+        : DEFAULT_RECEIPT_TERMS_TEXT,
+    receiptShowSignatures: row.receiptShowSignatures === undefined || row.receiptShowSignatures === null ? true : Boolean(row.receiptShowSignatures),
+    receiptSignatureGreeting: row.receiptSignatureGreeting ?? 'Hormat Kami,',
+    receiptCustomerSignLabel: row.receiptCustomerSignLabel ?? 'Customer',
+    receiptCashierSignLabel: row.receiptCashierSignLabel ?? 'Kasir / Gold Advisor',
     autoPrintReceipt: Boolean(row.autoPrintReceipt),
     requireCustomerOnSale: Boolean(row.requireCustomerOnSale),
     updatedAt: row.updatedAt,
@@ -3827,9 +3974,10 @@ export function getStoreSettings(tenantId: string): StoreSettings {
     `INSERT OR IGNORE INTO store_settings (
       tenantId, ppnPercent, enablePpn,
       goldPrice24kBuyback, goldPrice22kBuyback, goldPrice18kBuyback, goldPrice16kBuyback,
-      receiptTagline, receiptFooterNote, autoPrintReceipt, requireCustomerOnSale, updatedAt, updatedBy
-    ) VALUES (?, 11, 1, 2350000, 1950000, 1420000, 1180000, 'GOLD & JEWELLERY', 'Barang yang sudah dibeli dapat dijual kembali (buyback) dengan menyertakan surat nota resmi ini.', 0, 0, ?, 'System')`
-  ).run(tenantId, now);
+      receiptTagline, receiptFooterNote, receiptTermsText,
+      autoPrintReceipt, requireCustomerOnSale, updatedAt, updatedBy
+    ) VALUES (?, 11, 1, 2350000, 1950000, 1420000, 1180000, 'GOLD & JEWELLERY', 'Barang yang sudah dibeli dapat dijual kembali (buyback) dengan menyertakan surat nota resmi ini.', ?, 0, 0, ?, 'System')`
+  ).run(tenantId, DEFAULT_RECEIPT_TERMS_TEXT, now);
 
   const created = db
     .prepare('SELECT * FROM store_settings WHERE tenantId = ?')
@@ -3867,8 +4015,88 @@ export function updateStoreSettings(
   const nextTagline =
     (s.receiptTagline !== undefined ? s.receiptTagline : currentSettings.receiptTagline).trim() || 'GOLD & JEWELLERY';
   const nextFooterNote =
-    (s.receiptFooterNote !== undefined ? s.receiptFooterNote : currentSettings.receiptFooterNote).trim() ||
-    currentSettings.receiptFooterNote;
+    s.receiptFooterNote !== undefined ? s.receiptFooterNote.trim() : currentSettings.receiptFooterNote;
+  const nextSaleTitle =
+    s.receiptSaleTitle !== undefined ? s.receiptSaleTitle.trim() : currentSettings.receiptSaleTitle;
+  const nextBuybackTitle =
+    s.receiptBuybackTitle !== undefined ? s.receiptBuybackTitle.trim() : currentSettings.receiptBuybackTitle;
+  const nextHeaderExtra =
+    s.receiptHeaderExtra !== undefined ? s.receiptHeaderExtra.trim() : currentSettings.receiptHeaderExtra;
+  const nextTheme =
+    s.receiptTheme !== undefined ? normalizeReceiptTheme(s.receiptTheme) : currentSettings.receiptTheme;
+  const nextPaperSize =
+    s.receiptDefaultPaperSize !== undefined
+      ? normalizeReceiptPaperSize(s.receiptDefaultPaperSize)
+      : currentSettings.receiptDefaultPaperSize;
+  const nextLogoPreset =
+    s.receiptLogoPreset !== undefined
+      ? normalizeReceiptLogoPreset(s.receiptLogoPreset)
+      : currentSettings.receiptLogoPreset;
+
+  let nextCustomLogoUrl =
+    s.receiptCustomLogoUrl !== undefined ? s.receiptCustomLogoUrl.trim() : currentSettings.receiptCustomLogoUrl;
+  if (nextCustomLogoUrl && !nextCustomLogoUrl.startsWith('data:image/')) {
+    throw new Error('Format logo custom nota harus berupa data gambar (PNG/JPG/WebP/SVG).');
+  }
+  if (nextCustomLogoUrl.length > 400_000) {
+    throw new Error('Ukuran file logo nota terlalu besar (maksimal 300KB).');
+  }
+
+  const nextShowWatermark =
+    s.receiptShowWatermark !== undefined ? Boolean(s.receiptShowWatermark) : currentSettings.receiptShowWatermark;
+  const rawWatermarkOpacity =
+    s.receiptWatermarkOpacity !== undefined
+      ? Number(s.receiptWatermarkOpacity)
+      : currentSettings.receiptWatermarkOpacity;
+  const nextWatermarkOpacity = Number.isFinite(rawWatermarkOpacity)
+    ? Math.max(2, Math.min(20, Math.round(rawWatermarkOpacity)))
+    : currentSettings.receiptWatermarkOpacity;
+
+  const nextShowStoreAddress =
+    s.receiptShowStoreAddress !== undefined
+      ? Boolean(s.receiptShowStoreAddress)
+      : currentSettings.receiptShowStoreAddress;
+  const nextShowBarcode =
+    s.receiptShowBarcode !== undefined ? Boolean(s.receiptShowBarcode) : currentSettings.receiptShowBarcode;
+  const nextShowQrCode =
+    s.receiptShowQrCode !== undefined ? Boolean(s.receiptShowQrCode) : currentSettings.receiptShowQrCode;
+  const nextShowPhoto =
+    s.receiptShowPhoto !== undefined ? Boolean(s.receiptShowPhoto) : currentSettings.receiptShowPhoto;
+  const nextShowItemSku =
+    s.receiptShowItemSku !== undefined ? Boolean(s.receiptShowItemSku) : currentSettings.receiptShowItemSku;
+  const nextShowTaxLine =
+    s.receiptShowTaxLine !== undefined ? Boolean(s.receiptShowTaxLine) : currentSettings.receiptShowTaxLine;
+  const nextShowCashierName =
+    s.receiptShowCashierName !== undefined
+      ? Boolean(s.receiptShowCashierName)
+      : currentSettings.receiptShowCashierName;
+  const nextShowTerms =
+    s.receiptShowTerms !== undefined ? Boolean(s.receiptShowTerms) : currentSettings.receiptShowTerms;
+  const nextTermsTitle =
+    (s.receiptTermsTitle !== undefined ? s.receiptTermsTitle : currentSettings.receiptTermsTitle).trim() ||
+    'Perhatian :';
+  const nextTermsText =
+    s.receiptTermsText !== undefined
+      ? s.receiptTermsText.trim() || DEFAULT_RECEIPT_TERMS_TEXT
+      : currentSettings.receiptTermsText;
+  const nextShowSignatures =
+    s.receiptShowSignatures !== undefined ? Boolean(s.receiptShowSignatures) : currentSettings.receiptShowSignatures;
+  const nextSignatureGreeting =
+    (s.receiptSignatureGreeting !== undefined
+      ? s.receiptSignatureGreeting
+      : currentSettings.receiptSignatureGreeting
+    ).trim() || 'Hormat Kami,';
+  const nextCustomerSignLabel =
+    (s.receiptCustomerSignLabel !== undefined
+      ? s.receiptCustomerSignLabel
+      : currentSettings.receiptCustomerSignLabel
+    ).trim() || 'Customer';
+  const nextCashierSignLabel =
+    (s.receiptCashierSignLabel !== undefined
+      ? s.receiptCashierSignLabel
+      : currentSettings.receiptCashierSignLabel
+    ).trim() || 'Kasir / Gold Advisor';
+
   const nextAutoPrint =
     s.autoPrintReceipt !== undefined ? Boolean(s.autoPrintReceipt) : currentSettings.autoPrintReceipt;
   const nextRequireCust =
@@ -3897,8 +4125,16 @@ export function updateStoreSettings(
       `INSERT OR REPLACE INTO store_settings (
         tenantId, ppnPercent, enablePpn,
         goldPrice24kBuyback, goldPrice22kBuyback, goldPrice18kBuyback, goldPrice16kBuyback,
-        receiptTagline, receiptFooterNote, autoPrintReceipt, requireCustomerOnSale, updatedAt, updatedBy
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        receiptTagline, receiptFooterNote,
+        receiptSaleTitle, receiptBuybackTitle, receiptHeaderExtra,
+        receiptTheme, receiptDefaultPaperSize, receiptLogoPreset, receiptCustomLogoUrl,
+        receiptShowWatermark, receiptWatermarkOpacity,
+        receiptShowStoreAddress, receiptShowBarcode, receiptShowQrCode, receiptShowPhoto,
+        receiptShowItemSku, receiptShowTaxLine, receiptShowCashierName,
+        receiptShowTerms, receiptTermsTitle, receiptTermsText,
+        receiptShowSignatures, receiptSignatureGreeting, receiptCustomerSignLabel, receiptCashierSignLabel,
+        autoPrintReceipt, requireCustomerOnSale, updatedAt, updatedBy
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       tenantId,
       Number(ppnPercent.toFixed(2)),
@@ -3909,6 +4145,29 @@ export function updateStoreSettings(
       next16,
       nextTagline,
       nextFooterNote,
+      nextSaleTitle,
+      nextBuybackTitle,
+      nextHeaderExtra,
+      nextTheme,
+      nextPaperSize,
+      nextLogoPreset,
+      nextCustomLogoUrl,
+      nextShowWatermark ? 1 : 0,
+      nextWatermarkOpacity,
+      nextShowStoreAddress ? 1 : 0,
+      nextShowBarcode ? 1 : 0,
+      nextShowQrCode ? 1 : 0,
+      nextShowPhoto ? 1 : 0,
+      nextShowItemSku ? 1 : 0,
+      nextShowTaxLine ? 1 : 0,
+      nextShowCashierName ? 1 : 0,
+      nextShowTerms ? 1 : 0,
+      nextTermsTitle,
+      nextTermsText,
+      nextShowSignatures ? 1 : 0,
+      nextSignatureGreeting,
+      nextCustomerSignLabel,
+      nextCashierSignLabel,
       nextAutoPrint ? 1 : 0,
       nextRequireCust ? 1 : 0,
       nowIso,

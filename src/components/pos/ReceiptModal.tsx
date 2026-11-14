@@ -1,6 +1,6 @@
 import React from 'react';
 import { Printer } from 'lucide-react';
-import { Transaction, Tenant, StoreSettings } from '../../types';
+import { Transaction, Tenant, StoreSettings, ReceiptPaperSize } from '../../types';
 import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
 import {
   ModalShell,
@@ -14,8 +14,8 @@ interface ReceiptModalProps {
   receipt: Transaction | null;
   activeTenant?: Tenant;
   storeSettings?: StoreSettings;
-  paperSize: 'a5' | 'a6';
-  onPaperSizeChange: (size: 'a5' | 'a6') => void;
+  paperSize: ReceiptPaperSize;
+  onPaperSizeChange: (size: ReceiptPaperSize) => void;
   onPrint: () => void;
   onViewDailyTransactions: () => void;
 }
@@ -42,18 +42,18 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       subtitle={`${receipt.invoiceNo} • ${receipt.customerName || 'Pelanggan Umum'}`}
       headerActions={
         <div className="inline-flex p-0.5 bg-gray-200/80 rounded-lg border border-gray-300/70">
-          {(['a5', 'a6'] as const).map(size => (
+          {(['a5', 'a6', '80mm'] as const).map(size => (
             <button
               key={size}
               type="button"
               onClick={() => onPaperSizeChange(size)}
-              className={`px-2.5 py-1 text-xs font-bold uppercase rounded-md transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs font-bold uppercase rounded-md transition-colors cursor-pointer whitespace-nowrap ${
                 paperSize === size
                   ? 'bg-white text-orange-600 shadow-2xs'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Kertas {size.toUpperCase()}
+              {size === '80mm' ? '80mm' : `Kertas ${size.toUpperCase()}`}
             </button>
           ))}
         </div>

@@ -235,6 +235,13 @@
     font-size: 9px !important;
   }
 
+  .gold-invoice-sheet[data-paper='80mm'] {
+    max-width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 1.5mm 2mm !important;
+    font-size: 9px !important;
+  }
+
   body.printing-sale #printable-buyback-receipt,
   body.printing-sale #printable-buyback-receipt *,
   body.printing-sale #printable-shift-report,

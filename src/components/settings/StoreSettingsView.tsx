@@ -10,13 +10,25 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import { StoreSettings, StoreSettingsUpdatePayload, Tenant, UserRole } from '../../types';
+import {
+  ReceiptLogoPreset,
+  ReceiptPaperSize,
+  ReceiptTheme,
+  StoreSettings,
+  StoreSettingsUpdatePayload,
+  Tenant,
+  UserRole,
+} from '../../types';
 import { posApi } from '../../services/api';
 import { formatIDR } from '../../utils/formatters';
 import { CustomSelect } from '../common/CustomSelect';
 import { NumericInput } from '../common/NumericInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
+import {
+  DEFAULT_RECEIPT_TERMS_TEMPLATE,
+  ReceiptCustomizationTab,
+} from './ReceiptCustomizationTab';
 
 interface StoreSettingsViewProps {
   activeTenant?: Tenant;
@@ -61,6 +73,51 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
 
   const [receiptTagline, setReceiptTagline] = useState(storeSettings.receiptTagline);
   const [receiptFooterNote, setReceiptFooterNote] = useState(storeSettings.receiptFooterNote);
+  const [receiptSaleTitle, setReceiptSaleTitle] = useState(storeSettings.receiptSaleTitle);
+  const [receiptBuybackTitle, setReceiptBuybackTitle] = useState(storeSettings.receiptBuybackTitle);
+  const [receiptHeaderExtra, setReceiptHeaderExtra] = useState(storeSettings.receiptHeaderExtra);
+  const [receiptTheme, setReceiptTheme] = useState<ReceiptTheme>(storeSettings.receiptTheme);
+  const [receiptDefaultPaperSize, setReceiptDefaultPaperSize] = useState<ReceiptPaperSize>(
+    storeSettings.receiptDefaultPaperSize
+  );
+  const [receiptLogoPreset, setReceiptLogoPreset] = useState<ReceiptLogoPreset>(
+    storeSettings.receiptLogoPreset
+  );
+  const [receiptCustomLogoUrl, setReceiptCustomLogoUrl] = useState(
+    storeSettings.receiptCustomLogoUrl
+  );
+  const [receiptShowWatermark, setReceiptShowWatermark] = useState(
+    storeSettings.receiptShowWatermark
+  );
+  const [receiptWatermarkOpacity, setReceiptWatermarkOpacity] = useState(
+    storeSettings.receiptWatermarkOpacity
+  );
+  const [receiptShowStoreAddress, setReceiptShowStoreAddress] = useState(
+    storeSettings.receiptShowStoreAddress
+  );
+  const [receiptShowBarcode, setReceiptShowBarcode] = useState(storeSettings.receiptShowBarcode);
+  const [receiptShowQrCode, setReceiptShowQrCode] = useState(storeSettings.receiptShowQrCode);
+  const [receiptShowPhoto, setReceiptShowPhoto] = useState(storeSettings.receiptShowPhoto);
+  const [receiptShowItemSku, setReceiptShowItemSku] = useState(storeSettings.receiptShowItemSku);
+  const [receiptShowTaxLine, setReceiptShowTaxLine] = useState(storeSettings.receiptShowTaxLine);
+  const [receiptShowCashierName, setReceiptShowCashierName] = useState(
+    storeSettings.receiptShowCashierName
+  );
+  const [receiptShowTerms, setReceiptShowTerms] = useState(storeSettings.receiptShowTerms);
+  const [receiptTermsTitle, setReceiptTermsTitle] = useState(storeSettings.receiptTermsTitle);
+  const [receiptTermsText, setReceiptTermsText] = useState(storeSettings.receiptTermsText);
+  const [receiptShowSignatures, setReceiptShowSignatures] = useState(
+    storeSettings.receiptShowSignatures
+  );
+  const [receiptSignatureGreeting, setReceiptSignatureGreeting] = useState(
+    storeSettings.receiptSignatureGreeting
+  );
+  const [receiptCustomerSignLabel, setReceiptCustomerSignLabel] = useState(
+    storeSettings.receiptCustomerSignLabel
+  );
+  const [receiptCashierSignLabel, setReceiptCashierSignLabel] = useState(
+    storeSettings.receiptCashierSignLabel
+  );
   const [lastUpdatedMeta, setLastUpdatedMeta] = useState<{ updatedAt?: string; updatedBy?: string }>({
     updatedAt: storeSettings.updatedAt,
     updatedBy: storeSettings.updatedBy,
@@ -90,6 +147,29 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
     setPrice16k(s.goldPrice16kBuyback);
     setReceiptTagline(s.receiptTagline);
     setReceiptFooterNote(s.receiptFooterNote);
+    setReceiptSaleTitle(s.receiptSaleTitle);
+    setReceiptBuybackTitle(s.receiptBuybackTitle);
+    setReceiptHeaderExtra(s.receiptHeaderExtra);
+    setReceiptTheme(s.receiptTheme);
+    setReceiptDefaultPaperSize(s.receiptDefaultPaperSize);
+    setReceiptLogoPreset(s.receiptLogoPreset);
+    setReceiptCustomLogoUrl(s.receiptCustomLogoUrl);
+    setReceiptShowWatermark(s.receiptShowWatermark);
+    setReceiptWatermarkOpacity(s.receiptWatermarkOpacity);
+    setReceiptShowStoreAddress(s.receiptShowStoreAddress);
+    setReceiptShowBarcode(s.receiptShowBarcode);
+    setReceiptShowQrCode(s.receiptShowQrCode);
+    setReceiptShowPhoto(s.receiptShowPhoto);
+    setReceiptShowItemSku(s.receiptShowItemSku);
+    setReceiptShowTaxLine(s.receiptShowTaxLine);
+    setReceiptShowCashierName(s.receiptShowCashierName);
+    setReceiptShowTerms(s.receiptShowTerms);
+    setReceiptTermsTitle(s.receiptTermsTitle);
+    setReceiptTermsText(s.receiptTermsText);
+    setReceiptShowSignatures(s.receiptShowSignatures);
+    setReceiptSignatureGreeting(s.receiptSignatureGreeting);
+    setReceiptCustomerSignLabel(s.receiptCustomerSignLabel);
+    setReceiptCashierSignLabel(s.receiptCashierSignLabel);
     setLastUpdatedMeta({ updatedAt: s.updatedAt, updatedBy: s.updatedBy });
   };
 
@@ -157,6 +237,29 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
           goldPrice16kBuyback: price16k,
           receiptTagline: receiptTagline.trim() || 'GOLD & JEWELLERY',
           receiptFooterNote: receiptFooterNote.trim(),
+          receiptSaleTitle: receiptSaleTitle.trim(),
+          receiptBuybackTitle: receiptBuybackTitle.trim(),
+          receiptHeaderExtra: receiptHeaderExtra.trim(),
+          receiptTheme,
+          receiptDefaultPaperSize,
+          receiptLogoPreset,
+          receiptCustomLogoUrl,
+          receiptShowWatermark,
+          receiptWatermarkOpacity,
+          receiptShowStoreAddress,
+          receiptShowBarcode,
+          receiptShowQrCode,
+          receiptShowPhoto,
+          receiptShowItemSku,
+          receiptShowTaxLine,
+          receiptShowCashierName,
+          receiptShowTerms,
+          receiptTermsTitle: receiptTermsTitle.trim() || 'Perhatian :',
+          receiptTermsText: receiptTermsText.trim() || DEFAULT_RECEIPT_TERMS_TEMPLATE,
+          receiptShowSignatures,
+          receiptSignatureGreeting: receiptSignatureGreeting.trim() || 'Hormat Kami,',
+          receiptCustomerSignLabel: receiptCustomerSignLabel.trim() || 'Customer',
+          receiptCashierSignLabel: receiptCashierSignLabel.trim() || 'Kasir / Gold Advisor',
         },
       };
 
@@ -579,65 +682,171 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
       )}
 
       {activeTab === 'receipt' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-6 bg-white rounded-xl border border-gray-200/90 p-4 sm:p-6 space-y-4">
-            <div>
-              <h4 className="text-sm sm:text-base font-bold text-gray-900">Kustomisasi Nota Emas Resmi</h4>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Teks ini akan tercetak pada header dan kolom ketentuan bawah nota penjualan &amp; buyback.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tagline Brand di Header Nota</label>
-              <input
-                type="text"
-                value={receiptTagline}
-                onChange={e => setReceiptTagline(e.target.value)}
-                className="w-full h-10 px-3 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 uppercase tracking-wider font-semibold"
-                placeholder="GOLD & JEWELLERY"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Ketentuan Khusus / Catatan Footer Nota
-              </label>
-              <textarea
-                rows={4}
-                value={receiptFooterNote}
-                onChange={e => setReceiptFooterNote(e.target.value)}
-                className="w-full p-3 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
-                placeholder="Barang yang sudah dibeli dapat dijual kembali..."
-              />
-            </div>
-          </div>
-
-          <div className="lg:col-span-6 bg-white rounded-xl border border-gray-200/90 p-4 sm:p-6 space-y-3">
-            <h4 className="text-sm sm:text-base font-bold text-gray-900">Pratinjau Header &amp; Ketentuan Nota</h4>
-            <div className="border border-gray-300 rounded-lg p-4 bg-white space-y-4">
-              <div className="flex items-start justify-between border-b border-gray-200 pb-3">
-                <div>
-                  <p className="text-lg font-bold uppercase text-[#8c671b] leading-none">
-                    {storeName || 'e.paper'}
-                  </p>
-                  <p className="text-xs font-bold tracking-[0.2em] uppercase text-[#9a7420] mt-1">
-                    {receiptTagline || 'GOLD & JEWELLERY'}
-                  </p>
-                </div>
-                <div className="text-right text-xs text-gray-600">
-                  <p className="font-bold text-gray-800">{branchName || 'Cabang Utama'}</p>
-                  <p>{phone || '-'}</p>
-                </div>
-              </div>
-
-              <div className="text-xs text-gray-600 space-y-1">
-                <p className="font-bold text-gray-900 uppercase">Catatan Outlet:</p>
-                <p className="leading-relaxed">{receiptFooterNote}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ReceiptCustomizationTab
+          settings={{
+            ...storeSettings,
+            enablePpn,
+            ppnPercent,
+            goldPrice24kBuyback: price24k,
+            goldPrice22kBuyback: price22k,
+            goldPrice18kBuyback: price18k,
+            goldPrice16kBuyback: price16k,
+            receiptTagline,
+            receiptFooterNote,
+            receiptSaleTitle,
+            receiptBuybackTitle,
+            receiptHeaderExtra,
+            receiptTheme,
+            receiptDefaultPaperSize,
+            receiptLogoPreset,
+            receiptCustomLogoUrl,
+            receiptShowWatermark,
+            receiptWatermarkOpacity,
+            receiptShowStoreAddress,
+            receiptShowBarcode,
+            receiptShowQrCode,
+            receiptShowPhoto,
+            receiptShowItemSku,
+            receiptShowTaxLine,
+            receiptShowCashierName,
+            receiptShowTerms,
+            receiptTermsTitle,
+            receiptTermsText,
+            receiptShowSignatures,
+            receiptSignatureGreeting,
+            receiptCustomerSignLabel,
+            receiptCashierSignLabel,
+            autoPrintReceipt,
+            requireCustomerOnSale,
+          }}
+          tenantPreview={{
+            id: activeTenant?.id || storeSettings.tenantId,
+            name: storeName || activeTenant?.name || 'Toko Emas',
+            code: activeTenant?.code || 'OUTLET',
+            branchName: branchName || activeTenant?.branchName || 'Cabang Utama',
+            address,
+            city,
+            plan: activeTenant?.plan || 'Pro Multi-Outlet',
+            cashierCount: activeTenant?.cashierCount || 1,
+            productCount: activeTenant?.productCount || 0,
+            phone,
+            email,
+            slug: activeTenant?.slug || 'toko',
+            logoInitial:
+              (storeName || activeTenant?.name || 'TE').slice(0, 2).toUpperCase(),
+            databaseSchema: activeTenant?.databaseSchema || 'public',
+            status,
+          }}
+          onUpdateField={(field, value) => {
+            switch (field) {
+              case 'receiptTagline':
+                setReceiptTagline(String(value));
+                break;
+              case 'receiptFooterNote':
+                setReceiptFooterNote(String(value));
+                break;
+              case 'receiptSaleTitle':
+                setReceiptSaleTitle(String(value));
+                break;
+              case 'receiptBuybackTitle':
+                setReceiptBuybackTitle(String(value));
+                break;
+              case 'receiptHeaderExtra':
+                setReceiptHeaderExtra(String(value));
+                break;
+              case 'receiptTheme':
+                setReceiptTheme(value as ReceiptTheme);
+                break;
+              case 'receiptDefaultPaperSize':
+                setReceiptDefaultPaperSize(value as ReceiptPaperSize);
+                break;
+              case 'receiptLogoPreset':
+                setReceiptLogoPreset(value as ReceiptLogoPreset);
+                break;
+              case 'receiptCustomLogoUrl':
+                setReceiptCustomLogoUrl(String(value));
+                break;
+              case 'receiptShowWatermark':
+                setReceiptShowWatermark(Boolean(value));
+                break;
+              case 'receiptWatermarkOpacity':
+                setReceiptWatermarkOpacity(Number(value));
+                break;
+              case 'receiptShowStoreAddress':
+                setReceiptShowStoreAddress(Boolean(value));
+                break;
+              case 'receiptShowBarcode':
+                setReceiptShowBarcode(Boolean(value));
+                break;
+              case 'receiptShowQrCode':
+                setReceiptShowQrCode(Boolean(value));
+                break;
+              case 'receiptShowPhoto':
+                setReceiptShowPhoto(Boolean(value));
+                break;
+              case 'receiptShowItemSku':
+                setReceiptShowItemSku(Boolean(value));
+                break;
+              case 'receiptShowTaxLine':
+                setReceiptShowTaxLine(Boolean(value));
+                break;
+              case 'receiptShowCashierName':
+                setReceiptShowCashierName(Boolean(value));
+                break;
+              case 'receiptShowTerms':
+                setReceiptShowTerms(Boolean(value));
+                break;
+              case 'receiptTermsTitle':
+                setReceiptTermsTitle(String(value));
+                break;
+              case 'receiptTermsText':
+                setReceiptTermsText(String(value));
+                break;
+              case 'receiptShowSignatures':
+                setReceiptShowSignatures(Boolean(value));
+                break;
+              case 'receiptSignatureGreeting':
+                setReceiptSignatureGreeting(String(value));
+                break;
+              case 'receiptCustomerSignLabel':
+                setReceiptCustomerSignLabel(String(value));
+                break;
+              case 'receiptCashierSignLabel':
+                setReceiptCashierSignLabel(String(value));
+                break;
+            }
+          }}
+          onResetReceiptDefaults={() => {
+            setReceiptTagline('GOLD & JEWELLERY');
+            setReceiptSaleTitle('FAKTUR PENJUALAN EMAS');
+            setReceiptBuybackTitle('SURAT PEMBELIAN KEMBALI (BUYBACK)');
+            setReceiptHeaderExtra('');
+            setReceiptTheme('classic_gold');
+            setReceiptDefaultPaperSize('a5');
+            setReceiptLogoPreset('crown');
+            setReceiptCustomLogoUrl('');
+            setReceiptShowWatermark(true);
+            setReceiptWatermarkOpacity(6);
+            setReceiptShowStoreAddress(true);
+            setReceiptShowBarcode(true);
+            setReceiptShowQrCode(true);
+            setReceiptShowPhoto(true);
+            setReceiptShowItemSku(true);
+            setReceiptShowTaxLine(true);
+            setReceiptShowCashierName(true);
+            setReceiptShowTerms(true);
+            setReceiptTermsTitle('Perhatian :');
+            setReceiptTermsText(DEFAULT_RECEIPT_TERMS_TEMPLATE);
+            setReceiptFooterNote(
+              'Barang yang sudah dibeli dapat dijual kembali (buyback) dengan menyertakan surat nota resmi ini.'
+            );
+            setReceiptShowSignatures(true);
+            setReceiptSignatureGreeting('Hormat Kami,');
+            setReceiptCustomerSignLabel('Customer');
+            setReceiptCashierSignLabel('Kasir / Gold Advisor');
+            showToast('info', 'Desain nota dikembalikan ke template standar (klik Simpan Pengaturan untuk menerapkan).');
+          }}
+        />
       )}
     </form>
   );

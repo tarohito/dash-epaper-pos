@@ -324,6 +324,15 @@ export interface AuthLoginResponse {
   activeTenantId: string;
 }
 
+export type ReceiptPaperSize = 'a5' | 'a6' | '80mm';
+export type ReceiptTheme =
+  | 'classic_gold'
+  | 'royal_emerald'
+  | 'midnight_navy'
+  | 'rose_gold'
+  | 'monochrome';
+export type ReceiptLogoPreset = 'crown' | 'diamond' | 'monogram' | 'custom' | 'none';
+
 export interface StoreSettings {
   tenantId: string;
   ppnPercent: number;
@@ -334,6 +343,29 @@ export interface StoreSettings {
   goldPrice16kBuyback: number;
   receiptTagline: string;
   receiptFooterNote: string;
+  receiptSaleTitle: string;
+  receiptBuybackTitle: string;
+  receiptHeaderExtra: string;
+  receiptTheme: ReceiptTheme;
+  receiptDefaultPaperSize: ReceiptPaperSize;
+  receiptLogoPreset: ReceiptLogoPreset;
+  receiptCustomLogoUrl: string;
+  receiptShowWatermark: boolean;
+  receiptWatermarkOpacity: number;
+  receiptShowStoreAddress: boolean;
+  receiptShowBarcode: boolean;
+  receiptShowQrCode: boolean;
+  receiptShowPhoto: boolean;
+  receiptShowItemSku: boolean;
+  receiptShowTaxLine: boolean;
+  receiptShowCashierName: boolean;
+  receiptShowTerms: boolean;
+  receiptTermsTitle: string;
+  receiptTermsText: string;
+  receiptShowSignatures: boolean;
+  receiptSignatureGreeting: string;
+  receiptCustomerSignLabel: string;
+  receiptCashierSignLabel: string;
   autoPrintReceipt: boolean;
   requireCustomerOnSale: boolean;
   updatedAt: string;
