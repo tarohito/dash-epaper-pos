@@ -2408,48 +2408,48 @@ export function queryTransactions(opts: {
   const method = (opts.method ?? 'semua').trim();
   const sortDir = normalizeSortDir(opts.sortDir);
 
-  let orderBySql = `dateTime ${sortDir}, rowid ${sortDir}`;
+  let orderBySql = `t.dateTime ${sortDir}, t.rowid ${sortDir}`;
   switch (opts.sortBy) {
     case 'grandTotal':
-      orderBySql = `grandTotal ${sortDir}, dateTime DESC`;
+      orderBySql = `t.grandTotal ${sortDir}, t.dateTime DESC`;
       break;
     case 'totalBerat':
-      orderBySql = `totalBerat ${sortDir}, dateTime DESC`;
+      orderBySql = `t.totalBerat ${sortDir}, t.dateTime DESC`;
       break;
     case 'customerName':
-      orderBySql = `LOWER(customerName) ${sortDir}, dateTime DESC`;
+      orderBySql = `LOWER(t.customerName) ${sortDir}, t.dateTime DESC`;
       break;
     case 'invoiceNo':
-      orderBySql = `invoiceNo ${sortDir}, rowid DESC`;
+      orderBySql = `t.invoiceNo ${sortDir}, t.rowid DESC`;
       break;
     case 'paymentMethod':
-      orderBySql = `paymentMethod ${sortDir}, dateTime DESC`;
+      orderBySql = `t.paymentMethod ${sortDir}, t.dateTime DESC`;
       break;
     case 'newest':
     default:
-      orderBySql = `dateTime ${sortDir}, rowid ${sortDir}`;
+      orderBySql = `t.dateTime ${sortDir}, t.rowid ${sortDir}`;
       break;
   }
 
-  const conditions: string[] = ['tenantId = ?'];
+  const conditions: string[] = ['t.tenantId = ?'];
   const params: Array<string | number> = [tenantId];
 
   if (search) {
     const like = `%${search}%`;
     conditions.push(
-      `(LOWER(invoiceNo) LIKE ? OR LOWER(customerName) LIKE ? OR LOWER(cashier) LIKE ? OR EXISTS (SELECT 1 FROM transaction_items ti WHERE ti.transactionId = transactions.id AND (LOWER(ti.name) LIKE ? OR LOWER(ti.sku) LIKE ?)))`
+      `(LOWER(t.invoiceNo) LIKE ? OR LOWER(t.customerName) LIKE ? OR LOWER(t.cashier) LIKE ? OR EXISTS (SELECT 1 FROM transaction_items ti WHERE ti.transactionId = t.id AND (LOWER(ti.name) LIKE ? OR LOWER(ti.sku) LIKE ?)))`
     );
     params.push(like, like, like, like, like);
   }
 
   if (method && method !== 'semua') {
-    conditions.push('paymentMethod = ?');
+    conditions.push('t.paymentMethod = ?');
     params.push(method);
   }
 
   const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const total = (
-    db.prepare(`SELECT COUNT(*) as cnt FROM transactions ${whereSql}`).get(...params) as { cnt: number }
+    db.prepare(`SELECT COUNT(*) as cnt FROM transactions t ${whereSql}`).get(...params) as { cnt: number }
   ).cnt;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -2457,9 +2457,14 @@ export function queryTransactions(opts: {
 
   const txRows = db
     .prepare(
-      `SELECT id, invoiceNo, dateTime, dateStr, timeStr, cashier, customerId, customerName, totalQty, totalBerat, subtotal, tax, grandTotal, paymentMethod, paymentDetailsJson,
-              COALESCE(status, 'completed') AS status, voidReason, voidedAt
-       FROM transactions ${whereSql} ORDER BY ${orderBySql} LIMIT ? OFFSET ?`
+      `SELECT t.id, t.invoiceNo, t.dateTime, t.dateStr, t.timeStr, t.cashier, t.customerId,
+              c.memberCode AS customerMemberCode, t.customerName,
+              c.phone AS customerPhone, c.address AS customerAddress,
+              t.totalQty, t.totalBerat, t.subtotal, t.tax, t.grandTotal, t.paymentMethod, t.paymentDetailsJson,
+              COALESCE(t.status, 'completed') AS status, t.voidReason, t.voidedAt
+       FROM transactions t
+       LEFT JOIN customers c ON c.id = t.customerId
+       ${whereSql} ORDER BY ${orderBySql} LIMIT ? OFFSET ?`
     )
     .all(...params, pageSize, offset) as Array<{
     id: string;
@@ -2469,7 +2474,10 @@ export function queryTransactions(opts: {
     timeStr: string;
     cashier: string;
     customerId: string | null;
+    customerMemberCode: string | null;
     customerName: string;
+    customerPhone: string | null;
+    customerAddress: string | null;
     totalQty: number;
     totalBerat: number;
     subtotal: number;
@@ -2488,14 +2496,18 @@ export function queryTransactions(opts: {
     const placeholders = ids.map(() => '?').join(', ');
     const itemRows = db
       .prepare(
-        `SELECT transactionId, productId, sku, name, berat, harga, qty, subtotal, image
-         FROM transaction_items WHERE transactionId IN (${placeholders}) ORDER BY id ASC`
+        `SELECT ti.transactionId, ti.productId, ti.sku, ti.name, p.category AS category,
+                ti.berat, ti.harga, ti.qty, ti.subtotal, COALESCE(ti.image, p.image) AS image
+         FROM transaction_items ti
+         LEFT JOIN products p ON p.id = ti.productId
+         WHERE ti.transactionId IN (${placeholders}) ORDER BY ti.id ASC`
       )
       .all(...ids) as Array<{
       transactionId: string;
       productId: number;
       sku: string;
       name: string;
+      category: string | null;
       berat: number;
       harga: number;
       qty: number;
@@ -2509,6 +2521,7 @@ export function queryTransactions(opts: {
         id: row.productId,
         sku: row.sku,
         name: row.name,
+        category: row.category ?? undefined,
         berat: row.berat,
         harga: row.harga,
         qty: row.qty,
@@ -2534,7 +2547,10 @@ export function queryTransactions(opts: {
       timeStr: tx.timeStr,
       cashier: tx.cashier,
       customerId: tx.customerId ?? undefined,
+      customerMemberCode: tx.customerMemberCode ?? undefined,
       customerName: tx.customerName,
+      customerPhone: tx.customerPhone ?? undefined,
+      customerAddress: tx.customerAddress ?? undefined,
       items: itemsByTx.get(tx.id) ?? [],
       totalQty: tx.totalQty,
       totalBerat: tx.totalBerat,
@@ -2560,14 +2576,18 @@ export function queryTransactions(opts: {
   };
 }
 
-export function getTransactionById(id: string): Transaction | null {
-  const tx = db
-    .prepare(
-      `SELECT id, invoiceNo, dateTime, dateStr, timeStr, cashier, customerId, customerName, totalQty, totalBerat, subtotal, tax, grandTotal, paymentMethod, paymentDetailsJson,
-              COALESCE(status, 'completed') AS status, voidReason, voidedAt
-       FROM transactions WHERE id = ?`
-    )
-    .get(id) as
+export function getTransactionById(id: string, tenantId?: string): Transaction | null {
+  const txQuery = `SELECT t.id, t.invoiceNo, t.dateTime, t.dateStr, t.timeStr, t.cashier, t.customerId,
+                          c.memberCode AS customerMemberCode, t.customerName,
+                          c.phone AS customerPhone, c.address AS customerAddress,
+                          t.totalQty, t.totalBerat, t.subtotal, t.tax, t.grandTotal, t.paymentMethod, t.paymentDetailsJson,
+                          COALESCE(t.status, 'completed') AS status, t.voidReason, t.voidedAt
+                   FROM transactions t
+                   LEFT JOIN customers c ON c.id = t.customerId
+                   WHERE t.id = ?${tenantId ? ' AND t.tenantId = ?' : ''}`;
+  const tx = (
+    tenantId ? db.prepare(txQuery).get(id, tenantId) : db.prepare(txQuery).get(id)
+  ) as
     | {
         id: string;
         invoiceNo: string;
@@ -2576,7 +2596,10 @@ export function getTransactionById(id: string): Transaction | null {
         timeStr: string;
         cashier: string;
         customerId: string | null;
+        customerMemberCode: string | null;
         customerName: string;
+        customerPhone: string | null;
+        customerAddress: string | null;
         totalQty: number;
         totalBerat: number;
         subtotal: number;
@@ -2593,11 +2616,18 @@ export function getTransactionById(id: string): Transaction | null {
   if (!tx) return null;
 
   const itemRows = db
-    .prepare('SELECT productId, sku, name, berat, harga, qty, subtotal, image FROM transaction_items WHERE transactionId = ? ORDER BY id ASC')
+    .prepare(
+      `SELECT ti.productId, ti.sku, ti.name, p.category AS category,
+              ti.berat, ti.harga, ti.qty, ti.subtotal, COALESCE(ti.image, p.image) AS image
+       FROM transaction_items ti
+       LEFT JOIN products p ON p.id = ti.productId
+       WHERE ti.transactionId = ? ORDER BY ti.id ASC`
+    )
     .all(id) as Array<{
     productId: number;
     sku: string;
     name: string;
+    category: string | null;
     berat: number;
     harga: number;
     qty: number;
@@ -2613,11 +2643,15 @@ export function getTransactionById(id: string): Transaction | null {
     timeStr: tx.timeStr,
     cashier: tx.cashier,
     customerId: tx.customerId ?? undefined,
+    customerMemberCode: tx.customerMemberCode ?? undefined,
     customerName: tx.customerName,
+    customerPhone: tx.customerPhone ?? undefined,
+    customerAddress: tx.customerAddress ?? undefined,
     items: itemRows.map(r => ({
       id: r.productId,
       sku: r.sku,
       name: r.name,
+      category: r.category ?? undefined,
       berat: r.berat,
       harga: r.harga,
       qty: r.qty,
@@ -2645,6 +2679,7 @@ function mapBuybackRow(r: {
   branchName: string | null;
   cashierName: string | null;
   customerId?: string | null;
+  customerMemberCode?: string | null;
   customerName: string;
   customerPhone: string;
   customerNik: string | null;
@@ -2686,6 +2721,7 @@ function mapBuybackRow(r: {
     branchName: r.branchName ?? undefined,
     cashierName: r.cashierName ?? undefined,
     customerId: r.customerId ?? undefined,
+    customerMemberCode: r.customerMemberCode ?? undefined,
     customerName: r.customerName,
     customerPhone: r.customerPhone,
     customerNik: r.customerNik ?? undefined,
@@ -2737,48 +2773,48 @@ export function queryBuybacks(opts: {
   const method = (opts.method ?? 'all').trim();
   const sortDir = normalizeSortDir(opts.sortDir);
 
-  let orderBySql = `rowid ${sortDir}`;
+  let orderBySql = `b.rowid ${sortDir}`;
   switch (opts.sortBy) {
     case 'totalBayar':
-      orderBySql = `totalBayar ${sortDir}, rowid DESC`;
+      orderBySql = `b.totalBayar ${sortDir}, b.rowid DESC`;
       break;
     case 'beratBersih':
-      orderBySql = `beratBersih ${sortDir}, rowid DESC`;
+      orderBySql = `b.beratBersih ${sortDir}, b.rowid DESC`;
       break;
     case 'customerName':
-      orderBySql = `LOWER(customerName) ${sortDir}, rowid DESC`;
+      orderBySql = `LOWER(b.customerName) ${sortDir}, b.rowid DESC`;
       break;
     case 'invoiceNo':
-      orderBySql = `invoiceNo ${sortDir}, rowid DESC`;
+      orderBySql = `b.invoiceNo ${sortDir}, b.rowid DESC`;
       break;
     case 'itemType':
-      orderBySql = `LOWER(itemType) ${sortDir}, rowid DESC`;
+      orderBySql = `LOWER(b.itemType) ${sortDir}, b.rowid DESC`;
       break;
     case 'newest':
     default:
-      orderBySql = `rowid ${sortDir}`;
+      orderBySql = `b.rowid ${sortDir}`;
       break;
   }
 
-  const conditions: string[] = ['tenantId = ?'];
+  const conditions: string[] = ['b.tenantId = ?'];
   const params: Array<string | number> = [tenantId];
 
   if (search) {
     const like = `%${search}%`;
     conditions.push(
-      '(LOWER(invoiceNo) LIKE ? OR LOWER(customerName) LIKE ? OR LOWER(customerPhone) LIKE ? OR LOWER(COALESCE(customerNik, \'\')) LIKE ? OR LOWER(itemType) LIKE ? OR LOWER(kadar) LIKE ?)'
+      '(LOWER(b.invoiceNo) LIKE ? OR LOWER(b.customerName) LIKE ? OR LOWER(b.customerPhone) LIKE ? OR LOWER(COALESCE(b.customerNik, \'\')) LIKE ? OR LOWER(b.itemType) LIKE ? OR LOWER(b.kadar) LIKE ?)'
     );
     params.push(like, like, like, like, like, like);
   }
 
   if (method && method !== 'all') {
-    conditions.push('paymentMethod = ?');
+    conditions.push('b.paymentMethod = ?');
     params.push(method);
   }
 
   const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const total = (
-    db.prepare(`SELECT COUNT(*) as cnt FROM buybacks ${whereSql}`).get(...params) as { cnt: number }
+    db.prepare(`SELECT COUNT(*) as cnt FROM buybacks b ${whereSql}`).get(...params) as { cnt: number }
   ).cnt;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -2787,13 +2823,15 @@ export function queryBuybacks(opts: {
   // Omit heavy base64 columns (fotoKtp, fotoEmas, ttdNasabah, ttdPetugas, itemsJson) on list load
   const rows = db
     .prepare(
-      `SELECT id, invoiceNo, date, timeStr, branchName, cashierName,
-              customerId, customerName, customerPhone, customerNik, customerNpwp, customerAddress,
-              sourceNote, itemType, kadar, beratKotor, potonganBatu, beratBersih,
-              hargaPerGram, biayaLebur, kondisi, totalKotor, potonganBiaya, pph22,
-              totalBayar, paymentMethod, bankName, accountNo, accountHolder,
-              catatan, isAgreedLegal, COALESCE(status, 'completed') AS status, voidReason, voidedAt
-       FROM buybacks ${whereSql} ORDER BY ${orderBySql} LIMIT ? OFFSET ?`
+      `SELECT b.id, b.invoiceNo, b.date, b.timeStr, b.branchName, b.cashierName,
+              b.customerId, c.memberCode AS customerMemberCode, b.customerName, b.customerPhone, b.customerNik, b.customerNpwp, b.customerAddress,
+              b.sourceNote, b.itemType, b.kadar, b.beratKotor, b.potonganBatu, b.beratBersih,
+              b.hargaPerGram, b.biayaLebur, b.kondisi, b.totalKotor, b.potonganBiaya, b.pph22,
+              b.totalBayar, b.paymentMethod, b.bankName, b.accountNo, b.accountHolder,
+              b.catatan, b.isAgreedLegal, COALESCE(b.status, 'completed') AS status, b.voidReason, b.voidedAt
+       FROM buybacks b
+       LEFT JOIN customers c ON c.id = b.customerId
+       ${whereSql} ORDER BY ${orderBySql} LIMIT ? OFFSET ?`
     )
     .all(...params, pageSize, offset) as Array<Parameters<typeof mapBuybackRow>[0]>;
 
@@ -2819,10 +2857,12 @@ export function queryBuybacks(opts: {
 }
 
 export function getBuybackById(id: string, tenantId?: string): BuybackItem | null {
+  const query = `SELECT b.*, c.memberCode AS customerMemberCode
+                 FROM buybacks b
+                 LEFT JOIN customers c ON c.id = b.customerId
+                 WHERE b.id = ?${tenantId ? ' AND b.tenantId = ?' : ''}`;
   const row = (
-    tenantId
-      ? db.prepare('SELECT * FROM buybacks WHERE id = ? AND tenantId = ?').get(id, tenantId)
-      : db.prepare('SELECT * FROM buybacks WHERE id = ?').get(id)
+    tenantId ? db.prepare(query).get(id, tenantId) : db.prepare(query).get(id)
   ) as Parameters<typeof mapBuybackRow>[0] | undefined;
   return row ? mapBuybackRow(row) : null;
 }

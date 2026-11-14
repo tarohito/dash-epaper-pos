@@ -11,7 +11,6 @@ import Tooltip from '../Tooltip';
 import { Tenant, UserAccount, UserRole } from '../../types';
 
 interface HeaderProps {
-  activeMenu: string;
   onSelectMenu: (menu: string) => void;
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
@@ -39,7 +38,6 @@ function getInitials(name: string): string {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeMenu,
   onSelectMenu,
   isSidebarCollapsed,
   onToggleSidebar,
@@ -117,18 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* 2. ACTIVE PAGE INDICATOR (Center - Horizontally Centered across header) */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center text-center pointer-events-none z-10">
-        <div className="pointer-events-auto flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-          <span className="text-gray-400 font-medium hidden md:inline">Menu</span>
-          <span className="text-gray-300 hidden md:inline">/</span>
-          <span className="text-orange-600 font-bold bg-orange-50/90 px-2.5 py-1 rounded-md border border-orange-200/60 text-xs sm:text-sm whitespace-nowrap shadow-none">
-            {activeMenu}
-          </span>
-        </div>
-      </div>
-
-      {/* 3. RIGHT ICONS (Notification & User Profile - Aligned right) */}
+      {/* 2. RIGHT ICONS (Notification & User Profile - Aligned right) */}
       <div className="flex-1 flex items-center justify-end gap-1 sm:gap-2 shrink-0">
         <Tooltip content={hasNotification ? 'Ada notifikasi baru' : 'Tidak ada notifikasi'} side="bottom" sideOffset={6}>
           <button

@@ -21,6 +21,7 @@ import { SearchInput } from '../common/SearchInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
 import Tooltip from '../Tooltip';
+import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 import { formatIDR } from '../../utils/formatters';
 import {
   ModalShell,
@@ -484,38 +485,31 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                     <span className="text-xs font-semibold text-gray-600">
                       {promo.productIds.length} SKU Terdampak
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <Tooltip content="Lihat Detail" side="top">
-                        <button
-                          type="button"
-                          onClick={() => setDetailPromo(promo)}
-                          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                          aria-label="Lihat Detail"
-                        >
-                          <Eye size={15} />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="Edit Promo" side="top">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(promo)}
-                          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                          aria-label="Edit Promo"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="Hapus Promo" side="top">
-                        <button
-                          type="button"
-                          onClick={() => setDeletingPromo(promo)}
-                          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                          aria-label="Hapus Promo"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </Tooltip>
-                    </div>
+                    <ActionDropdownMenu
+                      ariaLabel={`Aksi untuk ${promo.name}`}
+                      items={[
+                        {
+                          id: 'detail',
+                          label: 'Lihat Detail',
+                          icon: <Eye size={14} />,
+                          onClick: () => setDetailPromo(promo),
+                        },
+                        {
+                          id: 'edit',
+                          label: 'Edit Promo',
+                          icon: <Pencil size={14} />,
+                          onClick: () => handleOpenEditModal(promo),
+                        },
+                        {
+                          id: 'delete',
+                          label: 'Hapus Promo',
+                          icon: <Trash2 size={14} />,
+                          tone: 'danger',
+                          dividerBefore: true,
+                          onClick: () => setDeletingPromo(promo),
+                        },
+                      ]}
+                    />
                   </div>
                 </div>
               ))
@@ -685,40 +679,31 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                       </td>
 
                       <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center justify-center gap-1.5">
-                          <Tooltip content="Lihat Detail" side="top">
-                            <button
-                              type="button"
-                              onClick={() => setDetailPromo(promo)}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                              aria-label="Lihat Detail"
-                            >
-                              <Eye size={15} />
-                            </button>
-                          </Tooltip>
-
-                          <Tooltip content="Edit Promo" side="top">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(promo)}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                              aria-label="Edit Promo"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                          </Tooltip>
-
-                          <Tooltip content="Hapus Promo" side="top">
-                            <button
-                              type="button"
-                              onClick={() => setDeletingPromo(promo)}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                              aria-label="Hapus Promo"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </Tooltip>
-                        </div>
+                        <ActionDropdownMenu
+                          ariaLabel={`Aksi untuk ${promo.name}`}
+                          items={[
+                            {
+                              id: 'detail',
+                              label: 'Lihat Detail',
+                              icon: <Eye size={14} />,
+                              onClick: () => setDetailPromo(promo),
+                            },
+                            {
+                              id: 'edit',
+                              label: 'Edit Promo',
+                              icon: <Pencil size={14} />,
+                              onClick: () => handleOpenEditModal(promo),
+                            },
+                            {
+                              id: 'delete',
+                              label: 'Hapus Promo',
+                              icon: <Trash2 size={14} />,
+                              tone: 'danger',
+                              dividerBefore: true,
+                              onClick: () => setDeletingPromo(promo),
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))

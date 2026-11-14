@@ -33,6 +33,7 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
 
   const expectedCash = Math.max(0, openingCash + summary.salesCash - summary.buybackCash);
   const variance = actualCash - expectedCash;
+  const nonCashTotal = summary.salesDebit + summary.salesTransfer + summary.salesQris;
 
   useEffect(() => {
     if (isOpen) {
@@ -68,9 +69,9 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
-      title="Konfirmasi Tutup Kasir & Rekonsiliasi Shift"
-      subtitle={`Tanggal: ${shiftDate} · Petugas: ${currentUser.fullName} · Cakupan: ${
-        scope === 'outlet' ? 'Seluruh Outlet' : 'Shift Kasir Saya'
+      title="Hitung Uang Laci & Tutup Kasir"
+      subtitle={`Tanggal: ${shiftDate} · Petugas: ${currentUser.fullName} · ${
+        scope === 'outlet' ? 'Semua Kasir Outlet' : 'Transaksi Saya'
       }`}
       disableEscapeClose={isSubmitting}
       footer={
@@ -96,31 +97,12 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
       }
     >
       <form id="shift-closing-form" onSubmit={handleSubmit} className="space-y-4">
-        {/* Ringkasan Pergerakan Kas Tunai */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-          <div className="p-3 rounded-lg bg-gray-50 border border-gray-200/80">
-            <span className="text-gray-500 block">Penjualan Tunai ({summary.totalSalesCount} nota total)</span>
-            <span className="font-mono font-bold text-sm text-emerald-700 mt-0.5 block tabular-nums">
-              + {formatIDR(summary.salesCash)}
-            </span>
-          </div>
-          <div className="p-3 rounded-lg bg-gray-50 border border-gray-200/80">
-            <span className="text-gray-500 block">Buyback Tunai ({summary.totalBuybackCount} nota total)</span>
-            <span className="font-mono font-bold text-sm text-rose-700 mt-0.5 block tabular-nums">
-              - {formatIDR(summary.buybackCash)}
-            </span>
-          </div>
-          <div className="p-3 rounded-lg bg-orange-50/70 border border-orange-200">
-            <span className="text-orange-700 font-medium block">Non-Tunai (Debit/TF/QRIS)</span>
-            <span className="font-mono font-bold text-sm text-orange-800 mt-0.5 block tabular-nums">
-              {formatIDR(summary.salesDebit + summary.salesTransfer + summary.salesQris)}
-            </span>
-          </div>
-        </div>
-
+        {/* Langkah 1: Pilih Shift & Modal Awal */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Periode / Nama Shift</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              1. Pilih Jam / Nama Shift
+            </label>
             <CustomSelect
               value={shiftLabel}
               onChange={setShiftLabel}
@@ -134,7 +116,9 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Modal Awal Kas Laci (Rp)</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              2. Uang Modal Awal di Laci (Rp)
+            </label>
             <NumericInput
               prefix="Rp"
               value={openingCash}
@@ -142,30 +126,71 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
               min={0}
               className="h-10 px-3 text-sm font-mono font-bold bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
             />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Uang kembalian yang disiapkan sebelum toko buka.
+            </p>
           </div>
         </div>
 
-        {/* Kas Seharusnya vs Kas Fisik */}
-        <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-700">
-              <Calculator size={16} className="text-orange-500" />
-              <span>Kas Seharusnya di Laci (Sistem)</span>
+        {/* Langkah 2: Hitungan Otomatis Sistem */}
+        <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 space-y-2.5">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-800 uppercase tracking-wider pb-1 border-b border-gray-200/80">
+            <Calculator size={14} className="text-orange-500" />
+            <span>3. Hitungan Uang Laci Menurut Sistem</span>
+          </div>
+
+          <div className="space-y-1.5 text-xs sm:text-sm">
+            <div className="flex items-center justify-between text-gray-600">
+              <span>Modal Awal Laci</span>
+              <span className="font-mono font-semibold text-gray-900 tabular-nums">
+                {formatIDR(openingCash)}
+              </span>
             </div>
-            <span className="font-mono font-bold text-base text-gray-900 tabular-nums">
+            <div className="flex items-center justify-between text-emerald-700">
+              <span>(+) Penjualan Tunai ({summary.totalSalesCount} nota total)</span>
+              <span className="font-mono font-semibold tabular-nums">
+                + {formatIDR(summary.salesCash)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-rose-700">
+              <span>(−) Bayar Buyback Tunai ({summary.totalBuybackCount} nota total)</span>
+              <span className="font-mono font-semibold tabular-nums">
+                − {formatIDR(summary.buybackCash)}
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-2.5 border-t border-gray-200 flex items-center justify-between gap-3">
+            <span className="text-xs sm:text-sm font-bold text-gray-900">
+              Uang yang Seharusnya Ada di Laci
+            </span>
+            <span className="font-mono font-bold text-base sm:text-lg text-gray-900 tabular-nums">
               {formatIDR(expectedCash)}
             </span>
           </div>
 
+          {nonCashTotal > 0 && (
+            <p className="text-[11px] text-gray-500 pt-1">
+              Info: Pembayaran non-tunai (EDC/Transfer/QRIS) sebesar{' '}
+              <span className="font-mono font-semibold text-gray-700">{formatIDR(nonCashTotal)}</span>{' '}
+              tidak masuk hitungan laci karena langsung ke rekening.
+            </p>
+          )}
+        </div>
+
+        {/* Langkah 3: Input Uang Fisik & Hasil Selisih */}
+        <div className="rounded-xl border border-orange-200/90 bg-orange-50/30 p-4 space-y-3">
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
-              <label className="text-xs font-semibold text-gray-700">Uang Tunai Fisik Dihitung (Rp)</label>
+              <label className="text-xs font-bold text-gray-900">
+                4. Berapa Uang Tunai Fisik yang Anda Hitung di Laci?
+              </label>
               <button
                 type="button"
                 onClick={() => setActualCash(expectedCash)}
                 className="text-xs font-semibold text-orange-600 hover:text-orange-700 cursor-pointer"
               >
-                Samakan dgn Sistem
+                Isi Pas / Samakan
               </button>
             </div>
             <NumericInput
@@ -190,10 +215,10 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
               {variance === 0 ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
               <span>
                 {variance === 0
-                  ? 'Selisih Kas: Klop / Sesuai Sistem'
+                  ? 'Uang Laci Pas (Klop / Tidak Ada Selisih)'
                   : variance > 0
-                  ? 'Selisih Kas: Lebih (Surplus)'
-                  : 'Selisih Kas: Kurang (Shortage)'}
+                  ? 'Uang Fisik Lebih Banyak dari Sistem'
+                  : 'Uang Fisik Kurang dari Hitungan Sistem'}
               </span>
             </div>
             <span className="font-mono font-bold tabular-nums">
@@ -203,13 +228,15 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Catatan Serah Terima / Audit Shift</label>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+            5. Catatan Tambahan / Serah Terima (Opsional)
+          </label>
           <textarea
             rows={2}
             value={notes}
             onChange={e => setNotes(e.target.value)}
             className="w-full p-3 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
-            placeholder="Contoh: Semua bukti EDC BCA & QRIS sesuai, uang pecahan diserahkan ke brankas."
+            placeholder="Contoh: Semua struk EDC & QRIS sudah cocok, uang laci diserahkan ke brankas."
           />
         </div>
       </form>

@@ -252,6 +252,8 @@ export const posApi = {
       })}`,
       { signal }
     ),
+  getTransactionById: (id: string) =>
+    requestJson<Transaction>(`/api/transactions/${encodeURIComponent(id)}`),
   createTransaction: (payload: {
     cashier: string;
     customerId?: string;

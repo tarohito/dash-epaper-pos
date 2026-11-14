@@ -8,7 +8,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { CategoryStatsItem } from '../../types';
-import Tooltip from '../Tooltip';
+import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { posApi } from '../../services/api';
 import { usePagination } from '../../hooks/usePagination';
@@ -313,33 +313,27 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Tooltip content="Edit Kategori" side="top">
-                          <button
-                            type="button"
-                            onClick={() => onEditCategory(row.name)}
-                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                            aria-label="Edit Kategori"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                        </Tooltip>
-
-                        <Tooltip
-                          content={row.count > 0 ? 'Masih dipakai produk' : 'Hapus Kategori'}
-                          side="top"
-                        >
-                          <button
-                            type="button"
-                            disabled={row.count > 0}
-                            onClick={() => setDeletingCategory(row.name)}
-                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                            aria-label="Hapus Kategori"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </Tooltip>
-                      </div>
+                      <ActionDropdownMenu
+                        ariaLabel={`Aksi untuk ${row.name}`}
+                        items={[
+                          {
+                            id: 'edit',
+                            label: 'Edit Kategori',
+                            icon: <Pencil size={14} />,
+                            onClick: () => onEditCategory(row.name),
+                          },
+                          {
+                            id: 'delete',
+                            label: 'Hapus Kategori',
+                            icon: <Trash2 size={14} />,
+                            tone: 'danger',
+                            dividerBefore: true,
+                            disabled: row.count > 0,
+                            disabledReason: row.count > 0 ? 'Masih dipakai produk' : undefined,
+                            onClick: () => setDeletingCategory(row.name),
+                          },
+                        ]}
+                      />
                     </div>
                   </div>
                 );
@@ -473,33 +467,27 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
                           </span>
                         </td>
                         <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                          <div className="inline-flex items-center justify-center gap-1.5">
-                            <Tooltip content="Edit Kategori" side="top">
-                              <button
-                                type="button"
-                                onClick={() => onEditCategory(row.name)}
-                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                aria-label="Edit Kategori"
-                              >
-                                <Pencil size={15} />
-                              </button>
-                            </Tooltip>
-
-                            <Tooltip
-                              content={row.count > 0 ? 'Masih dipakai produk' : 'Hapus Kategori'}
-                              side="top"
-                            >
-                              <button
-                                type="button"
-                                disabled={row.count > 0}
-                                onClick={() => setDeletingCategory(row.name)}
-                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                                aria-label="Hapus Kategori"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </Tooltip>
-                          </div>
+                          <ActionDropdownMenu
+                            ariaLabel={`Aksi untuk ${row.name}`}
+                            items={[
+                              {
+                                id: 'edit',
+                                label: 'Edit Kategori',
+                                icon: <Pencil size={14} />,
+                                onClick: () => onEditCategory(row.name),
+                              },
+                              {
+                                id: 'delete',
+                                label: 'Hapus Kategori',
+                                icon: <Trash2 size={14} />,
+                                tone: 'danger',
+                                dividerBefore: true,
+                                disabled: row.count > 0,
+                                disabledReason: row.count > 0 ? 'Masih dipakai produk' : undefined,
+                                onClick: () => setDeletingCategory(row.name),
+                              },
+                            ]}
+                          />
                         </td>
                       </tr>
                     );

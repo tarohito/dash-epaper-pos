@@ -35,6 +35,7 @@ export interface TransactionItem {
   id: number;
   sku: string;
   name: string;
+  category?: string;
   berat: number;
   harga: number;
   qty: number;
@@ -63,7 +64,10 @@ export interface Transaction {
   timeStr: string;
   cashier: string;
   customerId?: string;
+  customerMemberCode?: string;
   customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
   items: TransactionItem[];
   totalQty: number;
   totalBerat: number;
@@ -98,6 +102,7 @@ export interface BuybackItem {
   branchName?: string;
   cashierName?: string;
   customerId?: string;
+  customerMemberCode?: string;
   customerName: string;
   customerPhone: string;
   customerNik?: string;

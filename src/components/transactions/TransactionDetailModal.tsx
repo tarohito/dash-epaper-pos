@@ -76,7 +76,9 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
           <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl text-white shadow-xs flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-100 block">
-                Total Nilai Transaksi (Termasuk PPN 11%)
+                {transaction.tax > 0
+                  ? 'Total Nilai Transaksi (Termasuk PPN)'
+                  : 'Total Nilai Transaksi (Non-PKP / Bebas PPN)'}
               </span>
               <div className="mt-0.5">
                 <MoneyAmount
@@ -113,6 +115,20 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                   <span className="text-gray-500">Nama Pelanggan</span>
                   <span className="font-semibold text-gray-900 text-right">{transaction.customerName}</span>
                 </div>
+                {transaction.customerMemberCode && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-500">No. Pelanggan</span>
+                    <span className="font-mono font-semibold text-gray-800 text-right">
+                      {transaction.customerMemberCode}
+                    </span>
+                  </div>
+                )}
+                {transaction.customerPhone && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-500">Telp / HP</span>
+                    <span className="font-mono text-gray-800 text-right">{transaction.customerPhone}</span>
+                  </div>
+                )}
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-500">Kasir Bertugas</span>
                   <span className="font-medium text-gray-800 text-right">{transaction.cashier}</span>
@@ -251,7 +267,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">PPN (11%)</span>
+                <span className="text-gray-600">{transaction.tax > 0 ? 'PPN / Pajak' : 'PPN (Non-PKP)'}</span>
                 <span className="font-mono font-semibold text-gray-900 tabular-nums">
                   {formatIDR(transaction.tax)}
                 </span>

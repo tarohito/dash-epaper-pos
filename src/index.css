@@ -127,11 +127,13 @@
 @media print {
   @page {
     size: auto;
-    margin: 5mm;
+    margin: 4mm;
   }
 
-  html, body {
+  html, body, #root {
     background: white !important;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
@@ -154,15 +156,50 @@
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
-    max-width: 210mm !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
     color: black !important;
-    
     border: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  .gold-invoice-sheet {
+    border: none !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 2mm 3mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .gold-invoice-sheet[data-paper='a6'] {
+    padding: 1.5mm 2mm !important;
+    font-size: 9px !important;
+  }
+
+  body.printing-sale #printable-buyback-receipt,
+  body.printing-sale #printable-buyback-receipt *,
+  body.printing-sale #printable-shift-report,
+  body.printing-sale #printable-shift-report *,
+  body.printing-sale #printable-barcode-sheet,
+  body.printing-sale #printable-barcode-sheet * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.printing-buyback #printable-receipt,
+  body.printing-buyback #printable-receipt *,
+  body.printing-buyback #printable-shift-report,
+  body.printing-buyback #printable-shift-report *,
+  body.printing-buyback #printable-barcode-sheet,
+  body.printing-buyback #printable-barcode-sheet * {
+    display: none !important;
+    visibility: hidden !important;
   }
 
   body.printing-barcode #printable-receipt,
@@ -181,6 +218,18 @@
   body.printing-shift #printable-buyback-receipt *,
   body.printing-shift #printable-barcode-sheet,
   body.printing-shift #printable-barcode-sheet * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body:not(.printing-sale) #printable-receipt,
+  body:not(.printing-sale) #printable-receipt * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body:not(.printing-buyback) #printable-buyback-receipt,
+  body:not(.printing-buyback) #printable-buyback-receipt * {
     display: none !important;
     visibility: hidden !important;
   }

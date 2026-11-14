@@ -15,7 +15,7 @@ import { formatIDR } from '../../utils/formatters';
 import { PaginationControls } from '../common/PaginationControls';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { TransactionDetailModal } from './TransactionDetailModal';
-import Tooltip from '../Tooltip';
+import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 import { posApi } from '../../services/api';
 import { useDebounce } from '../../hooks/useDebounce';
 import { SearchInput } from '../common/SearchInput';
@@ -68,6 +68,7 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
 
   const [voidingTx, setVoidingTx] = useState<Transaction | null>(null);
   const [isVoiding, setIsVoiding] = useState(false);
+  const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -134,6 +135,31 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
     setSortDir(next.sortDir);
   };
 
+  const handleOpenDetail = async (tx: Transaction) => {
+    setLoadingActionId(tx.id);
+    try {
+      const full = await posApi.getTransactionById(tx.id);
+      setSelectedDetailTx(full);
+    } catch {
+      setSelectedDetailTx(tx);
+    } finally {
+      setLoadingActionId(null);
+    }
+  };
+
+  const handleOpenPrint = async (tx: Transaction) => {
+    setLoadingActionId(tx.id);
+    try {
+      const full = await posApi.getTransactionById(tx.id);
+      onSelectReceipt(full);
+    } catch {
+      showToast('warning', 'Detail terbaru gagal dimuat dari server, mencetak data nota dari daftar.');
+      onSelectReceipt(tx);
+    } finally {
+      setLoadingActionId(null);
+    }
+  };
+
   const handleConfirmVoid = async (restoreStock: boolean, reason: string) => {
     if (!voidingTx) return;
     setIsVoiding(true);
@@ -145,19 +171,41 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
     }
   };
 
-  const getPaymentBadgeLabel = (tx: Transaction): string => {
-    if (tx.status === 'void') return 'Dibatalkan';
+  const getPaymentBadgeInfo = (tx: Transaction): { label: string; badgeClass: string } => {
+    if (tx.status === 'void') {
+      return {
+        label: 'Dibatalkan',
+        badgeClass: 'bg-red-50 text-red-700 border border-red-200/80',
+      };
+    }
     switch (tx.paymentMethod) {
       case 'cash':
-        return 'Tunai';
+        return {
+          label: 'Tunai',
+          badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
+        };
       case 'debit':
-        return tx.paymentDetails.debitBank ? `Debit (${tx.paymentDetails.debitBank})` : 'Debit EDC';
+        return {
+          label: tx.paymentDetails.debitBank ? `Debit (${tx.paymentDetails.debitBank})` : 'Debit EDC',
+          badgeClass: 'bg-indigo-50 text-indigo-700 border border-indigo-200/80',
+        };
       case 'transfer':
-        return tx.paymentDetails.transferBank ? `Transfer (${tx.paymentDetails.transferBank})` : 'Transfer Bank';
+        return {
+          label: tx.paymentDetails.transferBank
+            ? `Transfer (${tx.paymentDetails.transferBank})`
+            : 'Transfer Bank',
+          badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200/80',
+        };
       case 'qris':
-        return 'QRIS GPN';
+        return {
+          label: 'QRIS GPN',
+          badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200/80',
+        };
       default:
-        return tx.paymentMethod;
+        return {
+          label: tx.paymentMethod,
+          badgeClass: 'bg-gray-100 text-gray-700 border border-gray-200',
+        };
     }
   };
 
@@ -297,104 +345,55 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
         )}
 
         <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-2xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs sm:text-sm text-left border-collapse">
-              <thead className="bg-gray-50/80 text-gray-500 uppercase font-semibold text-xs border-b border-gray-200 tracking-wider">
-                <tr>
-                  <SortableTh
-                    label="No. Transaksi"
-                    sortKey="newest"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'desc')}
-                    className="py-3 px-3.5 sm:px-4"
-                  />
-                  <SortableTh
-                    label="Pelanggan"
-                    sortKey="customerName"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'asc')}
-                    className="py-3 px-3 sm:px-4"
-                  />
-                  <SortableTh
-                    label="Item & Rincian"
-                    sortKey="paymentMethod"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'asc')}
-                    className="py-3 px-3 sm:px-4"
-                  />
-                  <SortableTh
-                    label="Berat"
-                    sortKey="totalBerat"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'desc')}
-                    align="center"
-                    className="py-3 px-3 sm:px-4"
-                  />
-                  <SortableTh
-                    label="Total Bayar"
-                    sortKey="grandTotal"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'desc')}
-                    align="right"
-                    className="py-3 px-3 sm:px-4"
-                  />
-                  <th className="py-3 px-3 sm:px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                {isLoading && items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-gray-400">
-                      <div className="inline-flex items-center gap-2">
-                        <Loader2 size={18} className="animate-spin text-orange-500" />
-                        <span>Memuat transaksi penjualan...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-gray-400">
-                      <ReceiptText size={36} className="mx-auto mb-2 text-gray-300" />
-                      <p className="text-sm font-semibold text-gray-600">Tidak ada transaksi penjualan</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {txSearchQuery
-                          ? 'Coba gunakan kata kunci pencarian yang lain.'
-                          : 'Belum ada transaksi penjualan kasir yang tercatat.'}
-                      </p>
-                      {!txSearchQuery && (
-                        <button
-                          type="button"
-                          onClick={onNavigateToPos}
-                          className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200"
-                        >
-                          <Plus size={14} />
-                          <span>Buat Transaksi Penjualan Baru</span>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ) : (
-                  items.map(tx => {
-                    const isVoid = tx.status === 'void';
-                    const firstItem = tx.items[0];
-                    const remainingItems = Math.max(0, tx.items.length - 1);
-                    return (
-                      <tr
-                        key={tx.id}
-                        className={`transition-colors ${isVoid ? 'bg-red-50/20 opacity-80' : 'hover:bg-orange-50/25'}`}
-                      >
-                        <td className="py-3.5 px-3.5 sm:px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-gray-900 text-xs sm:text-sm">
+          {isLoading && items.length === 0 ? (
+            <div className="py-12 px-4 flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-400">
+              <Loader2 size={18} className="animate-spin text-orange-500" />
+              <span>Memuat transaksi penjualan...</span>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="py-12 px-4 text-center text-gray-400">
+              <ReceiptText size={36} className="mx-auto mb-2 text-gray-300" />
+              <p className="text-sm font-semibold text-gray-600">Tidak ada transaksi penjualan</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {txSearchQuery
+                  ? 'Coba gunakan kata kunci pencarian yang lain.'
+                  : 'Belum ada transaksi penjualan kasir yang tercatat.'}
+              </p>
+              {!txSearchQuery && (
+                <button
+                  type="button"
+                  onClick={onNavigateToPos}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200"
+                >
+                  <Plus size={14} />
+                  <span>Buat Transaksi Penjualan Baru</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* MOBILE CARDS (md:hidden) */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {items.map(tx => {
+                  const isVoid = tx.status === 'void';
+                  const firstItem = tx.items[0];
+                  const remainingItems = Math.max(0, tx.items.length - 1);
+                  const badge = getPaymentBadgeInfo(tx);
+                  return (
+                    <div
+                      key={tx.id}
+                      className={`p-4 space-y-2.5 transition-colors ${
+                        isVoid ? 'bg-red-50/20 opacity-80' : 'hover:bg-orange-50/25'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-gray-900 text-xs">
                               {tx.invoiceNo}
                             </span>
                             {isVoid && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-bold uppercase bg-red-100 text-red-700 border border-red-200 rounded">
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-100 text-red-700 border border-red-200 rounded">
                                 VOID
                               </span>
                             )}
@@ -402,103 +401,258 @@ export const DailyTransactionsView: React.FC<DailyTransactionsViewProps> = ({
                           <span className="text-xs text-gray-500 block mt-0.5 tabular-nums">
                             {tx.dateStr} &bull; {tx.timeStr}
                           </span>
-                          {isVoid && tx.voidReason && (
-                            <span className="text-xs text-red-600 block mt-0.5 max-w-[200px] truncate" title={tx.voidReason}>
-                              Alasan: {tx.voidReason}
+                        </div>
+                        <span className={`px-2 py-0.5 text-[11px] font-semibold rounded shrink-0 ${badge.badgeClass}`}>
+                          {badge.label}
+                        </span>
+                      </div>
+
+                      <div className="text-xs space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-gray-900 truncate">{tx.customerName}</span>
+                          <span className="text-gray-500 shrink-0">Kasir: {tx.cashier}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-gray-600">
+                          <span className="truncate">
+                            {firstItem ? firstItem.name : '-'}
+                            {remainingItems > 0 ? ` (+${remainingItems} lain)` : ''}
+                          </span>
+                          <span className="font-mono font-bold text-gray-800 shrink-0">
+                            {tx.totalQty} pcs &bull; {tx.totalBerat.toFixed(2)} gr
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                        <span
+                          className={`font-mono font-bold text-sm tabular-nums ${
+                            isVoid ? 'line-through text-gray-400' : 'text-gray-900'
+                          }`}
+                        >
+                          {formatIDR(tx.grandTotal)}
+                        </span>
+                        <ActionDropdownMenu
+                          ariaLabel={`Aksi untuk ${tx.invoiceNo}`}
+                          items={[
+                            {
+                              id: 'detail',
+                              label: loadingActionId === tx.id ? 'Memuat Detail...' : 'Lihat Detail',
+                              icon: <Eye size={14} />,
+                              onClick: () => void handleOpenDetail(tx),
+                            },
+                            {
+                              id: 'print',
+                              label: loadingActionId === tx.id ? 'Menyiapkan Nota...' : 'Cetak Nota',
+                              icon: <Printer size={14} />,
+                              tone: 'primary',
+                              onClick: () => void handleOpenPrint(tx),
+                            },
+                            ...(canVoid
+                              ? [
+                                  {
+                                    id: 'void',
+                                    label: 'Void Transaksi',
+                                    icon: <RotateCcw size={14} />,
+                                    tone: 'warning' as const,
+                                    dividerBefore: true,
+                                    disabled: isVoid,
+                                    disabledReason: isVoid ? 'Transaksi sudah di-void' : undefined,
+                                    onClick: () => setVoidingTx(tx),
+                                  },
+                                ]
+                              : []),
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* DESKTOP TABLE (hidden md:block) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-xs sm:text-sm text-left border-collapse">
+                  <thead className="bg-gray-50/90 text-gray-500 uppercase font-semibold text-[11px] border-b border-gray-200 tracking-wider">
+                    <tr>
+                      <SortableTh
+                        label="No. Transaksi"
+                        sortKey="newest"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'desc')}
+                        className="py-3 px-4 w-[185px]"
+                      />
+                      <SortableTh
+                        label="Pelanggan"
+                        sortKey="customerName"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'asc')}
+                        className="py-3 px-4 min-w-[165px]"
+                      />
+                      <SortableTh
+                        label="Item Perhiasan"
+                        sortKey="paymentMethod"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'asc')}
+                        className="py-3 px-4 min-w-[220px]"
+                      />
+                      <SortableTh
+                        label="Berat"
+                        sortKey="totalBerat"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'desc')}
+                        align="right"
+                        className="py-3 px-4 w-[110px]"
+                      />
+                      <SortableTh
+                        label="Total Bayar"
+                        sortKey="grandTotal"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'desc')}
+                        align="right"
+                        className="py-3 px-4 w-[175px]"
+                      />
+                      <th className="py-3 px-3 text-center w-[72px]">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                    {items.map(tx => {
+                      const isVoid = tx.status === 'void';
+                      const firstItem = tx.items[0];
+                      const remainingItems = Math.max(0, tx.items.length - 1);
+                      const badge = getPaymentBadgeInfo(tx);
+                      return (
+                        <tr
+                          key={tx.id}
+                          className={`transition-colors ${
+                            isVoid ? 'bg-red-50/20 opacity-80' : 'hover:bg-orange-50/30'
+                          }`}
+                        >
+                          <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-gray-900 text-xs sm:text-sm">
+                                {tx.invoiceNo}
+                              </span>
+                              {isVoid && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-100 text-red-700 border border-red-200 rounded">
+                                  VOID
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500 block mt-0.5 tabular-nums">
+                              {tx.dateStr} &bull; {tx.timeStr}
                             </span>
-                          )}
-                        </td>
+                          </td>
 
-                        <td className="py-3.5 px-3 sm:px-4 min-w-[140px]">
-                          <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
-                            {tx.customerName}
-                          </span>
-                          <span className="text-xs text-gray-500 block mt-0.5 truncate max-w-[190px]">
-                            Kasir: {tx.cashier}
-                          </span>
-                        </td>
-
-                        <td className="py-3.5 px-3 sm:px-4 min-w-[180px]">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-semibold text-gray-900 text-xs sm:text-sm truncate max-w-[200px]">
-                              {firstItem ? `${firstItem.name} (${firstItem.qty}x)` : '-'}
+                          <td className="py-3.5 px-4 align-middle max-w-[210px]">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-bold text-gray-900 truncate text-xs sm:text-sm">
+                                {tx.customerName}
+                              </span>
+                              {tx.customerMemberCode && (
+                                <span className="font-mono text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold shrink-0">
+                                  {tx.customerMemberCode}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500 block mt-0.5 truncate">
+                              Kasir: {tx.cashier}
                             </span>
-                            <span className="text-xs bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200 font-mono">
-                              {tx.totalQty} pcs
-                            </span>
-                          </div>
-                          <span className="text-xs text-gray-500 block mt-0.5 truncate max-w-[240px]">
-                            {remainingItems > 0
-                              ? `+${remainingItems} item lain (${tx.items.map(it => it.sku).join(', ')})`
-                              : firstItem
-                              ? `SKU: ${firstItem.sku}`
-                              : '-'}
-                          </span>
-                        </td>
+                          </td>
 
-                        <td className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap font-mono font-bold text-gray-900 text-xs sm:text-sm">
-                          {tx.totalBerat.toFixed(2)} gr
-                        </td>
-
-                        <td className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">
-                          <span
-                            className={`font-mono font-bold text-sm block tabular-nums ${
-                              isVoid ? 'line-through text-gray-400' : 'text-gray-900'
-                            }`}
-                          >
-                            {formatIDR(tx.grandTotal)}
-                          </span>
-                          <span className="inline-block mt-0.5 text-xs font-semibold px-2 py-0.5 rounded capitalize bg-gray-100 text-gray-600">
-                            {getPaymentBadgeLabel(tx)}
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                          <div className="inline-flex items-center justify-center gap-1.5">
-                            <Tooltip content="Lihat Detail" side="top">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedDetailTx(tx)}
-                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                aria-label="Lihat Detail"
+                          <td className="py-3.5 px-4 align-middle max-w-[280px]">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                className="font-semibold text-gray-900 text-xs sm:text-sm truncate"
+                                title={firstItem?.name}
                               >
-                                <Eye size={15} />
-                              </button>
-                            </Tooltip>
+                                {firstItem ? firstItem.name : '-'}
+                              </span>
+                              <span className="text-[11px] bg-amber-50 text-amber-800 font-bold px-1.5 py-0.5 rounded border border-amber-200 font-mono shrink-0">
+                                {tx.totalQty} pcs
+                              </span>
+                            </div>
+                            <span
+                              className={`text-xs block mt-0.5 truncate ${
+                                isVoid && tx.voidReason ? 'text-red-600' : 'text-gray-500 font-mono'
+                              }`}
+                              title={isVoid && tx.voidReason ? tx.voidReason : undefined}
+                            >
+                              {isVoid && tx.voidReason
+                                ? `Alasan: ${tx.voidReason}`
+                                : remainingItems > 0 && firstItem
+                                ? `SKU: ${firstItem.sku} (+${remainingItems} item lain)`
+                                : firstItem
+                                ? `SKU: ${firstItem.sku}`
+                                : '-'}
+                            </span>
+                          </td>
 
-                            {canVoid && (
-                              <Tooltip content={isVoid ? 'Sudah Di-void' : 'Void Transaksi'} side="top">
-                                <button
-                                  type="button"
-                                  disabled={isVoid}
-                                  onClick={() => setVoidingTx(tx)}
-                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-amber-50 text-gray-600 hover:text-amber-700 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                                  aria-label="Void Transaksi"
-                                >
-                                  <RotateCcw size={15} />
-                                </button>
-                              </Tooltip>
-                            )}
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle font-mono font-bold text-gray-900 text-xs sm:text-sm tabular-nums">
+                            {tx.totalBerat.toFixed(2)} gr
+                          </td>
 
-                            <Tooltip content="Cetak Nota" side="top">
-                              <button
-                                type="button"
-                                onClick={() => onSelectReceipt(tx)}
-                                className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                aria-label="Cetak Nota"
-                              >
-                                <Printer size={15} />
-                              </button>
-                            </Tooltip>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle">
+                            <span
+                              className={`font-mono font-bold text-sm block tabular-nums ${
+                                isVoid ? 'line-through text-gray-400' : 'text-gray-900'
+                              }`}
+                            >
+                              {formatIDR(tx.grandTotal)}
+                            </span>
+                            <span
+                              className={`inline-block mt-0.5 text-[11px] font-semibold px-2 py-0.5 rounded ${badge.badgeClass}`}
+                            >
+                              {badge.label}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-3 text-center whitespace-nowrap align-middle">
+                            <ActionDropdownMenu
+                              ariaLabel={`Aksi untuk ${tx.invoiceNo}`}
+                              items={[
+                                {
+                                  id: 'detail',
+                                  label: loadingActionId === tx.id ? 'Memuat Detail...' : 'Lihat Detail',
+                                  icon: <Eye size={14} />,
+                                  onClick: () => void handleOpenDetail(tx),
+                                },
+                                {
+                                  id: 'print',
+                                  label: loadingActionId === tx.id ? 'Menyiapkan Nota...' : 'Cetak Nota',
+                                  icon: <Printer size={14} />,
+                                  tone: 'primary',
+                                  onClick: () => void handleOpenPrint(tx),
+                                },
+                                ...(canVoid
+                                  ? [
+                                      {
+                                        id: 'void',
+                                        label: 'Void Transaksi',
+                                        icon: <RotateCcw size={14} />,
+                                        tone: 'warning' as const,
+                                        dividerBefore: true,
+                                        disabled: isVoid,
+                                        disabledReason: isVoid ? 'Transaksi sudah di-void' : undefined,
+                                        onClick: () => setVoidingTx(tx),
+                                      },
+                                    ]
+                                  : []),
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <PaginationControls
             currentPage={currentPage}

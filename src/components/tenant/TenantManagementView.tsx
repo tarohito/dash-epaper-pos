@@ -11,7 +11,7 @@ import { Tenant } from '../../types';
 import { usePagination } from '../../hooks/usePagination';
 import { PaginationControls } from '../common/PaginationControls';
 import { SearchInput } from '../common/SearchInput';
-import Tooltip from '../Tooltip';
+import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 import {
   ModalShell,
   MODAL_FOOTER_END_CLASS,
@@ -389,16 +389,33 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
                       </button>
                     )}
 
-                    <Tooltip content="Lihat Detail Outlet" side="top">
-                      <button
-                        type="button"
-                        onClick={() => setDetailTenant(tenant)}
-                        className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 hover:border-orange-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0"
-                        aria-label="Lihat Detail Outlet"
-                      >
-                        <Eye size={15} />
-                      </button>
-                    </Tooltip>
+                    <ActionDropdownMenu
+                      ariaLabel={`Aksi untuk ${tenant.name}`}
+                      buttonClassName="w-9 h-9"
+                      items={[
+                        {
+                          id: 'detail',
+                          label: 'Lihat Detail Outlet',
+                          icon: <Eye size={14} />,
+                          onClick: () => setDetailTenant(tenant),
+                        },
+                        isSelected
+                          ? {
+                              id: 'pos',
+                              label: 'Buka Kasir POS',
+                              icon: <Store size={14} />,
+                              tone: 'primary',
+                              onClick: onNavigateToPos,
+                            }
+                          : {
+                              id: 'activate',
+                              label: 'Pilih & Aktifkan Outlet',
+                              icon: <CheckCircle2 size={14} />,
+                              tone: 'primary',
+                              onClick: () => onSelectTenant(tenant.id),
+                            },
+                      ]}
+                    />
                   </div>
                 </div>
               );

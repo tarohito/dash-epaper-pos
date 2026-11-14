@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Users,
   Store,
-  BarChart3,
   BadgePercent,
   ChevronDown,
   ChevronLeft,
@@ -73,25 +72,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isSidebarCollapsed]);
 
   const allMenuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, roles: ['owner', 'branch_manager'] as UserRole[] },
-    { name: 'Kasir POS (Penjualan)', icon: ShoppingCart, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
-    { name: 'Buyback (Pembelian)', icon: Scale, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
-    { name: 'Transaksi', icon: ReceiptText, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
-    { name: 'Promo', icon: BadgePercent, roles: ['owner', 'branch_manager'] as UserRole[] },
+    { name: 'Dashboard', group: 'overview', icon: LayoutDashboard, roles: ['owner', 'branch_manager'] as UserRole[] },
+    { name: 'Kasir POS (Penjualan)', group: 'operations', icon: ShoppingCart, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Buyback (Pembelian)', group: 'operations', icon: Scale, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Transaksi', group: 'operations', icon: ReceiptText, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Rekap Shift', group: 'operations', icon: FileSpreadsheet, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
     {
       name: 'Produk',
+      group: 'catalog',
       icon: Package,
       roles: ['owner', 'branch_manager', 'cashier'] as UserRole[],
       submenus: [
-        { name: 'Daftar Kategori', icon: FolderTree, roles: ['owner', 'branch_manager'] as UserRole[] },
         { name: 'Daftar Barang', icon: Gem, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+        { name: 'Daftar Kategori', icon: FolderTree, roles: ['owner', 'branch_manager'] as UserRole[] },
       ],
     },
-    { name: 'Pelanggan', icon: Users, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
-    { name: 'Multi-Outlet', icon: Store, roles: ['owner', 'branch_manager'] as UserRole[] },
-    { name: 'Manajemen User', icon: UserCog, roles: ['owner'] as UserRole[] },
-    { name: 'Rekap Shift', icon: FileSpreadsheet, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
-    { name: 'Pengaturan', icon: Settings, roles: ['owner', 'branch_manager'] as UserRole[] },
+    { name: 'Pelanggan', group: 'catalog', icon: Users, roles: ['owner', 'branch_manager', 'cashier'] as UserRole[] },
+    { name: 'Promo', group: 'catalog', icon: BadgePercent, roles: ['owner', 'branch_manager'] as UserRole[] },
+    { name: 'Multi-Outlet', group: 'admin', icon: Store, roles: ['owner', 'branch_manager'] as UserRole[] },
+    { name: 'Manajemen User', group: 'admin', icon: UserCog, roles: ['owner'] as UserRole[] },
+    { name: 'Pengaturan', group: 'admin', icon: Settings, roles: ['owner', 'branch_manager'] as UserRole[] },
   ];
 
   const menuItems = allMenuItems
@@ -152,9 +152,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const hasSubmenus = !!menu.submenus && menu.submenus.length > 0;
             const isParentActive = activeMenu === menu.name;
             const isAnySubActive = hasSubmenus && menu.submenus.some(s => s.name === activeMenu);
+            const showGroupDivider = i > 0 && menuItems[i - 1].group !== menu.group;
 
             return (
-              <div key={i} className="flex flex-col">
+              <div key={menu.name} className="flex flex-col">
+                {showGroupDivider && (
+                  <div className="my-1.5 mr-3 border-t border-white/15" aria-hidden="true" />
+                )}
                 {/* Main Menu Button */}
                 <Tooltip content={menu.name} side="right" sideOffset={14} disabled={!isSidebarCollapsed}>
                   <button

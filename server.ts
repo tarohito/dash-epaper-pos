@@ -554,6 +554,20 @@ app.get('/api/transactions', (req, res) => {
   }
 });
 
+app.get('/api/transactions/:id', (req, res) => {
+  try {
+    const { activeTenantId } = getAuth(req);
+    const tx = getTransactionById(req.params.id, activeTenantId);
+    if (!tx) {
+      res.status(404).json({ error: 'Transaksi tidak ditemukan di outlet aktif.' });
+      return;
+    }
+    res.json(tx);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal memuat detail transaksi.' });
+  }
+});
+
 app.post('/api/transactions', (req, res) => {
   try {
     const auth = getAuth(req);
@@ -722,7 +736,8 @@ app.post('/api/transactions', (req, res) => {
     });
 
     const result = checkoutTx();
-    res.status(201).json(result);
+    const enriched = getTransactionById(result.transaction.id, tenantId) ?? result.transaction;
+    res.status(201).json({ transaction: enriched });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Gagal memproses transaksi.';
     const status = msg.includes('tidak mencukupi') || msg.includes('tidak ditemukan') ? 400 : 500;
@@ -996,7 +1011,7 @@ app.post('/api/buybacks', (req, res) => {
     });
 
     saveTx();
-    const created = getBuybackById(id);
+    const created = getBuybackById(id, tenantId);
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Gagal menyimpan transaksi buyback.' });

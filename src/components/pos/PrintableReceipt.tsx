@@ -1,17 +1,19 @@
 import React from 'react';
 import { Transaction, Tenant, StoreSettings } from '../../types';
-import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
+import { GoldInvoiceDocument, ReceiptPaperSize } from '../common/GoldInvoiceDocument';
 
 interface PrintableReceiptProps {
   receipt: Transaction | null;
   activeTenant?: Tenant;
   storeSettings?: StoreSettings;
+  paperSize?: ReceiptPaperSize;
 }
 
 export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
   receipt,
   activeTenant,
   storeSettings,
+  paperSize = 'a5',
 }) => {
   if (!receipt) return null;
 
@@ -22,6 +24,7 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
         type="sale"
         activeTenant={activeTenant}
         storeSettings={storeSettings}
+        paperSize={paperSize}
       />
     </div>
   );

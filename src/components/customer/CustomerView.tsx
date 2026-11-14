@@ -19,7 +19,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { SearchInput } from '../common/SearchInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
-import Tooltip from '../Tooltip';
+import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 import { MoneyAmount } from '../common/MoneyAmount';
 import {
   SortableTh,
@@ -434,39 +434,34 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                         </td>
 
                         <td className="py-3.5 px-4 align-top text-center whitespace-nowrap">
-                          <div className="inline-flex items-center justify-center gap-1.5">
-                            <Tooltip content="Edit Pelanggan" side="top">
-                              <button
-                                type="button"
-                                onClick={() => handleEdit(c)}
-                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                aria-label="Edit Pelanggan"
-                              >
-                                <Pencil size={15} />
-                              </button>
-                            </Tooltip>
-
-                            {canDelete && (
-                              <Tooltip
-                                content={
-                                  c.computedTx > 0 || c.buybackCount > 0
-                                    ? 'Ada riwayat transaksi'
-                                    : 'Hapus Pelanggan'
-                                }
-                                side="top"
-                              >
-                                <button
-                                  type="button"
-                                  disabled={c.computedTx > 0 || c.buybackCount > 0}
-                                  onClick={() => handleDelete(c)}
-                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                                  aria-label="Hapus Pelanggan"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </Tooltip>
-                            )}
-                          </div>
+                          <ActionDropdownMenu
+                            ariaLabel={`Aksi untuk ${c.name}`}
+                            items={[
+                              {
+                                id: 'edit',
+                                label: 'Edit Pelanggan',
+                                icon: <Pencil size={14} />,
+                                onClick: () => handleEdit(c),
+                              },
+                              ...(canDelete
+                                ? [
+                                    {
+                                      id: 'delete',
+                                      label: 'Hapus Pelanggan',
+                                      icon: <Trash2 size={14} />,
+                                      tone: 'danger' as const,
+                                      dividerBefore: true,
+                                      disabled: c.computedTx > 0 || c.buybackCount > 0,
+                                      disabledReason:
+                                        c.computedTx > 0 || c.buybackCount > 0
+                                          ? 'Ada riwayat transaksi'
+                                          : undefined,
+                                      onClick: () => handleDelete(c),
+                                    },
+                                  ]
+                                : []),
+                            ]}
+                          />
                         </td>
                       </tr>
                     );
@@ -558,37 +553,35 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
                       </p>
                     )}
 
-                    <div className="pt-2 border-t border-gray-100 flex items-center justify-end gap-1.5">
-                      <Tooltip content="Edit Pelanggan" side="top">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(c)}
-                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                            aria-label="Edit Pelanggan"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                        </Tooltip>
-                        {canDelete && (
-                          <Tooltip
-                            content={
-                              c.computedTx > 0 || c.buybackCount > 0
-                                ? 'Ada riwayat transaksi'
-                                : 'Hapus Pelanggan'
-                            }
-                            side="top"
-                          >
-                            <button
-                              type="button"
-                              disabled={c.computedTx > 0 || c.buybackCount > 0}
-                              onClick={() => handleDelete(c)}
-                              className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                              aria-label="Hapus Pelanggan"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </Tooltip>
-                        )}
+                    <div className="pt-2 border-t border-gray-100 flex items-center justify-end">
+                      <ActionDropdownMenu
+                        ariaLabel={`Aksi untuk ${c.name}`}
+                        items={[
+                          {
+                            id: 'edit',
+                            label: 'Edit Pelanggan',
+                            icon: <Pencil size={14} />,
+                            onClick: () => handleEdit(c),
+                          },
+                          ...(canDelete
+                            ? [
+                                {
+                                  id: 'delete',
+                                  label: 'Hapus Pelanggan',
+                                  icon: <Trash2 size={14} />,
+                                  tone: 'danger' as const,
+                                  dividerBefore: true,
+                                  disabled: c.computedTx > 0 || c.buybackCount > 0,
+                                  disabledReason:
+                                    c.computedTx > 0 || c.buybackCount > 0
+                                      ? 'Ada riwayat transaksi'
+                                      : undefined,
+                                  onClick: () => handleDelete(c),
+                                },
+                              ]
+                            : []),
+                        ]}
+                      />
                     </div>
                   </div>
                 );

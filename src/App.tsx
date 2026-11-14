@@ -153,6 +153,7 @@ const App: React.FC = () => {
   const [activeTenantId, setActiveTenantId] = useState<string>('tenant-tms-001');
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS);
   const [printingShift, setPrintingShift] = useState<ShiftClosingRecord | null>(null);
+  const [receiptPaperSize, setReceiptPaperSize] = useState<'a5' | 'a6'>('a5');
 
   // View-level invalidation counters so only active/affected views refresh from SQLite
   const [productsRefreshKey, setProductsRefreshKey] = useState(0);
@@ -431,21 +432,40 @@ const App: React.FC = () => {
   );
   const grandTotal = useMemo(() => subtotal + tax, [subtotal, tax]);
 
-  const handlePrintShift = useCallback((shift: ShiftClosingRecord) => {
-    setPrintingShift(shift);
-    document.body.classList.add('printing-shift');
-    const cleanup = () => {
-      document.body.classList.remove('printing-shift');
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    window.requestAnimationFrame(() => {
-      setTimeout(() => {
-        window.print();
-        setTimeout(cleanup, 1200);
-      }, 60);
-    });
-  }, []);
+  const triggerIsolatedPrint = useCallback(
+    (modeClass: 'printing-sale' | 'printing-buyback' | 'printing-shift') => {
+      document.body.classList.remove('printing-sale', 'printing-buyback', 'printing-shift', 'printing-barcode');
+      document.body.classList.add(modeClass);
+      const cleanup = () => {
+        document.body.classList.remove(modeClass);
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
+      window.requestAnimationFrame(() => {
+        setTimeout(() => {
+          window.print();
+          setTimeout(cleanup, 1200);
+        }, 80);
+      });
+    },
+    []
+  );
+
+  const handlePrintSaleReceipt = useCallback(() => {
+    triggerIsolatedPrint('printing-sale');
+  }, [triggerIsolatedPrint]);
+
+  const handlePrintBuybackReceipt = useCallback(() => {
+    triggerIsolatedPrint('printing-buyback');
+  }, [triggerIsolatedPrint]);
+
+  const handlePrintShift = useCallback(
+    (shift: ShiftClosingRecord) => {
+      setPrintingShift(shift);
+      triggerIsolatedPrint('printing-shift');
+    },
+    [triggerIsolatedPrint]
+  );
 
   // Cart Handlers
   const handleAddToCart = useCallback(
@@ -615,13 +635,14 @@ const App: React.FC = () => {
       setDashboardRefreshKey(k => k + 1);
       playCashRegisterChime(isSoundEnabled);
       setIsPaymentModalOpen(false);
+      setSelectedBuybackReceipt(null);
+      setIsBuybackReceiptModalOpen(false);
       setSelectedReceipt(result.transaction);
       setIsReceiptModalOpen(true);
       showToast('success', `Transaksi ${result.transaction.invoiceNo} berhasil disimpan.`);
       if (storeSettings.autoPrintReceipt) {
         setTimeout(() => {
-          document.body.classList.remove('printing-shift');
-          window.print();
+          handlePrintSaleReceipt();
         }, 250);
       }
     } catch (err) {
@@ -793,7 +814,6 @@ const App: React.FC = () => {
       <div className="flex flex-col h-full h-[100dvh] font-sans text-gray-800 overflow-hidden bg-gray-100">
         {/* Header */}
         <Header
-          activeMenu={activeMenu}
           onSelectMenu={handleGuardedSelectMenu}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -883,6 +903,8 @@ const App: React.FC = () => {
                     <DailyTransactionsView
                       refreshTrigger={transactionsRefreshKey}
                       onSelectReceipt={tx => {
+                        setSelectedBuybackReceipt(null);
+                        setIsBuybackReceiptModalOpen(false);
                         setSelectedReceipt(tx);
                         setIsReceiptModalOpen(true);
                       }}
@@ -933,6 +955,8 @@ const App: React.FC = () => {
                       onSaveBuyback={handleSaveBuyback}
                       onVoidBuyback={handleVoidBuyback}
                       onSelectReceipt={bb => {
+                        setSelectedReceipt(null);
+                        setIsReceiptModalOpen(false);
                         setSelectedBuybackReceipt(bb);
                         setIsBuybackReceiptModalOpen(true);
                       }}
@@ -1126,10 +1150,9 @@ const App: React.FC = () => {
               receipt={selectedReceipt}
               activeTenant={activeTenant}
               storeSettings={storeSettings}
-              onPrint={() => {
-                document.body.classList.remove('printing-shift');
-                window.print();
-              }}
+              paperSize={receiptPaperSize}
+              onPaperSizeChange={setReceiptPaperSize}
+              onPrint={handlePrintSaleReceipt}
               onViewDailyTransactions={() => setActiveMenu('Transaksi')}
             />
           )}
@@ -1141,10 +1164,9 @@ const App: React.FC = () => {
               receipt={selectedBuybackReceipt}
               activeTenant={activeTenant}
               storeSettings={storeSettings}
-              onPrint={() => {
-                document.body.classList.remove('printing-shift');
-                window.print();
-              }}
+              paperSize={receiptPaperSize}
+              onPaperSizeChange={setReceiptPaperSize}
+              onPrint={handlePrintBuybackReceipt}
             />
           )}
 
@@ -1189,11 +1211,13 @@ const App: React.FC = () => {
           receipt={selectedReceipt}
           activeTenant={activeTenant}
           storeSettings={storeSettings}
+          paperSize={receiptPaperSize}
         />
         <PrintableBuybackReceipt
           receipt={selectedBuybackReceipt}
           activeTenant={activeTenant}
           storeSettings={storeSettings}
+          paperSize={receiptPaperSize}
         />
         <PrintableShiftReport shift={printingShift} activeTenant={activeTenant} />
       </div>

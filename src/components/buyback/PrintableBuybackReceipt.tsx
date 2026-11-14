@@ -1,17 +1,19 @@
 import React from 'react';
 import { BuybackItem, Tenant, StoreSettings } from '../../types';
-import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
+import { GoldInvoiceDocument, ReceiptPaperSize } from '../common/GoldInvoiceDocument';
 
 interface PrintableBuybackReceiptProps {
   receipt: BuybackItem | null;
   activeTenant?: Tenant;
   storeSettings?: StoreSettings;
+  paperSize?: ReceiptPaperSize;
 }
 
 export const PrintableBuybackReceipt: React.FC<PrintableBuybackReceiptProps> = ({
   receipt,
   activeTenant,
   storeSettings,
+  paperSize = 'a5',
 }) => {
   if (!receipt) return null;
 
@@ -22,6 +24,7 @@ export const PrintableBuybackReceipt: React.FC<PrintableBuybackReceiptProps> = (
         type="buyback"
         activeTenant={activeTenant}
         storeSettings={storeSettings}
+        paperSize={paperSize}
       />
     </div>
   );

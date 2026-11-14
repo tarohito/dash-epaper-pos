@@ -3,7 +3,6 @@ import {
   Wallet,
   TrendingUp,
   Scale,
-  Ban,
   Download,
   Lock,
   Eye,
@@ -11,6 +10,9 @@ import {
   Loader2,
   CheckCircle2,
   AlertTriangle,
+  ArrowRight,
+  Clock,
+  FileText,
 } from 'lucide-react';
 import {
   ShiftClosingCreatePayload,
@@ -29,6 +31,7 @@ import { SortableTh, SortDirection, getNextColumnSort } from '../common/TableSor
 import { ShiftClosingModal } from './ShiftClosingModal';
 import { ShiftDetailModal } from './ShiftDetailModal';
 import { useToast } from '../../contexts/ToastContext';
+import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 
 interface ShiftClosingViewProps {
   currentUser: UserAccount;
@@ -45,6 +48,7 @@ export const ShiftClosingView: React.FC<ShiftClosingViewProps> = ({
   const isCashier = currentUser.role === 'cashier';
   const todayIso = new Date().toISOString().slice(0, 10);
 
+  const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
   const [scope, setScope] = useState<'my' | 'outlet'>(isCashier ? 'my' : 'outlet');
   const [summary, setSummary] = useState<ShiftLiveSummary | null>(null);
@@ -224,463 +228,646 @@ export const ShiftClosingView: React.FC<ShiftClosingViewProps> = ({
     }
   };
 
+  const alreadyClosedToday = (summary?.alreadyClosedCount ?? 0) > 0;
+  const nonCashSales =
+    (summary?.salesDebit ?? 0) + (summary?.salesTransfer ?? 0) + (summary?.salesQris ?? 0);
+  const voidTotal = (summary?.voidSalesCount ?? 0) + (summary?.voidBuybackCount ?? 0);
+
   return (
     <div className="space-y-4 pb-8">
-      {/* Header Control Bar */}
-      <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+      {/* 1. HEADER & NAVIGASI TAB UTAMA */}
+      <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
-              Laporan Tutup Kasir &amp; Rekap Shift
+              Tutup Kasir &amp; Rekap Shift
             </h3>
             {(isLoadingSummary || isLoadingHistory) && (
-              <Loader2 size={15} className="animate-spin text-orange-500" />
+              <Loader2 size={14} className="animate-spin text-orange-500" />
             )}
           </div>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            <span>{activeTenant?.code || 'OUTLET'}</span>
-            <span aria-hidden="true" className="mx-1.5 text-gray-300">&middot;</span>
-            <span>{activeTenant?.name || 'Toko Mas'}</span>
-            <span aria-hidden="true" className="mx-1.5 text-gray-300">&middot;</span>
-            <span>Audit laci kas tunai &amp; ringkasan metode pembayaran</span>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+            Cocokkan catatan penjualan di sistem dengan uang tunai fisik di laci sebelum ganti shift atau tutup toko.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+        <div className="flex items-center gap-2.5 flex-wrap self-start lg:self-auto">
+          <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center">
             <button
               type="button"
-              onClick={() => setSelectedDate(todayIso)}
-              className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                selectedDate === todayIso ? 'bg-white text-gray-900' : 'text-gray-600 hover:text-gray-900'
+              onClick={() => setActiveTab('today')}
+              className={`h-full px-3 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'today'
+                  ? 'bg-orange-500 text-white shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Hari Ini
+              <Lock size={14} />
+              <span>Hitung &amp; Tutup Kasir</span>
             </button>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value || todayIso)}
-              className="h-7 px-2 text-xs font-mono font-semibold bg-white border border-gray-200 rounded-md focus:outline-none focus:border-orange-500"
-            />
-          </div>
-
-          {!isCashier && (
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setScope('outlet')}
-                className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                  scope === 'outlet' ? 'bg-white text-gray-900' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Seluruh Outlet
-              </button>
-              <button
-                type="button"
-                onClick={() => setScope('my')}
-                className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                  scope === 'my' ? 'bg-white text-gray-900' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Shift Saya
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="h-9 px-3.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs sm:text-sm font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-          >
-            <Download size={15} />
-            <span>Ekspor CSV</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={!summary || isLoadingSummary}
-            onClick={() => setIsCloseModalOpen(true)}
-            className="h-9 px-4 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-[0.98] disabled:opacity-50"
-          >
-            <Lock size={15} />
-            <span>Tutup Kasir</span>
-          </button>
-        </div>
-      </div>
-
-      {summaryError && (
-        <ErrorBanner message={summaryError} onRetry={() => setRefreshTrigger(k => k + 1)} />
-      )}
-
-      {/* 4 KPI Cards for Selected Date */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Penjualan Shift</span>
-            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
-              <TrendingUp size={16} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight tabular-nums">
-              {formatIDR(summary?.totalSalesAmount ?? 0)}
-            </div>
-            <p className="text-xs text-gray-400 mt-1 font-mono tabular-nums">
-              {summary?.totalSalesCount ?? 0} nota &middot; {(summary?.totalSalesGrams ?? 0).toFixed(2)} gr terjual
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Buyback Keluar</span>
-            <span className="w-8 h-8 rounded-lg bg-rose-50/80 text-rose-600 border border-rose-100/80 flex items-center justify-center shrink-0">
-              <Scale size={16} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight tabular-nums">
-              {formatIDR(summary?.totalBuybackAmount ?? 0)}
-            </div>
-            <p className="text-xs text-gray-400 mt-1 font-mono tabular-nums">
-              {summary?.totalBuybackCount ?? 0} nota &middot; {(summary?.totalBuybackGrams ?? 0).toFixed(2)} gr diterima
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">Arus Kas Tunai Bersih</span>
-            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
-              <Wallet size={16} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight tabular-nums">
-              {formatIDR(summary?.netCashMovement ?? 0)}
-            </div>
-            <p className="text-xs text-gray-400 mt-1 font-mono tabular-nums">
-              Tunai masuk dikurangi buyback tunai
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">Void &amp; Riwayat Tutup</span>
-            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
-              <Ban size={16} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight tabular-nums">
-              {(summary?.voidSalesCount ?? 0) + (summary?.voidBuybackCount ?? 0)} Void
-            </div>
-            <p className="text-xs text-gray-400 mt-1 font-mono tabular-nums">
-              {summary?.alreadyClosedCount ?? 0}x tutup kasir tanggal ini &middot; Total {historyStats.totalClosings} rekap
-            </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab('history')}
+              className={`h-full px-3 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'history'
+                  ? 'bg-orange-500 text-white shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <FileText size={14} />
+              <span>Riwayat Laporan ({historyStats.totalClosings})</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Payment Method Breakdown Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-7 bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
-            <h4 className="text-sm font-bold text-gray-900">Rincian Penjualan per Metode Pembayaran</h4>
-            <span className="text-xs font-mono text-gray-500">{selectedDate}</span>
-          </div>
+      {activeTab === 'today' ? (
+        <>
+          {/* 2. PANDUAN ALUR 3 LANGKAH + FILTER TANGGAL */}
+          <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-500">Tanggal Shift:</span>
+                <div className="inline-flex h-8 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(todayIso)}
+                    className={`h-full px-2.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      selectedDate === todayIso
+                        ? 'bg-white text-gray-900 shadow-2xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Hari Ini
+                  </button>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={e => setSelectedDate(e.target.value || todayIso)}
+                    className="h-full px-2 text-xs font-mono font-semibold bg-transparent border-0 focus:outline-none text-gray-800 cursor-pointer"
+                  />
+                </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-lg bg-gray-50/80 border border-gray-200/70">
-              <span className="text-xs text-gray-500 block">Tunai (Cash)</span>
-              <span className="font-mono font-bold text-sm text-gray-900 mt-1 block tabular-nums">
-                {formatIDR(summary?.salesCash ?? 0)}
-              </span>
-            </div>
-            <div className="p-3 rounded-lg bg-gray-50/80 border border-gray-200/70">
-              <span className="text-xs text-gray-500 block">Debit / EDC</span>
-              <span className="font-mono font-bold text-sm text-gray-900 mt-1 block tabular-nums">
-                {formatIDR(summary?.salesDebit ?? 0)}
-              </span>
-            </div>
-            <div className="p-3 rounded-lg bg-gray-50/80 border border-gray-200/70">
-              <span className="text-xs text-gray-500 block">Transfer Bank</span>
-              <span className="font-mono font-bold text-sm text-gray-900 mt-1 block tabular-nums">
-                {formatIDR(summary?.salesTransfer ?? 0)}
-              </span>
-            </div>
-            <div className="p-3 rounded-lg bg-gray-50/80 border border-gray-200/70">
-              <span className="text-xs text-gray-500 block">QRIS Digital</span>
-              <span className="font-mono font-bold text-sm text-gray-900 mt-1 block tabular-nums">
-                {formatIDR(summary?.salesQris ?? 0)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-5 bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
-            <h4 className="text-sm font-bold text-gray-900">Rincian Pencairan Buyback</h4>
-            <span className="text-xs font-mono text-gray-500">
-              {scope === 'outlet' ? 'Semua Kasir' : currentUser.fullName}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg bg-gray-50/80 border border-gray-200/70">
-              <span className="text-xs text-gray-500 block">Buyback Tunai (Laci)</span>
-              <span className="font-mono font-bold text-sm text-rose-700 mt-1 block tabular-nums">
-                {formatIDR(summary?.buybackCash ?? 0)}
-              </span>
-            </div>
-            <div className="p-3 rounded-lg bg-gray-50/80 border border-gray-200/70">
-              <span className="text-xs text-gray-500 block">Buyback Transfer</span>
-              <span className="font-mono font-bold text-sm text-gray-900 mt-1 block tabular-nums">
-                {formatIDR(summary?.buybackTransfer ?? 0)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* History Table Card */}
-      <div className="bg-white rounded-xl border border-gray-200/90 overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {(
-              [
-                { key: 'all', label: 'Semua Rekap' },
-                { key: 'exact', label: 'Klop (Rp 0)' },
-                { key: 'surplus', label: 'Selisih Lebih' },
-                { key: 'shortage', label: 'Selisih Kurang' },
-              ] as const
-            ).map(tab => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setVarianceFilter(tab.key)}
-                className={`h-8 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                  varianceFilter === tab.key
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-gray-100 hover:bg-gray-200/80 text-gray-600'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <SearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Cari kode shift, kasir, tanggal, catatan..."
-            className="w-full md:w-72"
-          />
-        </div>
-
-        {historyError && (
-          <div className="p-4">
-            <ErrorBanner message={historyError} onRetry={() => setRefreshTrigger(k => k + 1)} />
-          </div>
-        )}
-
-        {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/90 border-b border-gray-200/80 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                <th className="py-3 px-4">Kode Shift</th>
-                <SortableTh
-                  label="Tanggal"
-                  sortKey="shiftDate"
-                  currentSortBy={sortBy}
-                  currentSortDir={sortDir}
-                  onSort={key => handleHeaderSort(key, 'desc')}
-                  className="py-3 px-4"
-                />
-                <SortableTh
-                  label="Petugas Kasir"
-                  sortKey="cashierName"
-                  currentSortBy={sortBy}
-                  currentSortDir={sortDir}
-                  onSort={key => handleHeaderSort(key, 'asc')}
-                  className="py-3 px-4"
-                />
-                <SortableTh
-                  label="Total Penjualan"
-                  sortKey="totalSalesAmount"
-                  currentSortBy={sortBy}
-                  currentSortDir={sortDir}
-                  onSort={key => handleHeaderSort(key, 'desc')}
-                  align="right"
-                  className="py-3 px-4"
-                />
-                <th className="py-3 px-4 text-right">Kas Seharusnya</th>
-                <th className="py-3 px-4 text-right">Kas Fisik</th>
-                <SortableTh
-                  label="Selisih"
-                  sortKey="cashVariance"
-                  currentSortBy={sortBy}
-                  currentSortDir={sortDir}
-                  onSort={key => handleHeaderSort(key, 'desc')}
-                  align="right"
-                  className="py-3 px-4"
-                />
-                <th className="py-3 px-4 text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
-              {historyItems.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-10 text-center text-gray-400 text-xs sm:text-sm">
-                    {isLoadingHistory
-                      ? 'Memuat riwayat tutup kasir...'
-                      : 'Belum ada rekap tutup kasir pada outlet ini.'}
-                  </td>
-                </tr>
-              ) : (
-                historyItems.map(item => {
-                  const isExact = item.cashVariance === 0;
-                  const isSurplus = item.cashVariance > 0;
-                  return (
-                    <tr key={item.id} className="hover:bg-orange-50/30 transition-colors">
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <span className="font-mono text-xs font-bold text-gray-900">{item.shiftCode}</span>
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="font-mono text-xs font-semibold text-gray-800">{item.shiftDate}</div>
-                        <div className="text-[11px] text-gray-400 truncate max-w-[160px]">{item.shiftLabel}</div>
-                      </td>
-                      <td className="py-3 px-4 text-xs font-semibold text-gray-800 whitespace-nowrap">
-                        {item.cashierName}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono text-xs font-bold text-gray-900 tabular-nums whitespace-nowrap">
-                        {formatIDR(item.totalSalesAmount)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono text-xs text-gray-700 tabular-nums whitespace-nowrap">
-                        {formatIDR(item.expectedCash)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono text-xs font-semibold text-gray-900 tabular-nums whitespace-nowrap">
-                        {formatIDR(item.actualCash)}
-                      </td>
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 font-mono text-xs font-bold tabular-nums ${
-                            isExact ? 'text-emerald-700' : isSurplus ? 'text-blue-700' : 'text-red-700'
-                          }`}
-                        >
-                          {isExact ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
-                          {item.cashVariance > 0
-                            ? `+${formatIDR(item.cashVariance)}`
-                            : formatIDR(item.cashVariance)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedShiftDetail(item)}
-                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-orange-50 text-gray-600 hover:text-orange-600 border border-gray-200 inline-flex items-center justify-center cursor-pointer"
-                            aria-label="Lihat Detail Shift"
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleTriggerPrint(item)}
-                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 inline-flex items-center justify-center cursor-pointer"
-                            aria-label="Cetak Berita Acara"
-                          >
-                            <Printer size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Cards */}
-        <div className="md:hidden divide-y divide-gray-100">
-          {historyItems.length === 0 ? (
-            <div className="py-10 px-4 text-center text-xs text-gray-400">
-              {isLoadingHistory ? 'Memuat riwayat tutup kasir...' : 'Belum ada rekap tutup kasir.'}
-            </div>
-          ) : (
-            historyItems.map(item => {
-              const isExact = item.cashVariance === 0;
-              const isSurplus = item.cashVariance > 0;
-              return (
-                <div key={item.id} className="p-4 space-y-2.5 text-xs">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-mono font-bold text-gray-900">{item.shiftCode}</p>
-                      <p className="text-gray-500 mt-0.5">
-                        {item.shiftDate} &middot; {item.cashierName}
-                      </p>
-                    </div>
-                    <span
-                      className={`font-mono font-bold tabular-nums ${
-                        isExact ? 'text-emerald-700' : isSurplus ? 'text-blue-700' : 'text-red-700'
+                {!isCashier && (
+                  <div className="inline-flex h-8 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center">
+                    <button
+                      type="button"
+                      onClick={() => setScope('outlet')}
+                      className={`h-full px-2.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                        scope === 'outlet'
+                          ? 'bg-white text-gray-900 shadow-2xs'
+                          : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
-                      {item.cashVariance > 0 ? `+${formatIDR(item.cashVariance)}` : formatIDR(item.cashVariance)}
+                      Semua Kasir Outlet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScope('my')}
+                      className={`h-full px-2.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                        scope === 'my'
+                          ? 'bg-white text-gray-900 shadow-2xs'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Transaksi Saya Saja
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded border ${
+                    alreadyClosedToday
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
+                  {alreadyClosedToday ? <CheckCircle2 size={13} /> : <Clock size={13} />}
+                  {alreadyClosedToday
+                    ? `Sudah tutup kasir ${summary?.alreadyClosedCount}x pada tanggal ini`
+                    : 'Belum ada tutup kasir pada tanggal ini'}
+                </span>
+              </div>
+            </div>
+
+            {/* 3 Langkah Alur Mudah untuk Orang Awam */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 rounded-lg bg-gray-50/90 border border-gray-200/70 flex items-start gap-3">
+                <span className="w-6 h-6 rounded-md bg-orange-100 text-orange-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                  1
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-gray-900">Cek Ringkasan Transaksi</p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                    Lihat uang tunai masuk dari penjualan dan uang tunai keluar untuk buyback di bawah ini.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-gray-50/90 border border-gray-200/70 flex items-start gap-3">
+                <span className="w-6 h-6 rounded-md bg-orange-100 text-orange-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                  2
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-gray-900">Hitung Uang Fisik di Laci</p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                    Klik <strong>Mulai Tutup Kasir</strong>, isi modal awal &amp; jumlah uang kertas/koin yang Anda hitung.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-gray-50/90 border border-gray-200/70 flex items-start gap-3">
+                <span className="w-6 h-6 rounded-md bg-orange-100 text-orange-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                  3
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-gray-900">Simpan &amp; Cetak Bukti</p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                    Sistem cek selisih otomatis (Klop/Lebih/Kurang) lalu cetak berita acara serah terima.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {summaryError && (
+            <ErrorBanner message={summaryError} onRetry={() => setRefreshTrigger(k => k + 1)} />
+          )}
+
+          {/* 3. 3 KARTU RINGKASAN SEDERHANA */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs sm:text-sm font-medium text-gray-500">
+                  1. Total Penjualan
+                </span>
+                <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
+                  <TrendingUp size={16} />
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight tabular-nums">
+                  {formatIDR(summary?.totalSalesAmount ?? 0)}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {summary?.totalSalesCount ?? 0} nota terjual ({(summary?.totalSalesGrams ?? 0).toFixed(2)} gr)
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs sm:text-sm font-medium text-gray-500">
+                  2. Total Buyback (Beli Kembali)
+                </span>
+                <span className="w-8 h-8 rounded-lg bg-rose-50/80 text-rose-600 border border-rose-100/80 flex items-center justify-center shrink-0">
+                  <Scale size={16} />
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight tabular-nums">
+                  {formatIDR(summary?.totalBuybackAmount ?? 0)}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {summary?.totalBuybackCount ?? 0} nota buyback ({(summary?.totalBuybackGrams ?? 0).toFixed(2)} gr)
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-emerald-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs sm:text-sm font-semibold text-emerald-800">
+                  3. Selisih Uang Tunai Laci Hari Ini
+                </span>
+                <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                  <Wallet size={16} />
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-700 tracking-tight tabular-nums">
+                  {(summary?.netCashMovement ?? 0) >= 0 ? '+' : ''}
+                  {formatIDR(summary?.netCashMovement ?? 0)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Tunai masuk minus buyback tunai (belum termasuk modal awal)
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. RINCIAN PEMBAYARAN & TOMBOL AKSI TUTUP KASIR */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Kiri: Detail Uang Masuk & Keluar */}
+            <div className="lg:col-span-7 bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">Rincian Uang Masuk &amp; Keluar</h4>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Hanya pembayaran <strong>Tunai</strong> yang memengaruhi isi uang kertas di laci kasir.
+                  </p>
+                </div>
+                {voidTotal > 0 && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200 shrink-0">
+                    {voidTotal} Nota Batal (Void)
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+                {/* Uang Laci Tunai */}
+                <div className="p-3.5 rounded-lg bg-emerald-50/50 border border-emerald-200/80 space-y-2.5">
+                  <p className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
+                    Memengaruhi Laci Tunai
+                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-gray-600 text-xs">(+) Penjualan Tunai</span>
+                    <span className="font-mono font-bold text-emerald-700 tabular-nums">
+                      {formatIDR(summary?.salesCash ?? 0)}
                     </span>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
-                    <div>
-                      <span className="text-gray-400 block">Penjualan</span>
-                      <span className="font-mono font-bold text-gray-900">{formatIDR(item.totalSalesAmount)}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-gray-400 block">Kas Fisik</span>
-                      <span className="font-mono font-bold text-gray-900">{formatIDR(item.actualCash)}</span>
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-gray-600 text-xs">(−) Buyback Tunai</span>
+                    <span className="font-mono font-bold text-rose-700 tabular-nums">
+                      {formatIDR(summary?.buybackCash ?? 0)}
+                    </span>
                   </div>
-
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedShiftDetail(item)}
-                      className="h-8 px-3 rounded-lg bg-gray-100 text-gray-700 font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Eye size={13} />
-                      <span>Detail</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleTriggerPrint(item)}
-                      className="h-8 px-3 rounded-lg bg-orange-50 text-orange-700 font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Printer size={13} />
-                      <span>Cetak</span>
-                    </button>
+                  <div className="pt-2 border-t border-emerald-200/70 flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-gray-900">Tambahan Tunai Laci</span>
+                    <span className="font-mono font-bold text-gray-900 tabular-nums">
+                      {formatIDR(summary?.netCashMovement ?? 0)}
+                    </span>
                   </div>
                 </div>
-              );
-            })
-          )}
-        </div>
 
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          pageSize={pageSize}
-          isLoading={isLoadingHistory}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={size => {
-            setPageSize(size);
-            setCurrentPage(1);
-          }}
-        />
-      </div>
+                {/* Non-Tunai (Rekening Bank) */}
+                <div className="p-3.5 rounded-lg bg-gray-50/80 border border-gray-200/80 space-y-2">
+                  <p className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Langsung ke Rekening / EDC
+                  </p>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-gray-600">Penjualan Debit / EDC</span>
+                    <span className="font-mono font-semibold text-gray-900 tabular-nums">
+                      {formatIDR(summary?.salesDebit ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-gray-600">Penjualan Transfer Bank</span>
+                    <span className="font-mono font-semibold text-gray-900 tabular-nums">
+                      {formatIDR(summary?.salesTransfer ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-gray-600">Penjualan QRIS</span>
+                    <span className="font-mono font-semibold text-gray-900 tabular-nums">
+                      {formatIDR(summary?.salesQris ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs pt-1 border-t border-gray-200/70">
+                    <span className="text-rose-700">Buyback via Transfer</span>
+                    <span className="font-mono font-semibold text-rose-700 tabular-nums">
+                      − {formatIDR(summary?.buybackTransfer ?? 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Kanan: Kartu Ajakan Tutup Kasir */}
+            <div className="lg:col-span-5 bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 flex flex-col justify-between gap-4">
+              <div className="space-y-2">
+                <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200">
+                  {activeTenant?.code || 'OUTLET'} &bull; {activeTenant?.name || 'Toko Mas'}
+                </span>
+                <h4 className="text-base font-bold text-gray-900">
+                  Siap Menghitung &amp; Menutup Shift?
+                </h4>
+                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
+                  Pastikan seluruh transaksi penjualan dan buyback pada tanggal{' '}
+                  <span className="font-mono font-semibold text-gray-800">{selectedDate}</span> sudah selesai dicatat.
+                  Di langkah berikutnya Anda cukup memasukkan <strong>modal awal</strong> dan{' '}
+                  <strong>uang fisik</strong> di laci.
+                </p>
+
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-200/80 text-xs flex items-center justify-between">
+                  <span className="text-gray-600">Total transaksi non-tunai (EDC/TF/QRIS)</span>
+                  <span className="font-mono font-bold text-gray-900 tabular-nums">
+                    {formatIDR(nonCashSales)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  disabled={!summary || isLoadingSummary}
+                  onClick={() => setIsCloseModalOpen(true)}
+                  className="w-full h-11 px-4 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-lg transition-colors inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] disabled:opacity-50 shadow-xs"
+                >
+                  <Lock size={16} />
+                  <span>Mulai Hitung &amp; Tutup Kasir</span>
+                  <ArrowRight size={16} />
+                </button>
+
+                {historyStats.totalClosings > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('history')}
+                    className="w-full h-9 px-3 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Lihat {historyStats.totalClosings} Riwayat Tutup Kasir Sebelumnya
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* TAB 2: RIWAYAT LAPORAN TUTUP KASIR (Konsisten dengan gaya halaman Pelanggan) */
+        <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5">
+          {/* Toolbar Pencarian, Filter Status & Ekspor */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 mb-4">
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Cari kode shift, kasir, tanggal, atau catatan..."
+            />
+
+            <div className="flex items-center gap-2 flex-wrap justify-between lg:justify-end">
+              <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center overflow-x-auto max-w-full">
+                {(
+                  [
+                    { key: 'all', label: 'Semua' },
+                    { key: 'exact', label: 'Pas (Klop)' },
+                    { key: 'surplus', label: 'Uang Lebih' },
+                    { key: 'shortage', label: 'Uang Kurang' },
+                  ] as const
+                ).map(tab => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setVarianceFilter(tab.key)}
+                    className={`h-full px-3 text-xs sm:text-sm font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center whitespace-nowrap ${
+                      varianceFilter === tab.key
+                        ? 'bg-orange-500 text-white shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                className="h-9 px-3.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs sm:text-sm font-semibold rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <Download size={15} />
+                <span>Ekspor CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {historyError && (
+            <ErrorBanner
+              message={historyError}
+              onRetry={() => setRefreshTrigger(k => k + 1)}
+              className="mb-3"
+            />
+          )}
+
+          {/* Inner Table & Mobile Cards Container */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-2xs">
+            {isLoadingHistory && historyItems.length === 0 ? (
+              <div className="p-12 text-center text-gray-500 flex items-center justify-center gap-2 text-xs sm:text-sm">
+                <Loader2 size={18} className="animate-spin text-orange-500" />
+                <span>Memuat riwayat tutup kasir...</span>
+              </div>
+            ) : historyItems.length === 0 ? (
+              <div className="py-12 px-4 text-center text-gray-400">
+                <FileText size={36} className="mx-auto mb-2 text-gray-300" />
+                <p className="text-sm font-semibold text-gray-600">Belum ada riwayat tutup kasir</p>
+                <p className="text-xs text-gray-400 mt-0.5 max-w-sm mx-auto">
+                  {searchQuery || varianceFilter !== 'all'
+                    ? 'Tidak ada laporan tutup kasir yang cocok dengan pencarian atau filter Anda.'
+                    : 'Klik tab Hitung & Tutup Kasir untuk membuat laporan tutup shift pertama.'}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                      <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 font-semibold uppercase tracking-wider text-xs">
+                        <th className="py-3 px-4">Kode Shift</th>
+                        <SortableTh
+                          label="Tanggal & Shift"
+                          sortKey="shiftDate"
+                          currentSortBy={sortBy}
+                          currentSortDir={sortDir}
+                          onSort={key => handleHeaderSort(key, 'desc')}
+                          className="py-3 px-4"
+                        />
+                        <SortableTh
+                          label="Petugas Kasir"
+                          sortKey="cashierName"
+                          currentSortBy={sortBy}
+                          currentSortDir={sortDir}
+                          onSort={key => handleHeaderSort(key, 'asc')}
+                          className="py-3 px-4"
+                        />
+                        <SortableTh
+                          label="Total Penjualan"
+                          sortKey="totalSalesAmount"
+                          currentSortBy={sortBy}
+                          currentSortDir={sortDir}
+                          onSort={key => handleHeaderSort(key, 'desc')}
+                          align="right"
+                          className="py-3 px-4"
+                        />
+                        <th className="py-3 px-4 text-right">Hitungan Sistem</th>
+                        <th className="py-3 px-4 text-right">Uang Fisik Laci</th>
+                        <SortableTh
+                          label="Selisih"
+                          sortKey="cashVariance"
+                          currentSortBy={sortBy}
+                          currentSortDir={sortDir}
+                          onSort={key => handleHeaderSort(key, 'desc')}
+                          align="right"
+                          className="py-3 px-4"
+                        />
+                        <th className="py-3 px-4 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                      {historyItems.map(item => {
+                        const isExact = item.cashVariance === 0;
+                        const isSurplus = item.cashVariance > 0;
+                        return (
+                          <tr key={item.id} className="hover:bg-orange-50/25 transition-colors">
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span className="font-mono text-xs font-bold text-gray-900">
+                                {item.shiftCode}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="font-mono text-xs font-semibold text-gray-800">
+                                {item.shiftDate}
+                              </div>
+                              <div className="text-xs text-gray-400 truncate max-w-[180px]">
+                                {item.shiftLabel}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-xs font-semibold text-gray-800 whitespace-nowrap">
+                              {item.cashierName}
+                            </td>
+                            <td className="py-3.5 px-4 text-right font-mono text-xs font-bold text-gray-900 tabular-nums whitespace-nowrap">
+                              {formatIDR(item.totalSalesAmount)}
+                            </td>
+                            <td className="py-3.5 px-4 text-right font-mono text-xs text-gray-700 tabular-nums whitespace-nowrap">
+                              {formatIDR(item.expectedCash)}
+                            </td>
+                            <td className="py-3.5 px-4 text-right font-mono text-xs font-semibold text-gray-900 tabular-nums whitespace-nowrap">
+                              {formatIDR(item.actualCash)}
+                            </td>
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded tabular-nums ${
+                                  isExact
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : isSurplus
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    : 'bg-red-50 text-red-700 border border-red-200'
+                                }`}
+                              >
+                                {isExact ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                                {isExact
+                                  ? 'Pas (Rp 0)'
+                                  : item.cashVariance > 0
+                                  ? `+${formatIDR(item.cashVariance)}`
+                                  : formatIDR(item.cashVariance)}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <ActionDropdownMenu
+                                ariaLabel={`Aksi untuk ${item.shiftCode}`}
+                                items={[
+                                  {
+                                    id: 'detail',
+                                    label: 'Lihat Rincian Laporan',
+                                    icon: <Eye size={14} />,
+                                    onClick: () => setSelectedShiftDetail(item),
+                                  },
+                                  {
+                                    id: 'print',
+                                    label: 'Cetak Berita Acara',
+                                    icon: <Printer size={14} />,
+                                    tone: 'primary',
+                                    onClick: () => handleTriggerPrint(item),
+                                  },
+                                ]}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile / Tablet Card View */}
+                <div className="lg:hidden divide-y divide-gray-100">
+                  {historyItems.map(item => {
+                    const isExact = item.cashVariance === 0;
+                    const isSurplus = item.cashVariance > 0;
+                    return (
+                      <div key={item.id} className="p-3.5 sm:p-4 space-y-2.5 text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-mono font-bold text-gray-900">{item.shiftCode}</p>
+                            <p className="text-gray-500 mt-0.5">
+                              {item.shiftDate} &middot; {item.cashierName}
+                            </p>
+                          </div>
+                          <span
+                            className={`font-mono font-bold px-2 py-0.5 rounded tabular-nums ${
+                              isExact
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : isSurplus
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : 'bg-red-50 text-red-700 border border-red-200'
+                            }`}
+                          >
+                            {isExact
+                              ? 'Pas (Rp 0)'
+                              : item.cashVariance > 0
+                              ? `+${formatIDR(item.cashVariance)}`
+                              : formatIDR(item.cashVariance)}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                          <div>
+                            <span className="text-gray-400 block">Total Penjualan</span>
+                            <span className="font-mono font-bold text-gray-900">
+                              {formatIDR(item.totalSalesAmount)}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-gray-400 block">Uang Fisik Laci</span>
+                            <span className="font-mono font-bold text-gray-900">
+                              {formatIDR(item.actualCash)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-1">
+                          <ActionDropdownMenu
+                            ariaLabel={`Aksi untuk ${item.shiftCode}`}
+                            items={[
+                              {
+                                id: 'detail',
+                                label: 'Lihat Rincian Laporan',
+                                icon: <Eye size={14} />,
+                                onClick: () => setSelectedShiftDetail(item),
+                              },
+                              {
+                                id: 'print',
+                                label: 'Cetak Berita Acara',
+                                icon: <Printer size={14} />,
+                                tone: 'primary',
+                                onClick: () => handleTriggerPrint(item),
+                              },
+                            ]}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {historyItems.length > 0 && (
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                isLoading={isLoadingHistory}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={size => {
+                  setPageSize(size);
+                  setCurrentPage(1);
+                }}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {summary && (
         <ShiftClosingModal

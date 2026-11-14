@@ -15,7 +15,7 @@ import { formatIDR } from '../../utils/formatters';
 import { PaginationControls } from '../common/PaginationControls';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
-import Tooltip from '../Tooltip';
+import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 import { posApi } from '../../services/api';
 import { useDebounce } from '../../hooks/useDebounce';
 import { SearchInput } from '../common/SearchInput';
@@ -341,42 +341,39 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                         {formatIDR(p.harga)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Tooltip content="Cetak Barcode" side="top">
-                        <button
-                          type="button"
-                          onClick={() => setPrintingBarcodeProduct(p)}
-                          className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                          aria-label="Cetak Barcode"
-                        >
-                          <Barcode size={15} />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="Edit Barang" side="top">
-                        <button
-                          type="button"
-                          onClick={() => onEditProduct(p)}
-                          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs"
-                          aria-label="Edit Barang"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                      </Tooltip>
-                      <Tooltip
-                        content={(p.salesCount ?? 0) > 0 ? 'Sudah terjual' : 'Hapus Barang'}
-                        side="top"
-                      >
-                        <button
-                          type="button"
-                          disabled={(p.salesCount ?? 0) > 0}
-                          onClick={() => setDeletingProduct(p)}
-                          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 inline-flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                          aria-label="Hapus Barang"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </Tooltip>
-                    </div>
+                    <ActionDropdownMenu
+                      ariaLabel={`Aksi untuk ${p.name}`}
+                      items={[
+                        {
+                          id: 'barcode',
+                          label: 'Cetak Barcode',
+                          icon: <Barcode size={14} />,
+                          tone: 'primary',
+                          onClick: () => setPrintingBarcodeProduct(p),
+                        },
+                        ...(canManageInventory
+                          ? [
+                              {
+                                id: 'edit',
+                                label: 'Edit Barang',
+                                icon: <Pencil size={14} />,
+                                onClick: () => onEditProduct(p),
+                              },
+                              {
+                                id: 'delete',
+                                label: 'Hapus Barang',
+                                icon: <Trash2 size={14} />,
+                                tone: 'danger' as const,
+                                dividerBefore: true,
+                                disabled: (p.salesCount ?? 0) > 0,
+                                disabledReason:
+                                  (p.salesCount ?? 0) > 0 ? 'Sudah terjual' : undefined,
+                                onClick: () => setDeletingProduct(p),
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
                   </div>
                 </div>
               ))
@@ -517,48 +514,39 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                         {formatIDR(p.harga)}
                       </td>
                       <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center justify-center gap-1.5">
-                          <Tooltip content="Cetak Barcode" side="top">
-                            <button
-                              type="button"
-                              onClick={() => setPrintingBarcodeProduct(p)}
-                              className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border border-orange-200 hover:border-orange-500 transition-all cursor-pointer inline-flex items-center justify-center active:scale-95 shadow-2xs"
-                              aria-label="Cetak Barcode"
-                            >
-                              <Barcode size={15} />
-                            </button>
-                          </Tooltip>
-
-                          {canManageInventory && (
-                            <>
-                              <Tooltip content="Edit Barang" side="top">
-                                <button
-                                  type="button"
-                                  onClick={() => onEditProduct(p)}
-                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-200 transition-all cursor-pointer inline-flex items-center justify-center active:scale-95 shadow-2xs"
-                                  aria-label="Edit Barang"
-                                >
-                                  <Pencil size={15} />
-                                </button>
-                              </Tooltip>
-
-                              <Tooltip
-                                content={(p.salesCount ?? 0) > 0 ? 'Sudah terjual' : 'Hapus Barang'}
-                                side="top"
-                              >
-                                <button
-                                  type="button"
-                                  disabled={(p.salesCount ?? 0) > 0}
-                                  onClick={() => setDeletingProduct(p)}
-                                  className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 transition-all cursor-pointer inline-flex items-center justify-center active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 disabled:hover:text-gray-600 disabled:active:scale-100"
-                                  aria-label="Hapus Barang"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </Tooltip>
-                            </>
-                          )}
-                        </div>
+                        <ActionDropdownMenu
+                          ariaLabel={`Aksi untuk ${p.name}`}
+                          items={[
+                            {
+                              id: 'barcode',
+                              label: 'Cetak Barcode',
+                              icon: <Barcode size={14} />,
+                              tone: 'primary',
+                              onClick: () => setPrintingBarcodeProduct(p),
+                            },
+                            ...(canManageInventory
+                              ? [
+                                  {
+                                    id: 'edit',
+                                    label: 'Edit Barang',
+                                    icon: <Pencil size={14} />,
+                                    onClick: () => onEditProduct(p),
+                                  },
+                                  {
+                                    id: 'delete',
+                                    label: 'Hapus Barang',
+                                    icon: <Trash2 size={14} />,
+                                    tone: 'danger' as const,
+                                    dividerBefore: true,
+                                    disabled: (p.salesCount ?? 0) > 0,
+                                    disabledReason:
+                                      (p.salesCount ?? 0) > 0 ? 'Sudah terjual' : undefined,
+                                    onClick: () => setDeletingProduct(p),
+                                  },
+                                ]
+                              : []),
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))
