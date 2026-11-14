@@ -293,7 +293,7 @@ export const ActionDropdownMenu: React.FC<ActionDropdownMenuProps> = ({
                   <div className="min-w-0 flex-1">
                     <span className="block truncate">{item.label}</span>
                     {item.disabled && item.disabledReason && (
-                      <span className="block text-[10px] font-normal text-gray-400 truncate mt-0.5">
+                      <span className="block text-xs font-normal text-gray-400 truncate mt-0.5">
                         {item.disabledReason}
                       </span>
                     )}

@@ -226,7 +226,7 @@ export const AddEditUserModal: React.FC<AddEditUserModalProps> = ({
             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
               1. Identitas &amp; Kredensial Login
             </span>
-            <span className="text-[11px] text-gray-400 font-medium">Wajib diisi</span>
+            <span className="text-xs text-gray-400 font-medium">Wajib diisi</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -338,7 +338,7 @@ export const AddEditUserModal: React.FC<AddEditUserModalProps> = ({
               <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">
                 3. Hak Akses Outlet / Cabang
               </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-500 mt-0.5">
                 {role === 'owner'
                   ? 'Role Owner otomatis memiliki akses penuh ke seluruh outlet yang terdaftar.'
                   : 'Centang outlet cabang yang diizinkan untuk login dan operasional akun ini.'}
@@ -372,10 +372,10 @@ export const AddEditUserModal: React.FC<AddEditUserModalProps> = ({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-mono font-bold text-gray-800">{t.code}</span>
+                        <span className="text-xs font-mono font-bold text-gray-800">{t.code}</span>
                         <span className="text-xs font-semibold truncate">{t.name}</span>
                       </div>
-                      <p className="text-[11px] text-gray-500 truncate mt-0.5">{t.branchName}</p>
+                      <p className="text-xs text-gray-500 truncate mt-0.5">{t.branchName}</p>
                     </div>
                   </label>
                 );
@@ -405,7 +405,7 @@ export const AddEditUserModal: React.FC<AddEditUserModalProps> = ({
         >
           <div>
             <p className="text-xs font-bold text-gray-800">Status Akun Aktif</p>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-xs text-gray-500">
               {isEditingSelf
                 ? 'Anda tidak dapat menonaktifkan akun yang sedang digunakan.'
                 : 'Akun nonaktif langsung ditolak saat login dan sesi aktifnya dicabut.'}

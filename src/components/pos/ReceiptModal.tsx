@@ -47,7 +47,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               key={size}
               type="button"
               onClick={() => onPaperSizeChange(size)}
-              className={`px-2.5 py-1 text-[11px] font-bold uppercase rounded-md transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 text-xs font-bold uppercase rounded-md transition-colors cursor-pointer ${
                 paperSize === size
                   ? 'bg-white text-orange-600 shadow-2xs'
                   : 'text-gray-600 hover:text-gray-900'

@@ -77,7 +77,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
           {/* Highlight Banner: Total Payout */}
           <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl text-white shadow-xs flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-100 block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-orange-100 block">
                 Total Dana Bersih Diterima Nasabah
               </span>
               <div className="mt-0.5">
@@ -85,7 +85,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                   value={item.totalBayar}
                   maxFontPx={28}
                   minFontPx={15}
-                  className="font-black font-mono tracking-tight text-white tabular-nums"
+                  className="font-bold font-mono tracking-tight text-white tabular-nums"
                 />
               </div>
               <p className="text-xs text-orange-100 mt-1">
@@ -159,7 +159,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-gray-500">Kadar Kemurnian</span>
-                  <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold font-mono text-[11px]">
+                  <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold font-mono text-xs">
                     {item.kadar}
                   </span>
                 </div>
@@ -196,14 +196,14 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                         <span className="font-semibold text-gray-900">
                           {gold.brandType || gold.category}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-mono text-[10px] font-bold">
+                        <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-mono text-xs font-bold">
                           {gold.kadar}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-mono text-[10px] font-semibold">
+                        <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-mono text-xs font-semibold">
                           {gold.berat.toFixed(2)} gr
                         </span>
                       </div>
-                      <span className="text-[11px] text-gray-500 block mt-0.5">
+                      <span className="text-xs text-gray-500 block mt-0.5">
                         {gold.category} &bull; Kondisi: {gold.kondisi}
                         {gold.serialNumber ? ` · SN: ${gold.serialNumber}` : ''}
                         {gold.certYear ? ` (${gold.certYear})` : ''}
@@ -213,7 +213,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                       <span className="font-mono font-bold text-gray-900 block tabular-nums">
                         {formatIDR(gold.subtotal)}
                       </span>
-                      <span className="text-[11px] text-gray-400 font-mono">
+                      <span className="text-xs text-gray-400 font-mono">
                         @{formatIDR(gold.hargaPerGram)}/gr
                       </span>
                     </div>
@@ -231,19 +231,19 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
 
             <div className="grid grid-cols-3 gap-2 p-2.5 bg-white rounded-lg border border-gray-200/60 text-center mb-3">
               <div>
-                <span className="text-[10px] text-gray-400 font-medium block">Berat Kotor</span>
+                <span className="text-xs text-gray-400 font-medium block">Berat Kotor</span>
                 <span className="font-mono font-bold text-gray-800 text-xs sm:text-sm">
                   {item.beratKotor ? item.beratKotor.toFixed(2) : item.beratBersih.toFixed(2)} gr
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-rose-500 font-medium block">Pot. Batu/Cacat</span>
+                <span className="text-xs text-rose-500 font-medium block">Pot. Batu/Cacat</span>
                 <span className="font-mono font-bold text-rose-600 text-xs sm:text-sm">
                   -{(item.potonganBatu || 0).toFixed(2)} gr
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-emerald-600 font-medium block">Berat Bersih (Net)</span>
+                <span className="text-xs text-emerald-600 font-medium block">Berat Bersih (Net)</span>
                 <span className="font-mono font-bold text-emerald-700 text-xs sm:text-sm">
                   {item.beratBersih.toFixed(2)} gr
                 </span>
@@ -289,7 +289,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
 
               <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-sm">
                 <span className="font-bold text-gray-900">Total Bersih yang Dibayarkan</span>
-                <span className="font-mono font-black text-orange-600 text-base">
+                <span className="font-mono font-bold text-orange-600 text-base">
                   {formatIDR(item.totalBayar)}
                 </span>
               </div>
@@ -304,15 +304,15 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
-                  <span className="text-blue-500 block text-[11px]">Bank Tujuan</span>
+                  <span className="text-blue-500 block text-xs">Bank Tujuan</span>
                   <span className="font-bold text-blue-950">{item.bankName || 'BCA'}</span>
                 </div>
                 <div>
-                  <span className="text-blue-500 block text-[11px]">Nomor Rekening</span>
+                  <span className="text-blue-500 block text-xs">Nomor Rekening</span>
                   <span className="font-mono font-bold text-blue-950">{item.accountNo || '-'}</span>
                 </div>
                 <div>
-                  <span className="text-blue-500 block text-[11px]">Atas Nama (A/N)</span>
+                  <span className="text-blue-500 block text-xs">Atas Nama (A/N)</span>
                   <span className="font-semibold text-blue-950">
                     {item.accountHolder || item.customerName}
                   </span>
@@ -330,7 +330,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {item.fotoKtp && (
                   <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
-                    <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">Foto KTP</span>
+                    <span className="text-xs font-semibold text-gray-500 block mb-1.5">Foto KTP</span>
                     <img
                       src={item.fotoKtp}
                       alt="Foto KTP Nasabah"
@@ -340,7 +340,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 )}
                 {item.fotoEmas && (
                   <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
-                    <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">Foto Fisik Emas</span>
+                    <span className="text-xs font-semibold text-gray-500 block mb-1.5">Foto Fisik Emas</span>
                     <img
                       src={item.fotoEmas}
                       alt="Foto Fisik Emas"
@@ -350,7 +350,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 )}
                 {item.ttdNasabah && (
                   <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
-                    <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">
+                    <span className="text-xs font-semibold text-gray-500 block mb-1.5">
                       TTD Nasabah
                     </span>
                     <img
@@ -362,7 +362,7 @@ export const BuybackDetailModal: React.FC<BuybackDetailModalProps> = ({
                 )}
                 {item.ttdPetugas && (
                   <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
-                    <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">
+                    <span className="text-xs font-semibold text-gray-500 block mb-1.5">
                       TTD Petugas
                     </span>
                     <img

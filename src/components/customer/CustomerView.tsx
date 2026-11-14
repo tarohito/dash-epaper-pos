@@ -21,6 +21,7 @@ import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
 import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 import { MoneyAmount } from '../common/MoneyAmount';
+import { KpiCard } from '../common/KpiCard';
 import {
   SortableTh,
   SortDirection,
@@ -166,58 +167,56 @@ export const CustomerView: React.FC<CustomerViewProps> = ({
 
       {/* 2. RINGKASAN METRIK */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
-              Total Pelanggan Terdaftar
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
-              <Users size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tabular-nums tracking-tight truncate">
+        <KpiCard
+          title="Total Pelanggan Terdaftar"
+          accent="blue"
+          icon={<Users size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 group-hover:text-white font-mono tabular-nums tracking-tight truncate transition-colors duration-200">
               {stats.totalPelanggan} Orang
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Database member toko</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Database member toko
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
-              Member VIP &amp; Loyal
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
-              <Crown size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tabular-nums tracking-tight truncate">
+        <KpiCard
+          title="Member VIP & Loyal"
+          accent="amber"
+          icon={<Crown size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 group-hover:text-white font-mono tabular-nums tracking-tight truncate transition-colors duration-200">
               {stats.totalVip} Member
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Pelanggan prioritas</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Pelanggan prioritas
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate">
-              Akumulasi Belanja Member
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
-              <ShoppingBag size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3 min-w-0">
+        <KpiCard
+          title="Akumulasi Belanja Member"
+          accent="orange"
+          icon={<ShoppingBag size={16} strokeWidth={2} />}
+          value={
             <MoneyAmount
               value={stats.totalAkumulasiBelanja}
               maxFontPx={24}
               minFontPx={13}
+              className="font-bold font-mono text-gray-900 group-hover:text-white tracking-tight tabular-nums transition-colors duration-200"
             />
-            <p className="text-xs text-gray-400 mt-1 truncate">Total omzet member aktif</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Total omzet member aktif
+            </p>
+          }
+        />
       </div>
 
       {/* 3. TABLE WORKSPACE CARD */}

@@ -325,7 +325,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-52 h-28 border-2 border-orange-500 rounded-md bg-orange-500/10 flex items-center justify-center relative overflow-hidden">
                   <div className="absolute inset-x-0 h-0.5 bg-orange-400 animate-laser" />
-                  <p className="text-[11px] text-white font-medium bg-black/65 px-2.5 py-1 rounded">
+                  <p className="text-xs text-white font-medium bg-black/65 px-2.5 py-1 rounded">
                     Arahkan ke Code 128 / QR Code
                   </p>
                 </div>

@@ -477,7 +477,7 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                 <span className="font-mono font-bold text-base text-gray-900">
                   {invoiceNoCode || 'BB-20261112-001'}
                 </span>
-                <span className="text-[11px] bg-gray-200 text-gray-700 font-semibold px-1.5 py-0.5 rounded">
+                <span className="text-xs bg-gray-200 text-gray-700 font-semibold px-1.5 py-0.5 rounded">
                   Read-only
                 </span>
               </div>
@@ -996,7 +996,7 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
                     Jumlah dana yang dicairkan ke nasabah
                   </span>
                 </div>
-                <div className="font-mono font-extrabold text-2xl sm:text-3xl text-white tracking-tight">
+                <div className="font-mono font-bold text-2xl sm:text-3xl text-white tracking-tight">
                   {formatIDR(totalDiterimaBersih)}
                 </div>
               </div>

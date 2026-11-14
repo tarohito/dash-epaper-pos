@@ -75,7 +75,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
           {/* Highlight Banner */}
           <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl text-white shadow-xs flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-100 block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-orange-100 block">
                 {transaction.tax > 0
                   ? 'Total Nilai Transaksi (Termasuk PPN)'
                   : 'Total Nilai Transaksi (Non-PKP / Bebas PPN)'}
@@ -85,7 +85,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                   value={transaction.grandTotal}
                   maxFontPx={28}
                   minFontPx={15}
-                  className="font-black font-mono tracking-tight text-white tabular-nums"
+                  className="font-bold font-mono tracking-tight text-white tabular-nums"
                 />
               </div>
               <p className="text-xs text-orange-100 mt-1">
@@ -136,7 +136,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-500">Status Transaksi</span>
                   <span
-                    className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                    className={`px-2 py-0.5 rounded font-bold text-xs ${
                       isVoid
                         ? 'bg-red-100 text-red-700 border border-red-200'
                         : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
@@ -242,11 +242,11 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-semibold text-gray-900 truncate">{item.name}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-mono text-[10px] font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-mono text-xs font-bold">
                         {item.berat.toFixed(2)} gr
                       </span>
                     </div>
-                    <span className="text-[11px] text-gray-400 font-mono block mt-0.5">
+                    <span className="text-xs text-gray-400 font-mono block mt-0.5">
                       {item.sku} &bull; {item.qty} pcs &times; {formatIDR(item.harga)}
                     </span>
                   </div>
@@ -274,7 +274,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
               </div>
               <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-sm">
                 <span className="font-bold text-gray-900">Grand Total Pembayaran</span>
-                <span className="font-mono font-black text-orange-600 text-base tabular-nums">
+                <span className="font-mono font-bold text-orange-600 text-base tabular-nums">
                   {formatIDR(transaction.grandTotal)}
                 </span>
               </div>

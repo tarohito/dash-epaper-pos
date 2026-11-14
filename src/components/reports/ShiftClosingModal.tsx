@@ -126,7 +126,7 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
               min={0}
               className="h-10 px-3 text-sm font-mono font-bold bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
             />
-            <p className="text-[11px] text-gray-400 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               Uang kembalian yang disiapkan sebelum toko buka.
             </p>
           </div>
@@ -170,7 +170,7 @@ export const ShiftClosingModal: React.FC<ShiftClosingModalProps> = ({
           </div>
 
           {nonCashTotal > 0 && (
-            <p className="text-[11px] text-gray-500 pt-1">
+            <p className="text-xs text-gray-500 pt-1">
               Info: Pembayaran non-tunai (EDC/Transfer/QRIS) sebesar{' '}
               <span className="font-mono font-semibold text-gray-700">{formatIDR(nonCashTotal)}</span>{' '}
               tidak masuk hitungan laci karena langsung ke rekening.

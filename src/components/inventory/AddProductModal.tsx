@@ -296,10 +296,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           {formData.sku.trim() && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Pratinjau Label Barcode (Standar Code 128 + QR)
                 </span>
-                <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                <span className="text-xs font-mono text-emerald-700 font-semibold">
                   Siap Cetak &amp; Scan
                 </span>
               </div>

@@ -97,18 +97,18 @@ export const CustomerLookupPicker: React.FC<CustomerLookupPickerProps> = ({
                 Terhubung: {selectedCustomer.name}
               </span>
               {selectedCustomer.memberCode && (
-                <span className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-white text-emerald-700 border border-emerald-200">
+                <span className="text-xs font-mono font-semibold px-1.5 py-0.5 rounded bg-white text-emerald-700 border border-emerald-200">
                   {selectedCustomer.memberCode}
                 </span>
               )}
               {selectedCustomer.type && (
-                <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
                   {selectedCustomer.type}
                 </span>
               )}
             </div>
             {selectedCustomer.phone && (
-              <p className="text-[11px] text-emerald-700 font-mono truncate mt-0.5">
+              <p className="text-xs text-emerald-700 font-mono truncate mt-0.5">
                 HP/WA: {selectedCustomer.phone}
               </p>
             )}
@@ -166,7 +166,7 @@ export const CustomerLookupPicker: React.FC<CustomerLookupPickerProps> = ({
       </div>
 
       {helperText && !isOpen && (
-        <p className="text-[11px] text-gray-500 mt-1">{helperText}</p>
+        <p className="text-xs text-gray-500 mt-1">{helperText}</p>
       )}
 
       {isOpen && (
@@ -183,7 +183,7 @@ export const CustomerLookupPicker: React.FC<CustomerLookupPickerProps> = ({
               <p className="text-xs font-semibold text-gray-600">
                 Pelanggan tidak ditemukan
               </p>
-              <p className="text-[11px] text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 Lanjutkan mengisi data manual di bawah untuk transaksi baru.
               </p>
             </div>
@@ -222,18 +222,18 @@ export const CustomerLookupPicker: React.FC<CustomerLookupPickerProps> = ({
                       <span className="text-xs sm:text-sm font-bold text-gray-900 truncate">
                         {cust.name}
                       </span>
-                      <span className="text-[11px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
+                      <span className="text-xs font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
                         {cust.memberCode}
                       </span>
                     </div>
-                    <p className="text-[11px] text-gray-500 font-mono truncate mt-0.5">
+                    <p className="text-xs text-gray-500 font-mono truncate mt-0.5">
                       {cust.phone}
                       {cust.nik ? ` • NIK: ${cust.nik}` : ''}
                     </p>
                   </div>
                 </div>
                 <span
-                  className={`text-[11px] font-semibold px-2 py-0.5 rounded shrink-0 ${
+                  className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${
                     cust.type === 'VIP'
                       ? 'bg-amber-50 text-amber-700 border border-amber-200'
                       : cust.type === 'Mitra / Toko'

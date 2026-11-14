@@ -23,6 +23,7 @@ import { SearchInput } from '../common/SearchInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
 import { MoneyAmount } from '../common/MoneyAmount';
+import { KpiCard } from '../common/KpiCard';
 import {
   SortableTh,
   SortDirection,
@@ -212,69 +213,75 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
 
       {/* 4 Modern KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Dana Dicairkan
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
-              <Coins size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3 min-w-0">
-            <MoneyAmount value={stats.totalDanaDicairkan} maxFontPx={24} minFontPx={13} />
-            <p className="text-xs text-gray-400 mt-1 truncate">Uang keluar untuk buyback</p>
-          </div>
-        </div>
+        <KpiCard
+          title="Total Dana Dicairkan"
+          accent="orange"
+          icon={<Coins size={16} strokeWidth={2} />}
+          value={
+            <MoneyAmount
+              value={stats.totalDanaDicairkan}
+              maxFontPx={24}
+              minFontPx={13}
+              className="font-bold font-mono text-gray-900 group-hover:text-white tracking-tight tabular-nums transition-colors duration-200"
+            />
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Uang keluar untuk buyback
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Berat Emas
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
-              <Scale size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Total Berat Emas"
+          accent="amber"
+          icon={<Scale size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {stats.totalBeratDiterima.toFixed(2)} gr
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Fisik emas masuk ke toko</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Fisik emas masuk ke toko
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Transaksi
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
-              <ReceiptText size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Total Transaksi"
+          accent="blue"
+          icon={<ReceiptText size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {stats.totalTransaksi} Nota
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Selesai &amp; terverifikasi</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Selesai &amp; terverifikasi
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Rata-rata / Nota
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
-              <Building2 size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3 min-w-0">
-            <MoneyAmount value={stats.avgPerTransaksi} maxFontPx={24} minFontPx={13} />
-            <p className="text-xs text-gray-400 mt-1 truncate">Rata-rata per nasabah</p>
-          </div>
-        </div>
+        <KpiCard
+          title="Rata-rata / Nota"
+          accent="emerald"
+          icon={<Building2 size={16} strokeWidth={2} />}
+          value={
+            <MoneyAmount
+              value={stats.avgPerTransaksi}
+              maxFontPx={24}
+              minFontPx={13}
+              className="font-bold font-mono text-gray-900 group-hover:text-white tracking-tight tabular-nums transition-colors duration-200"
+            />
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Rata-rata per nasabah
+            </p>
+          }
+        />
       </div>
 
       {/* Table Workspace Card */}
@@ -393,7 +400,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                               {bb.invoiceNo}
                             </span>
                             {isVoid && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-100 text-red-700 border border-red-200 rounded">
+                              <span className="px-1.5 py-0.5 text-xs font-bold uppercase bg-red-100 text-red-700 border border-red-200 rounded">
                                 VOID
                               </span>
                             )}
@@ -402,7 +409,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                             {bb.date}
                           </span>
                         </div>
-                        <span className={`px-2 py-0.5 text-[11px] font-semibold rounded shrink-0 ${methodBadgeClass}`}>
+                        <span className={`px-2 py-0.5 text-xs font-semibold rounded shrink-0 ${methodBadgeClass}`}>
                           {methodLabel}
                         </span>
                       </div>
@@ -472,7 +479,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
               {/* DESKTOP TABLE (hidden md:block) */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-xs sm:text-sm text-left border-collapse">
-                  <thead className="bg-gray-50/90 text-gray-500 uppercase font-semibold text-[11px] border-b border-gray-200 tracking-wider">
+                  <thead className="bg-gray-50/80 text-gray-500 uppercase font-semibold text-xs border-b border-gray-200 tracking-wider">
                     <tr>
                       <SortableTh
                         label="No. Transaksi"
@@ -549,7 +556,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                                 {bb.invoiceNo}
                               </span>
                               {isVoid && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-100 text-red-700 border border-red-200 rounded">
+                                <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-bold uppercase bg-red-100 text-red-700 border border-red-200 rounded">
                                   VOID
                                 </span>
                               )}
@@ -565,7 +572,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                                 {bb.customerName}
                               </span>
                               {bb.customerMemberCode && (
-                                <span className="font-mono text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold shrink-0">
+                                <span className="font-mono text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-semibold shrink-0">
                                   {bb.customerMemberCode}
                                 </span>
                               )}
@@ -580,7 +587,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                               <span className="font-semibold text-gray-900 text-xs sm:text-sm truncate">
                                 {bb.itemType}
                               </span>
-                              <span className="text-[11px] bg-amber-50 text-amber-800 font-bold px-1.5 py-0.5 rounded border border-amber-200 font-mono shrink-0">
+                              <span className="text-xs bg-amber-50 text-amber-800 font-bold px-1.5 py-0.5 rounded border border-amber-200 font-mono shrink-0">
                                 {bb.kadar}
                               </span>
                             </div>
@@ -608,7 +615,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                               {bb.beratBersih.toFixed(2)} gr
                             </span>
                             {bb.potonganBatu > 0 && (
-                              <span className="text-[11px] font-mono text-gray-400 tabular-nums block mt-0.5">
+                              <span className="text-xs font-mono text-gray-400 tabular-nums block mt-0.5">
                                 Kotor: {bb.beratKotor.toFixed(2)} gr
                               </span>
                             )}
@@ -623,7 +630,7 @@ export const BuybackView: React.FC<BuybackViewProps> = ({
                               {formatIDR(bb.totalBayar)}
                             </span>
                             <span
-                              className={`inline-block mt-0.5 text-[11px] font-semibold px-2 py-0.5 rounded ${methodBadgeClass}`}
+                              className={`inline-block mt-0.5 text-xs font-semibold px-2 py-0.5 rounded ${methodBadgeClass}`}
                             >
                               {methodLabel}
                             </span>

@@ -144,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="hidden sm:flex flex-col items-start text-left leading-tight">
               <span className="font-bold text-xs sm:text-sm text-gray-800 max-w-[120px] truncate">{firstName}</span>
-              <span className="text-[10px] font-medium text-gray-400">{ROLE_LABELS[currentUser.role]}</span>
+              <span className="text-xs font-medium text-gray-400">{ROLE_LABELS[currentUser.role]}</span>
             </div>
             <ChevronDown
               size={14}
@@ -165,7 +165,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-sm font-bold text-gray-900 truncate">{currentUser.fullName}</p>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 shrink-0">
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200 shrink-0">
                         {ROLE_LABELS[currentUser.role]}
                       </span>
                     </div>
@@ -175,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {activeTenant && (
                   <div className="mt-2.5 text-xs bg-gray-50 border border-gray-200/80 text-gray-700 px-2.5 py-1.5 rounded-lg">
-                    <span className="text-[11px] text-gray-400 block">Outlet Aktif:</span>
+                    <span className="text-xs text-gray-400 block">Outlet Aktif:</span>
                     <span className="font-semibold text-gray-800 block truncate">
                       {activeTenant.code} &bull; {activeTenant.name}
                     </span>

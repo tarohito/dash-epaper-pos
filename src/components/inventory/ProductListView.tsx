@@ -22,6 +22,7 @@ import { SearchInput } from '../common/SearchInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
 import { MoneyAmount } from '../common/MoneyAmount';
+import { KpiCard } from '../common/KpiCard';
 import {
   SortableTh,
   SortDirection,
@@ -167,71 +168,72 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
 
       {/* 4 Modern KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Koleksi
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
-              <Gem size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Total Koleksi"
+          accent="orange"
+          icon={<Gem size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {totalAllProducts} SKU
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Jenis perhiasan aktif</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Jenis perhiasan aktif
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Stok Fisik
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
-              <Package size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Total Stok Fisik"
+          accent="blue"
+          icon={<Package size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {totalStockQty} Pcs
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Stok tersedia di etalase</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Stok tersedia di etalase
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Berat Emas
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
-              <Scale size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Total Berat Emas"
+          accent="amber"
+          icon={<Scale size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {totalWeightGrams.toFixed(2)} gr
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Akumulasi gramasi stok</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Akumulasi gramasi stok
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Nilai Aset Etalase
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
-              <Coins size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3 min-w-0">
-            <MoneyAmount value={totalInventoryValue} maxFontPx={24} minFontPx={13} />
-            <p className="text-xs text-gray-400 mt-1 truncate">Estimasi total harga jual</p>
-          </div>
-        </div>
+        <KpiCard
+          title="Nilai Aset Etalase"
+          accent="emerald"
+          icon={<Coins size={16} strokeWidth={2} />}
+          value={
+            <MoneyAmount
+              value={totalInventoryValue}
+              maxFontPx={24}
+              minFontPx={13}
+              className="font-bold font-mono text-gray-900 group-hover:text-white tracking-tight tabular-nums transition-colors duration-200"
+            />
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Estimasi total harga jual
+            </p>
+          }
+        />
       </div>
 
       {/* Search, Filter & Table Workspace */}
@@ -314,7 +316,7 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                         <span className="text-gray-300">&bull;</span>
                         <span className="text-xs text-gray-500 font-medium">{p.category}</span>
                       </div>
-                      <h4 className="text-sm font-bold text-gray-900 truncate">{p.name}</h4>
+                      <h4 className="text-sm sm:text-base font-bold text-gray-900 truncate">{p.name}</h4>
                       <div className="flex items-center gap-2.5 mt-1 text-xs text-gray-500">
                         <span>
                           Berat: <strong className="text-gray-800 font-mono">{p.berat.toFixed(2)} gr</strong>
@@ -481,7 +483,7 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                               <span className="text-xs text-gray-500 font-medium">{p.category}</span>
                               {p.isPromo && p.promoLabel && (
-                                <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
                                   {p.promoLabel}
                                 </span>
                               )}

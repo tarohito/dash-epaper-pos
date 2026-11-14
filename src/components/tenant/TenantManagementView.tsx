@@ -12,6 +12,7 @@ import { usePagination } from '../../hooks/usePagination';
 import { PaginationControls } from '../common/PaginationControls';
 import { SearchInput } from '../common/SearchInput';
 import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
+import { KpiCard } from '../common/KpiCard';
 import {
   ModalShell,
   MODAL_FOOTER_END_CLASS,
@@ -134,81 +135,69 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
 
       {/* 4 Modern KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Outlet Terdaftar
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
-              <Store size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Total Outlet Terdaftar"
+          accent="orange"
+          icon={<Store size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {summary.totalTenants} Outlet
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
               {summary.activeCount} gerai berstatus aktif
             </p>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Outlet Aktif Saat Ini
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
-              <CheckCircle2 size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3 min-w-0">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Outlet Aktif Saat Ini"
+          accent="emerald"
+          icon={<CheckCircle2 size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {activeTenant?.code || '-'}
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
               {activeTenant ? activeTenant.name : 'Belum ada outlet dipilih'}
             </p>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Staf Kasir
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
-              <Users size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Total Staf Kasir"
+          accent="blue"
+          icon={<Users size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {summary.totalCashiers} Kasir
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
               Akumulasi operator POS aktif
             </p>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Cakupan Wilayah
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
-              <MapPin size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Cakupan Wilayah"
+          accent="amber"
+          icon={<MapPin size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {summary.uniqueCities} Kota
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
               Lokasi cabang operasional
             </p>
-          </div>
-        </div>
+          }
+        />
       </div>
 
       {/* Search, Filter & Outlet Cards Workspace */}

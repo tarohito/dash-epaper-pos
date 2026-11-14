@@ -133,7 +133,7 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({ product, o
                         <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">
                           {opt.label}
                         </p>
-                        <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{opt.desc}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 leading-snug">{opt.desc}</p>
                       </div>
                     </button>
                   );

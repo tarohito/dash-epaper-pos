@@ -86,7 +86,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <p className="relative z-10 text-[11px] text-orange-100/80 font-medium">
+          <p className="relative z-10 text-xs text-orange-100/80 font-medium">
             Sistem Operasional Staf
           </p>
         </div>
@@ -169,7 +169,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           {/* Akses Cepat Demo Minimalis */}
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <p className="text-[11px] font-medium text-gray-400 mb-2">Akses cepat demo</p>
+            <p className="text-xs font-medium text-gray-400 mb-2">Akses cepat demo</p>
             <div className="grid grid-cols-2 gap-1.5">
               {DEMO_ACCOUNTS.map(acc => (
                 <button
@@ -182,7 +182,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   <span className="block text-xs font-semibold text-gray-800 leading-tight">
                     {acc.label}
                   </span>
-                  <span className="block text-[11px] font-mono text-gray-400 mt-0.5 truncate">
+                  <span className="block text-xs font-mono text-gray-400 mt-0.5 truncate">
                     @{acc.username}
                   </span>
                 </button>

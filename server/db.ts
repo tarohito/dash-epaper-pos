@@ -3,6 +3,10 @@ import crypto from 'node:crypto';
 import fs from 'fs';
 import path from 'path';
 import type {
+  BroadcastAudienceMode,
+  BroadcastCustomerAudienceItem,
+  BroadcastDeliveryMode,
+  BroadcastRecipientStatus,
   BuybackGoldItem,
   BuybackItem,
   BuybacksPageResponse,
@@ -16,6 +20,8 @@ import type {
   PaymentDetails,
   Product,
   ProductsPageResponse,
+  PromoBroadcastRecipient,
+  PromoBroadcastRecord,
   PromoCampaign,
   PromosPageResponse,
   ShiftClosingCreatePayload,
@@ -279,6 +285,43 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_shift_closings_tenant ON shift_closings(tenantId);
   CREATE INDEX IF NOT EXISTS idx_shift_closings_date ON shift_closings(shiftDate DESC);
   CREATE INDEX IF NOT EXISTS idx_shift_closings_cashier ON shift_closings(cashierId);
+
+  CREATE TABLE IF NOT EXISTS promo_broadcasts (
+    id TEXT PRIMARY KEY,
+    tenantId TEXT NOT NULL,
+    promoId TEXT NOT NULL,
+    promoName TEXT NOT NULL,
+    promoCode TEXT NOT NULL,
+    discountPercent REAL NOT NULL DEFAULT 0,
+    audienceMode TEXT NOT NULL,
+    audienceSegment TEXT,
+    deliveryMode TEXT NOT NULL,
+    messageTemplate TEXT NOT NULL,
+    totalRecipients INTEGER NOT NULL DEFAULT 0,
+    sentCount INTEGER NOT NULL DEFAULT 0,
+    failedCount INTEGER NOT NULL DEFAULT 0,
+    createdBy TEXT NOT NULL,
+    createdAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS promo_broadcast_recipients (
+    id TEXT PRIMARY KEY,
+    broadcastId TEXT NOT NULL,
+    customerId TEXT NOT NULL,
+    customerName TEXT NOT NULL,
+    memberCode TEXT NOT NULL,
+    customerType TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    waPhone TEXT NOT NULL,
+    personalizedMessage TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    errorMessage TEXT,
+    sentAt TEXT,
+    FOREIGN KEY (broadcastId) REFERENCES promo_broadcasts(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_promo_broadcasts_tenant ON promo_broadcasts(tenantId, createdAt DESC);
+  CREATE INDEX IF NOT EXISTS idx_promo_broadcast_recipients_bid ON promo_broadcast_recipients(broadcastId, status);
 `);
 
 function ensureColumn(table: string, column: string, definition: string): void {
@@ -4345,6 +4388,380 @@ export function seedShiftClosingsIfNeeded(): void {
 
   tx();
 }
+
+export function normalizeIndonesianWaPhone(rawPhone: string): string {
+  const digits = String(rawPhone ?? '').replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('0')) return `62${digits.slice(1)}`;
+  if (digits.startsWith('8')) return `62${digits}`;
+  return digits;
+}
+
+export function getBroadcastAudienceCustomers(): BroadcastCustomerAudienceItem[] {
+  const rows = db
+    .prepare(
+      `SELECT c.id, c.memberCode, c.name, c.phone, c.type, c.preferredKadar,
+              (COALESCE(c.totalTransactions, 0) + COALESCE((
+                SELECT COUNT(*) FROM transactions t
+                WHERE COALESCE(t.status, 'completed') != 'void'
+                  AND (t.customerId = c.id OR (t.customerId IS NULL AND LOWER(t.customerName) = LOWER(c.name)))
+              ), 0) + COALESCE((
+                SELECT COUNT(*) FROM buybacks b
+                WHERE COALESCE(b.status, 'completed') != 'void'
+                  AND (b.customerId = c.id OR (b.customerId IS NULL AND LOWER(b.customerName) = LOWER(c.name)))
+              ), 0)) AS totalTxCount
+       FROM customers c
+       WHERE TRIM(COALESCE(c.phone, '')) != ''
+       ORDER BY CASE WHEN totalTxCount > 0 THEN 0 ELSE 1 END,
+                CASE WHEN c.type = 'VIP' THEN 0 WHEN c.type = 'Mitra / Toko' THEN 1 ELSE 2 END,
+                LOWER(c.name) ASC`
+    )
+    .all() as Array<{
+    id: string;
+    memberCode: string;
+    name: string;
+    phone: string;
+    type: 'Reguler' | 'VIP' | 'Mitra / Toko';
+    preferredKadar: string | null;
+    totalTxCount: number;
+  }>;
+
+  const result: BroadcastCustomerAudienceItem[] = [];
+  for (const row of rows) {
+    const waPhone = normalizeIndonesianWaPhone(row.phone);
+    if (waPhone.length < 9) continue;
+    const totalTxCount = Number(row.totalTxCount) || 0;
+    result.push({
+      id: row.id,
+      memberCode: row.memberCode,
+      name: row.name,
+      phone: row.phone,
+      waPhone,
+      type: row.type,
+      preferredKadar: row.preferredKadar ?? undefined,
+      totalTxCount,
+      hasTransacted: totalTxCount > 0,
+    });
+  }
+  return result;
+}
+
+const SAFE_GREETINGS = [
+  'Halo',
+  'Salam hangat',
+  'Selamat datang kembali',
+  'Halo Kak',
+];
+
+function formatRupiahSimple(amount: number): string {
+  return `Rp ${Math.round(amount).toLocaleString('id-ID')}`;
+}
+
+export function renderPromoBroadcastMessage(
+  template: string,
+  params: {
+    customerName: string;
+    memberCode: string;
+    promoName: string;
+    promoCode: string;
+    discountPercent: number;
+    startDate: string;
+    endDate: string;
+    minPurchase?: number;
+    storeName: string;
+    variantIndex?: number;
+  }
+): string {
+  const periode = `${params.startDate} s/d ${params.endDate}`;
+  const minBelanja =
+    params.minPurchase && params.minPurchase > 0
+      ? formatRupiahSimple(params.minPurchase)
+      : 'Tanpa minimal belanja';
+  const greeting = SAFE_GREETINGS[(params.variantIndex ?? 0) % SAFE_GREETINGS.length];
+
+  return template
+    .replace(/\{sapaan\}/gi, greeting)
+    .replace(/\{nama\}/gi, params.customerName)
+    .replace(/\{kode_member\}/gi, params.memberCode)
+    .replace(/\{nama_promo\}/gi, params.promoName)
+    .replace(/\{kode_promo\}/gi, params.promoCode)
+    .replace(/\{diskon\}/gi, `${params.discountPercent}%`)
+    .replace(/\{periode\}/gi, periode)
+    .replace(/\{min_belanja\}/gi, minBelanja)
+    .replace(/\{nama_toko\}/gi, params.storeName);
+}
+
+interface BroadcastDbRow {
+  id: string;
+  tenantId: string;
+  promoId: string;
+  promoName: string;
+  promoCode: string;
+  discountPercent: number;
+  audienceMode: BroadcastAudienceMode;
+  audienceSegment: string | null;
+  deliveryMode: BroadcastDeliveryMode;
+  messageTemplate: string;
+  totalRecipients: number;
+  sentCount: number;
+  failedCount: number;
+  createdBy: string;
+  createdAt: string;
+}
+
+interface BroadcastRecipientDbRow {
+  id: string;
+  broadcastId: string;
+  customerId: string;
+  customerName: string;
+  memberCode: string;
+  customerType: string;
+  phone: string;
+  waPhone: string;
+  personalizedMessage: string;
+  status: BroadcastRecipientStatus;
+  errorMessage: string | null;
+  sentAt: string | null;
+}
+
+function mapBroadcastRow(row: BroadcastDbRow, recipients?: PromoBroadcastRecipient[]): PromoBroadcastRecord {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    promoId: row.promoId,
+    promoName: row.promoName,
+    promoCode: row.promoCode,
+    discountPercent: row.discountPercent,
+    audienceMode: row.audienceMode,
+    audienceSegment: row.audienceSegment ?? undefined,
+    deliveryMode: row.deliveryMode,
+    messageTemplate: row.messageTemplate,
+    totalRecipients: row.totalRecipients,
+    sentCount: row.sentCount,
+    failedCount: row.failedCount,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt,
+    recipients,
+  };
+}
+
+function mapBroadcastRecipientRow(row: BroadcastRecipientDbRow): PromoBroadcastRecipient {
+  return {
+    id: row.id,
+    broadcastId: row.broadcastId,
+    customerId: row.customerId,
+    customerName: row.customerName,
+    memberCode: row.memberCode,
+    customerType: row.customerType,
+    phone: row.phone,
+    waPhone: row.waPhone,
+    personalizedMessage: row.personalizedMessage,
+    status: row.status,
+    errorMessage: row.errorMessage ?? undefined,
+    sentAt: row.sentAt ?? undefined,
+  };
+}
+
+export function createPromoBroadcastBatch(opts: {
+  tenantId: string;
+  promo: {
+    id: string;
+    name: string;
+    code: string;
+    discountPercent: number;
+    startDate: string;
+    endDate: string;
+    minPurchase?: number;
+  };
+  storeName: string;
+  audienceMode: BroadcastAudienceMode;
+  audienceSegment?: string;
+  customers: BroadcastCustomerAudienceItem[];
+  deliveryMode: BroadcastDeliveryMode;
+  messageTemplate: string;
+  createdBy: string;
+}): PromoBroadcastRecord {
+  const broadcastId = `BRC-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+  const createdAt = new Date().toISOString();
+
+  const tx = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO promo_broadcasts (
+        id, tenantId, promoId, promoName, promoCode, discountPercent,
+        audienceMode, audienceSegment, deliveryMode, messageTemplate,
+        totalRecipients, sentCount, failedCount, createdBy, createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`
+    ).run(
+      broadcastId,
+      opts.tenantId,
+      opts.promo.id,
+      opts.promo.name,
+      opts.promo.code,
+      opts.promo.discountPercent,
+      opts.audienceMode,
+      opts.audienceSegment ?? null,
+      opts.deliveryMode,
+      opts.messageTemplate,
+      opts.customers.length,
+      opts.createdBy,
+      createdAt
+    );
+
+    const insertRecipient = db.prepare(
+      `INSERT INTO promo_broadcast_recipients (
+        id, broadcastId, customerId, customerName, memberCode, customerType,
+        phone, waPhone, personalizedMessage, status, errorMessage, sentAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL)`
+    );
+
+    opts.customers.forEach((cust, idx) => {
+      const recId = `BRR-${Date.now()}-${idx}-${crypto.randomBytes(2).toString('hex')}`;
+      const personalizedMessage = renderPromoBroadcastMessage(opts.messageTemplate, {
+        customerName: cust.name,
+        memberCode: cust.memberCode,
+        promoName: opts.promo.name,
+        promoCode: opts.promo.code,
+        discountPercent: opts.promo.discountPercent,
+        startDate: opts.promo.startDate,
+        endDate: opts.promo.endDate,
+        minPurchase: opts.promo.minPurchase,
+        storeName: opts.storeName,
+        variantIndex: idx,
+      });
+
+      insertRecipient.run(
+        recId,
+        broadcastId,
+        cust.id,
+        cust.name,
+        cust.memberCode,
+        cust.type,
+        cust.phone,
+        cust.waPhone,
+        personalizedMessage
+      );
+    });
+  });
+
+  tx();
+  return getPromoBroadcastById(broadcastId, opts.tenantId)!;
+}
+
+export function listPromoBroadcasts(tenantId: string, limit = 30): PromoBroadcastRecord[] {
+  const rows = db
+    .prepare('SELECT * FROM promo_broadcasts WHERE tenantId = ? ORDER BY createdAt DESC LIMIT ?')
+    .all(tenantId, limit) as BroadcastDbRow[];
+  return rows.map(row => mapBroadcastRow(row));
+}
+
+export function getPromoBroadcastById(broadcastId: string, tenantId: string): PromoBroadcastRecord | null {
+  const row = db
+    .prepare('SELECT * FROM promo_broadcasts WHERE id = ? AND tenantId = ?')
+    .get(broadcastId, tenantId) as BroadcastDbRow | undefined;
+  if (!row) return null;
+
+  const recipients = db
+    .prepare('SELECT * FROM promo_broadcast_recipients WHERE broadcastId = ? ORDER BY rowid ASC')
+    .all(broadcastId) as BroadcastRecipientDbRow[];
+
+  return mapBroadcastRow(row, recipients.map(mapBroadcastRecipientRow));
+}
+
+export function updatePromoBroadcastRecipientStatus(opts: {
+  broadcastId: string;
+  recipientId: string;
+  tenantId: string;
+  status: BroadcastRecipientStatus;
+  errorMessage?: string;
+}): PromoBroadcastRecord | null {
+  const parent = db
+    .prepare('SELECT id FROM promo_broadcasts WHERE id = ? AND tenantId = ?')
+    .get(opts.broadcastId, opts.tenantId) as { id: string } | undefined;
+  if (!parent) return null;
+
+  const sentAt = opts.status === 'sent' ? new Date().toISOString() : null;
+  const errMsg = opts.status === 'failed' ? (opts.errorMessage ?? 'Pengiriman gagal') : null;
+
+  const tx = db.transaction(() => {
+    db.prepare(
+      `UPDATE promo_broadcast_recipients
+       SET status = ?, errorMessage = ?, sentAt = ?
+       WHERE id = ? AND broadcastId = ?`
+    ).run(opts.status, errMsg, sentAt, opts.recipientId, opts.broadcastId);
+
+    const counts = db
+      .prepare(
+        `SELECT
+          SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sentCount,
+          SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failedCount
+         FROM promo_broadcast_recipients
+         WHERE broadcastId = ?`
+      )
+      .get(opts.broadcastId) as { sentCount: number | null; failedCount: number | null };
+
+    db.prepare('UPDATE promo_broadcasts SET sentCount = ?, failedCount = ? WHERE id = ?').run(
+      counts.sentCount ?? 0,
+      counts.failedCount ?? 0,
+      opts.broadcastId
+    );
+  });
+
+  tx();
+  return getPromoBroadcastById(opts.broadcastId, opts.tenantId);
+}
+
+export function getDailyBroadcastSentCount(tenantId: string): number {
+  const todayPrefix = new Date().toISOString().slice(0, 10);
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) as cnt
+       FROM promo_broadcast_recipients r
+       INNER JOIN promo_broadcasts b ON b.id = r.broadcastId
+       WHERE b.tenantId = ? AND r.status = 'sent' AND r.sentAt LIKE ?`
+    )
+    .get(tenantId, `${todayPrefix}%`) as { cnt: number };
+  return row?.cnt ?? 0;
+}
+
+export function cancelPendingPromoBroadcastRecipients(
+  broadcastId: string,
+  tenantId: string,
+  reason = 'Dihentikan oleh pengguna (Mode Aman)'
+): PromoBroadcastRecord | null {
+  const parent = db
+    .prepare('SELECT id FROM promo_broadcasts WHERE id = ? AND tenantId = ?')
+    .get(broadcastId, tenantId) as { id: string } | undefined;
+  if (!parent) return null;
+
+  const tx = db.transaction(() => {
+    db.prepare(
+      `UPDATE promo_broadcast_recipients
+       SET status = 'failed', errorMessage = ?
+       WHERE broadcastId = ? AND status = 'pending'`
+    ).run(reason, broadcastId);
+
+    const counts = db
+      .prepare(
+        `SELECT
+          SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sentCount,
+          SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failedCount
+         FROM promo_broadcast_recipients
+         WHERE broadcastId = ?`
+      )
+      .get(broadcastId) as { sentCount: number | null; failedCount: number | null };
+
+    db.prepare('UPDATE promo_broadcasts SET sentCount = ?, failedCount = ? WHERE id = ?').run(
+      counts.sentCount ?? 0,
+      counts.failedCount ?? 0,
+      broadcastId
+    );
+  });
+
+  tx();
+  return getPromoBroadcastById(broadcastId, tenantId);
+}
+
+
 
 
 

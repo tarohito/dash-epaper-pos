@@ -253,7 +253,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   Pelanggan / Member
                 </label>
                 {requireCustomer && (
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
                     Wajib Member
                   </span>
                 )}
@@ -275,7 +275,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
               {isQuickAddOpen ? (
                 <div className="p-3 bg-white rounded-lg border border-orange-200 space-y-2.5">
-                  <p className="text-[11px] font-semibold text-orange-700">
+                  <p className="text-xs font-semibold text-orange-700">
                     Simpan ke Master Pelanggan &amp; langsung tautkan ke transaksi ini:
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

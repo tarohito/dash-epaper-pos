@@ -344,7 +344,7 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
                 ]}
               />
               {userRole !== 'owner' && (
-                <p className="text-[11px] text-gray-400 mt-1">Hanya Owner yang dapat mengubah status operasional outlet.</p>
+                <p className="text-xs text-gray-400 mt-1">Hanya Owner yang dapat mengubah status operasional outlet.</p>
               )}
             </div>
 
@@ -475,7 +475,7 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
           {/* Live Tax Preview Card */}
           <div className="lg:col-span-5 bg-white rounded-xl border border-gray-200/90 p-4 sm:p-6 flex flex-col justify-between space-y-4">
             <div>
-              <h4 className="text-sm font-bold text-gray-900">Simulasi Kalkulasi POS Aktif</h4>
+              <h4 className="text-sm sm:text-base font-bold text-gray-900">Simulasi Kalkulasi POS Aktif</h4>
               <p className="text-xs text-gray-500 mt-0.5">
                 Contoh perhitungan invoice dengan konfigurasi PPN saat ini.
               </p>
@@ -529,7 +529,7 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
                 min={0}
                 className="h-10 px-3 text-sm font-mono font-bold bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
               />
-              <p className="text-[11px] text-gray-500 font-mono">{formatIDR(price24k)} / gr</p>
+              <p className="text-xs text-gray-500 font-mono">{formatIDR(price24k)} / gr</p>
             </div>
 
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
@@ -541,7 +541,7 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
                 min={0}
                 className="h-10 px-3 text-sm font-mono font-bold bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
               />
-              <p className="text-[11px] text-gray-500 font-mono">{formatIDR(price22k)} / gr</p>
+              <p className="text-xs text-gray-500 font-mono">{formatIDR(price22k)} / gr</p>
             </div>
 
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
@@ -553,7 +553,7 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
                 min={0}
                 className="h-10 px-3 text-sm font-mono font-bold bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
               />
-              <p className="text-[11px] text-gray-500 font-mono">{formatIDR(price18k)} / gr</p>
+              <p className="text-xs text-gray-500 font-mono">{formatIDR(price18k)} / gr</p>
             </div>
 
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
@@ -565,7 +565,7 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
                 min={0}
                 className="h-10 px-3 text-sm font-mono font-bold bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
               />
-              <p className="text-[11px] text-gray-500 font-mono">{formatIDR(price16k)} / gr</p>
+              <p className="text-xs text-gray-500 font-mono">{formatIDR(price16k)} / gr</p>
             </div>
           </div>
 
@@ -614,14 +614,14 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
           </div>
 
           <div className="lg:col-span-6 bg-white rounded-xl border border-gray-200/90 p-4 sm:p-6 space-y-3">
-            <h4 className="text-sm font-bold text-gray-900">Pratinjau Header &amp; Ketentuan Nota</h4>
+            <h4 className="text-sm sm:text-base font-bold text-gray-900">Pratinjau Header &amp; Ketentuan Nota</h4>
             <div className="border border-gray-300 rounded-lg p-4 bg-white space-y-4">
               <div className="flex items-start justify-between border-b border-gray-200 pb-3">
                 <div>
-                  <p className="text-lg font-black uppercase text-[#8c671b] leading-none">
+                  <p className="text-lg font-bold uppercase text-[#8c671b] leading-none">
                     {storeName || 'e.paper'}
                   </p>
-                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#9a7420] mt-1">
+                  <p className="text-xs font-bold tracking-[0.2em] uppercase text-[#9a7420] mt-1">
                     {receiptTagline || 'GOLD & JEWELLERY'}
                   </p>
                 </div>

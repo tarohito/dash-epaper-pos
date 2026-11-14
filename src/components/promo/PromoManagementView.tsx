@@ -5,6 +5,7 @@ import {
   Copy,
   Eye,
   Loader2,
+  Megaphone,
   Package,
   Pencil,
   Percent,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 import { PromoCampaign, Product, PromoStatsSummary } from '../../types';
 import { AddEditPromoModal } from './AddEditPromoModal';
+import { PromoBroadcastModal } from './PromoBroadcastModal';
 import { PaginationControls } from '../common/PaginationControls';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -29,6 +31,7 @@ import {
   MODAL_BTN_PRIMARY_CLASS,
 } from '../common/ModalShell';
 import { MoneyAmount } from '../common/MoneyAmount';
+import { KpiCard } from '../common/KpiCard';
 import {
   SortableTh,
   SortDirection,
@@ -68,6 +71,7 @@ function formatPromoDate(dateStr: string): string {
 
 interface PromoManagementViewProps {
   refreshTrigger: number;
+  storeName?: string;
   onSavePromo: (promo: PromoCampaign, isEdit?: boolean) => Promise<void>;
   onDeletePromo: (id: string) => Promise<void>;
   onTogglePromoStatus: (id: string) => Promise<void>;
@@ -75,6 +79,7 @@ interface PromoManagementViewProps {
 
 export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
   refreshTrigger,
+  storeName,
   onSavePromo,
   onDeletePromo,
   onTogglePromoStatus,
@@ -89,6 +94,8 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
   const [editingPromo, setEditingPromo] = useState<PromoCampaign | null>(null);
   const [detailPromo, setDetailPromo] = useState<PromoCampaign | null>(null);
   const [deletingPromo, setDeletingPromo] = useState<PromoCampaign | null>(null);
+  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
+  const [broadcastPromo, setBroadcastPromo] = useState<PromoCampaign | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -249,7 +256,18 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setBroadcastPromo(null);
+              setIsBroadcastOpen(true);
+            }}
+            className="h-9 px-3.5 text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 active:scale-[0.98]"
+          >
+            <Megaphone size={15} />
+            <span>Broadcast WA</span>
+          </button>
           <button
             type="button"
             onClick={handleOpenAddModal}
@@ -263,73 +281,69 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
 
       {/* 4 Modern KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Total Kampanye Promo
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-orange-50/80 text-orange-600 border border-orange-100/80 flex items-center justify-center shrink-0">
-              <BadgePercent size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Total Kampanye Promo"
+          accent="orange"
+          icon={<BadgePercent size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {stats.totalPromos} Promo
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Seluruh kampanye terdaftar</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Seluruh kampanye terdaftar
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Promo Aktif
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/80 flex items-center justify-center shrink-0">
-              <CheckCircle2 size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Promo Aktif"
+          accent="emerald"
+          icon={<CheckCircle2 size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {stats.activeCount} Aktif
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Sedang berlaku di kasir</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Sedang berlaku di kasir
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Produk Terdampak
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/80 flex items-center justify-center shrink-0">
-              <Package size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Produk Terdampak"
+          accent="blue"
+          icon={<Package size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {stats.totalPromoProducts} SKU
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Mendapat potongan harga</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Mendapat potongan harga
+            </p>
+          }
+        />
 
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-gray-200/90 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col justify-between transition-colors">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs sm:text-sm font-medium text-gray-500 truncate">
-              Rata-Rata Diskon
-            </span>
-            <span className="w-8 h-8 rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/80 flex items-center justify-center shrink-0">
-              <Percent size={16} strokeWidth={2} />
-            </span>
-          </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight truncate tabular-nums">
+        <KpiCard
+          title="Rata-Rata Diskon"
+          accent="amber"
+          icon={<Percent size={16} strokeWidth={2} />}
+          value={
+            <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
               {stats.avgDiscount}%
             </div>
-            <p className="text-xs text-gray-400 mt-1 truncate">Rata-rata promo aktif</p>
-          </div>
-        </div>
+          }
+          footer={
+            <p className="text-xs text-gray-400 group-hover:text-white/85 mt-1 truncate transition-colors duration-200">
+              Rata-rata promo aktif
+            </p>
+          }
+        />
       </div>
 
       {/* Table Workspace Card */}
@@ -439,7 +453,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                           <Copy size={11} className="text-gray-400" />
                         </button>
                       </div>
-                      <h4 className="text-sm font-bold text-gray-900">{promo.name}</h4>
+                      <h4 className="text-sm sm:text-base font-bold text-gray-900">{promo.name}</h4>
                       {(() => {
                         const days = getPromoDurationDays(promo.startDate, promo.endDate);
                         return (
@@ -493,6 +507,15 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                           label: 'Lihat Detail',
                           icon: <Eye size={14} />,
                           onClick: () => setDetailPromo(promo),
+                        },
+                        {
+                          id: 'broadcast',
+                          label: 'Broadcast WA',
+                          icon: <Megaphone size={14} />,
+                          onClick: () => {
+                            setBroadcastPromo(promo);
+                            setIsBroadcastOpen(true);
+                          },
                         },
                         {
                           id: 'edit',
@@ -615,7 +638,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                             </button>
                           </Tooltip>
                           {copiedCode === promo.code && (
-                            <span className="text-[11px] font-semibold text-emerald-600">Tersalin</span>
+                            <span className="text-xs font-semibold text-emerald-600">Tersalin</span>
                           )}
                         </div>
                       </td>
@@ -625,7 +648,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                           -{promo.discountPercent}%
                         </span>
                         {promo.label && (
-                          <span className="block text-[11px] text-gray-400 mt-0.5 truncate max-w-[130px] mx-auto">
+                          <span className="block text-xs text-gray-400 mt-0.5 truncate max-w-[130px] mx-auto">
                             {promo.label}
                           </span>
                         )}
@@ -689,6 +712,15 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                               onClick: () => setDetailPromo(promo),
                             },
                             {
+                              id: 'broadcast',
+                              label: 'Broadcast WA',
+                              icon: <Megaphone size={14} />,
+                              onClick: () => {
+                                setBroadcastPromo(promo);
+                                setIsBroadcastOpen(true);
+                              },
+                            },
+                            {
                               id: 'edit',
                               label: 'Edit Promo',
                               icon: <Pencil size={14} />,
@@ -746,6 +778,19 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                 onClick={() => {
                   const target = detailPromo;
                   setDetailPromo(null);
+                  setBroadcastPromo(target);
+                  setIsBroadcastOpen(true);
+                }}
+                className="h-9 px-4 text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
+              >
+                <Megaphone size={15} className="shrink-0" />
+                <span>Broadcast WA</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = detailPromo;
+                  setDetailPromo(null);
                   handleOpenEditModal(target);
                 }}
                 className={MODAL_BTN_PRIMARY_CLASS}
@@ -759,25 +804,56 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
       >
         {detailPromo && (
           <div className="space-y-4">
-            {/* Promo Banner */}
-            <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl text-white flex items-center justify-between gap-4">
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-100 block">
+            {/* Promo Coupon Banner */}
+            <div className="relative rounded-xl overflow-hidden bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-xs flex flex-col sm:flex-row items-stretch">
+              {/* Left Body: Discount Value */}
+              <div className="flex-1 px-4 py-4 sm:px-5 sm:py-5 flex flex-col justify-center min-w-0">
+                <span className="text-xs font-semibold uppercase tracking-wider text-orange-100 block">
                   Besaran Potongan Harga
                 </span>
-                <p className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white mt-0.5">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white mt-0.5">
                   Diskon {detailPromo.discountPercent}%
                 </p>
-                <p className="text-xs text-orange-100 mt-1">
+                <p className="text-xs text-orange-100 mt-1 truncate">
                   Label: <strong className="text-white">{detailPromo.label || '-'}</strong>
                 </p>
               </div>
-              <div className="text-right shrink-0">
-                <span className="text-xs text-orange-100 block mb-1">Kode Promo</span>
+
+              {/* Perforated Coupon Tear Line */}
+              <div className="relative shrink-0 h-0 w-full sm:h-auto sm:w-0">
+                {/* Mobile Horizontal Perforation & Notches */}
+                <div className="sm:hidden absolute inset-x-3 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-white/50" />
+                <span
+                  aria-hidden="true"
+                  className="sm:hidden absolute -left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white z-10"
+                />
+                <span
+                  aria-hidden="true"
+                  className="sm:hidden absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white z-10"
+                />
+
+                {/* Desktop Vertical Perforation & Notches */}
+                <div className="hidden sm:block absolute inset-y-3 left-1/2 -translate-x-1/2 border-l-2 border-dashed border-white/50" />
+                <span
+                  aria-hidden="true"
+                  className="hidden sm:block absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-white z-10"
+                />
+                <span
+                  aria-hidden="true"
+                  className="hidden sm:block absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-white z-10"
+                />
+              </div>
+
+              {/* Right Coupon Stub: Promo Code */}
+              <div className="bg-black/10 px-4 py-3.5 sm:px-6 sm:py-5 flex sm:flex-col items-center sm:justify-center justify-between gap-2 shrink-0 sm:min-w-[178px]">
+                <span className="text-xs font-semibold uppercase tracking-wider text-orange-100">
+                  Kode Promo
+                </span>
                 <button
                   type="button"
                   onClick={() => handleCopyCode(detailPromo.code)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white font-mono font-bold text-xs sm:text-sm border border-white/25 transition-colors cursor-pointer"
+                  title="Klik untuk salin kode promo"
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white font-mono font-bold text-xs sm:text-sm border border-dashed border-white/60 transition-colors cursor-pointer active:scale-[0.98]"
                 >
                   <span>{detailPromo.code}</span>
                   <Copy size={13} />
@@ -846,7 +922,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                           />
                           <div className="min-w-0">
                             <span className="font-semibold text-gray-900 block truncate">{prod.name}</span>
-                            <span className="text-[11px] text-gray-500 font-mono">
+                            <span className="text-xs text-gray-500 font-mono">
                               {prod.sku} &bull; {prod.category}
                             </span>
                           </div>
@@ -855,7 +931,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                           <span className="font-mono font-bold text-orange-600 block tabular-nums">
                             {formatIDR(discountedPrice)}
                           </span>
-                          <span className="font-mono text-[11px] text-gray-400 line-through tabular-nums">
+                          <span className="font-mono text-xs text-gray-400 line-through tabular-nums">
                             {formatIDR(prod.harga)}
                           </span>
                         </div>
@@ -875,6 +951,22 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
         onClose={() => setIsModalOpen(false)}
         onSave={onSavePromo}
         editingPromo={editingPromo}
+      />
+
+      {/* Promo WhatsApp Broadcast Modal */}
+      <PromoBroadcastModal
+        isOpen={isBroadcastOpen}
+        onClose={() => {
+          setIsBroadcastOpen(false);
+          setBroadcastPromo(null);
+        }}
+        promos={
+          broadcastPromo && !items.some(p => p.id === broadcastPromo.id)
+            ? [broadcastPromo, ...items]
+            : items
+        }
+        initialPromo={broadcastPromo}
+        storeName={storeName}
       />
 
       <ConfirmModal

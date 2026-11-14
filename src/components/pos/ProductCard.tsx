@@ -37,11 +37,11 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
           />
           {/* Category & Promo Badge */}
           <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
-            <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 bg-white/95 backdrop-blur-xs text-orange-600 rounded-md border border-orange-100 shadow-2xs">
+            <span className="text-xs font-semibold px-2 py-0.5 bg-white/95 backdrop-blur-xs text-orange-600 rounded-md border border-orange-100 shadow-2xs">
               {product.category}
             </span>
             {product.isPromo && (
-              <span className="text-[10px] sm:text-xs font-bold px-1.5 py-0.5 bg-yellow-400 text-gray-950 rounded-md shadow-2xs">
+              <span className="text-xs font-bold px-1.5 py-0.5 bg-yellow-400 text-gray-950 rounded-md shadow-2xs">
                 {product.promoLabel || 'PROMO'}
               </span>
             )}
@@ -49,7 +49,7 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
           {/* Stock Badge */}
           <div className="absolute top-2 right-2">
             <span
-              className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs shadow-2xs ${
+              className={`text-xs font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs shadow-2xs ${
                 isOutOfStock
                   ? 'bg-red-600 text-white'
                   : product.stok <= 5
@@ -76,7 +76,7 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
           <div className="mt-1.5 sm:mt-2 flex flex-col gap-0.5">
             {/* Harga Langsung */}
             <div
-              className={`text-sm sm:text-base font-black font-mono tracking-tight leading-tight ${
+              className={`text-sm sm:text-base font-bold font-mono tabular-nums tracking-tight leading-tight ${
                 isOutOfStock ? 'text-gray-400' : 'text-orange-600'
               }`}
             >
@@ -84,7 +84,7 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onAddToC
             </div>
 
             {/* Dibawahnya Berat */}
-            <div className="text-[11px] sm:text-xs text-gray-500 font-medium leading-tight">
+            <div className="text-xs text-gray-500 font-medium leading-tight">
               Berat : <span className="font-semibold text-gray-700 font-mono">{product.berat.toFixed(2)} g</span>
             </div>
           </div>

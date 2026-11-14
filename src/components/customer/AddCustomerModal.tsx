@@ -218,10 +218,10 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         {/* Section 1: Identitas & Verifikasi KYC */}
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
               Identitas &amp; Kontak KYC
             </span>
-            <span className="text-[11px] font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+            <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
               Kode: {initialCustomer ? memberCode : 'Otomatis Sistem'}
             </span>
           </div>
@@ -276,7 +276,7 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                   NIK / No. KTP <span className="text-red-500">*</span>
                 </label>
                 <span
-                  className={`text-[11px] font-mono ${
+                  className={`text-xs font-mono ${
                     nik.length === 16 ? 'text-emerald-600 font-semibold' : 'text-gray-400'
                   }`}
                 >
@@ -333,7 +333,7 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
         {/* Section 2: Preferensi Perhiasan & Ukuran */}
         <div className="p-3.5 rounded-xl bg-gray-50/80 border border-gray-200/80 space-y-3">
-          <span className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+          <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
             Preferensi Perhiasan &amp; Ukuran
           </span>
 

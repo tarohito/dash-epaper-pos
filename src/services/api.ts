@@ -1,6 +1,8 @@
 import type {
   AuthLoginResponse,
   BootstrapPayload,
+  BroadcastCustomerAudienceItem,
+  BroadcastRecipientStatus,
   BuybackCreatePayload,
   BuybackItem,
   BuybacksPageResponse,
@@ -11,6 +13,9 @@ import type {
   PaymentDetails,
   Product,
   ProductsPageResponse,
+  PromoBroadcastConfig,
+  PromoBroadcastCreatePayload,
+  PromoBroadcastRecord,
   PromoCampaign,
   PromosPageResponse,
   ShiftClosingCreatePayload,
@@ -387,6 +392,39 @@ export const posApi = {
     requestJson<{ deletedId: string }>(`/api/promos/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
+  getPromoBroadcastConfig: (signal?: AbortSignal) =>
+    requestJson<PromoBroadcastConfig>('/api/promos/broadcast-config', { signal }),
+  getPromoBroadcastAudience: (signal?: AbortSignal) =>
+    requestJson<BroadcastCustomerAudienceItem[]>('/api/promos/broadcast-audience', { signal }),
+  getPromoBroadcasts: (signal?: AbortSignal) =>
+    requestJson<PromoBroadcastRecord[]>('/api/promos/broadcasts', { signal }),
+  getPromoBroadcastById: (broadcastId: string, signal?: AbortSignal) =>
+    requestJson<PromoBroadcastRecord>(`/api/promos/broadcasts/${encodeURIComponent(broadcastId)}`, { signal }),
+  createPromoBroadcast: (promoId: string, payload: PromoBroadcastCreatePayload) =>
+    requestJson<PromoBroadcastRecord>(`/api/promos/${encodeURIComponent(promoId)}/broadcast`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updatePromoBroadcastRecipient: (
+    broadcastId: string,
+    recipientId: string,
+    status: BroadcastRecipientStatus,
+    errorMessage?: string
+  ) =>
+    requestJson<PromoBroadcastRecord>(
+      `/api/promos/broadcasts/${encodeURIComponent(broadcastId)}/recipients/${encodeURIComponent(recipientId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status, errorMessage }),
+      }
+    ),
+  cancelPromoBroadcast: (broadcastId: string) =>
+    requestJson<PromoBroadcastRecord>(
+      `/api/promos/broadcasts/${encodeURIComponent(broadcastId)}/cancel`,
+      {
+        method: 'POST',
+      }
+    ),
 
   // Tenants
   getTenants: () => requestJson<Tenant[]>('/api/tenants'),

@@ -85,7 +85,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Left: Sales & Buyback Breakdown */}
           <div className="rounded-xl border border-gray-200 p-4 space-y-3 text-xs">
-            <h4 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-2">
+            <h4 className="text-sm sm:text-base font-bold text-gray-900 border-b border-gray-100 pb-2">
               Rincian Penjualan &amp; Buyback
             </h4>
             <div className="space-y-2">
@@ -137,7 +137,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({
           {/* Right: Drawer Cash Reconciliation */}
           <div className="rounded-xl border border-gray-200 p-4 space-y-3 text-xs flex flex-col justify-between">
             <div className="space-y-2.5">
-              <h4 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-2">
+              <h4 className="text-sm sm:text-base font-bold text-gray-900 border-b border-gray-100 pb-2">
                 Rekonsiliasi Kas Tunai Laci
               </h4>
 

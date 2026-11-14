@@ -279,7 +279,7 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
                           <Gem size={18} />
                         </span>
                         <div className="min-w-0">
-                          <h4 className="text-sm font-bold text-gray-900 truncate">{row.name}</h4>
+                          <h4 className="text-sm sm:text-base font-bold text-gray-900 truncate">{row.name}</h4>
                           <p className="text-xs text-gray-500 mt-0.5 font-mono tabular-nums">
                             {row.count} SKU · {sharePercent}% katalog
                           </p>

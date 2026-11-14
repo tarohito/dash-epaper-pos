@@ -133,7 +133,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 <div className="flex flex-col truncate pr-2">
                   <span className="truncate">{opt.label}</span>
                   {opt.sublabel && (
-                    <span className="text-[11px] text-gray-400 font-normal mt-0.5 truncate">
+                    <span className="text-xs text-gray-400 font-normal mt-0.5 truncate">
                       {opt.sublabel}
                     </span>
                   )}
@@ -141,7 +141,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   {opt.badge && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
                       {opt.badge}
                     </span>
                   )}

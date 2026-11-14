@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
   :root {
-    font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
     letter-spacing: normal;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -116,6 +116,59 @@
 
 .animate-laser {
   animation: laser-sweep 1.8s ease-in-out infinite;
+}
+
+@keyframes kpi-wave-forward {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes kpi-wave-reverse {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes kpi-wave-swell {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scaleY(1);
+  }
+  50% {
+    transform: translate3d(0, 3px, 0) scaleY(1.16);
+  }
+}
+
+.animate-kpi-wave {
+  animation: kpi-wave-forward 2.2s linear infinite;
+}
+
+.animate-kpi-wave-mid {
+  animation: kpi-wave-reverse 2.9s linear infinite;
+}
+
+.animate-kpi-wave-back {
+  animation: kpi-wave-forward 3.6s linear infinite;
+}
+
+.animate-kpi-wave-swell {
+  transform-origin: bottom center;
+  animation: kpi-wave-swell 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-kpi-wave,
+  .animate-kpi-wave-mid,
+  .animate-kpi-wave-back,
+  .animate-kpi-wave-swell {
+    animation: none;
+  }
 }
 
 /* Screen mode: hide print-only element */
