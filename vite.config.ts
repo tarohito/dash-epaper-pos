@@ -7,7 +7,25 @@ import { defineConfig } from 'vite';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'disable-hmr-ws-client',
+      apply: 'serve',
+      enforce: 'post',
+      transform(code, id) {
+        if (id.replace(/\\/g, '/').endsWith('vite/dist/client/client.mjs')) {
+          return code
+            .replace('console.debug("[vite] connecting...");', '')
+            .replace(
+              'transport.connect(createHMRHandler(handleMessage));',
+              '/* HMR WebSocket disabled */'
+            );
+        }
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -51,5 +69,7 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     allowedHosts: true,
+    hmr: false,
+    ws: false,
   },
 });

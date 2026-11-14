@@ -19,6 +19,7 @@ import {
 } from '../../types';
 import { GoldInvoiceDocument } from '../common/GoldInvoiceDocument';
 import { CustomSelect } from '../common/CustomSelect';
+import { CustomCheckbox } from '../common/CustomCheckbox';
 import { useToast } from '../../contexts/ToastContext';
 
 export const DEFAULT_RECEIPT_TERMS_TEMPLATE = [
@@ -550,11 +551,9 @@ export const ReceiptCustomizationTab: React.FC<ReceiptCustomizationTabProps> = (
                     Membantu mencegah pemalsuan surat emas resmi toko.
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <CustomCheckbox
                   checked={settings.receiptShowWatermark}
-                  onChange={e => onUpdateField('receiptShowWatermark', e.target.checked)}
-                  className="w-4 h-4 accent-orange-500 rounded cursor-pointer shrink-0"
+                  onChange={val => onUpdateField('receiptShowWatermark', val)}
                 />
               </label>
             </div>
@@ -634,11 +633,10 @@ export const ReceiptCustomizationTab: React.FC<ReceiptCustomizationTabProps> = (
                     {item.desc}
                   </span>
                 </div>
-                <input
-                  type="checkbox"
+                <CustomCheckbox
                   checked={item.checked}
-                  onChange={e => onUpdateField(item.key, e.target.checked as StoreSettings[typeof item.key])}
-                  className="mt-0.5 w-4 h-4 accent-orange-500 rounded cursor-pointer shrink-0"
+                  onChange={val => onUpdateField(item.key, val as StoreSettings[typeof item.key])}
+                  className="mt-0.5"
                 />
               </label>
             ))}

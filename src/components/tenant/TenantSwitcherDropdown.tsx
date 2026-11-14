@@ -67,11 +67,11 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
         </div>
 
         {isOpen && (
-          <div className="mt-2 bg-white text-gray-900 rounded-lg border border-gray-200 shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+          <div className="mt-2 bg-white text-gray-900 rounded-xl border border-gray-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
             <div className="px-2 py-1.5 border-b border-gray-100 mb-1">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Ganti Tenant Bisnis</p>
             </div>
-            <div className="max-h-56 overflow-y-auto space-y-1">
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
               {tenants.map(tenant => {
                 const isSelected = tenant.id === activeTenant.id;
                 return (
@@ -82,8 +82,8 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
                       onSelectTenant(tenant.id);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left p-2 rounded-md flex items-center justify-between text-xs transition-colors cursor-pointer ${
-                      isSelected ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-gray-50 text-gray-700'
+                    className={`w-full text-left p-2 rounded-lg flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                      isSelected ? 'bg-orange-50 text-orange-700 font-bold' : 'hover:bg-gray-50 text-gray-700'
                     }`}
                   >
                     <div className="min-w-0 flex-1 pr-2">
@@ -102,7 +102,7 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
                   setIsOpen(false);
                   onOpenRegisterModal();
                 }}
-                className="w-full py-1.5 px-2 text-xs font-bold text-orange-600 hover:bg-orange-50 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-1.5 px-2 text-xs font-bold text-orange-600 hover:bg-orange-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus size={14} className="shrink-0" />
                 <span>Daftar Tenant Baru</span>
@@ -150,7 +150,7 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
 
       {/* DROPDOWN MENU */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 sm:w-92 bg-white rounded-lg border border-gray-200 shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute left-0 mt-2 w-80 sm:w-92 bg-white rounded-xl border border-gray-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
           {/* Header */}
           <div className="px-3.5 py-2 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -179,9 +179,9 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
           </div>
 
           {/* Tenant List */}
-          <div className="p-2">
+          <div className="p-1.5">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-1">Pilih / Ganti Tenant Bisnis:</p>
-            <div className="max-h-56 overflow-y-auto space-y-1">
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
               {tenants.map(t => {
                 const isSelected = t.id === activeTenant.id;
                 return (
@@ -192,10 +192,10 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
                       onSelectTenant(t.id);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left p-2.5 rounded-md flex items-center justify-between transition-colors cursor-pointer ${
+                    className={`w-full text-left p-2.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-orange-500 text-white font-bold'
-                        : 'hover:bg-gray-100 text-gray-800'
+                        : 'hover:bg-gray-50 text-gray-800'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -234,14 +234,14 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
           </div>
 
           {/* Bottom Actions */}
-          <div className="px-2 pt-2 border-t border-gray-100 space-y-1">
+          <div className="px-1.5 pt-1.5 border-t border-gray-100 space-y-1">
             <button
               type="button"
               onClick={() => {
                 setIsOpen(false);
                 onOpenRegisterModal();
               }}
-              className="w-full py-2 px-3 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 px-3 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Plus size={14} className="shrink-0" />
               <span>Daftar / Tambah Tenant Baru</span>
@@ -253,7 +253,7 @@ export const TenantSwitcherDropdown: React.FC<TenantSwitcherDropdownProps> = ({
                 setIsOpen(false);
                 onNavigateToManagement();
               }}
-              className="w-full py-2 px-3 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center justify-center cursor-pointer"
+              className="w-full py-2 px-3 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center cursor-pointer"
             >
               Kelola Semua Tenant &amp; Outlet
             </button>

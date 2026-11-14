@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Check, AlertCircle, Search, Loader2 } from 'lucide-react';
+import { AlertCircle, Search, Loader2 } from 'lucide-react';
 import { PromoCampaign, Product } from '../../types';
 import { formatIDR } from '../../utils/formatters';
 import { NumericInput } from '../common/NumericInput';
+import { CustomCheckbox } from '../common/CustomCheckbox';
 import { posApi } from '../../services/api';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useToast } from '../../contexts/ToastContext';
@@ -391,23 +392,17 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
                   const discountedPrice = Math.round(product.harga * (1 - discountPercent / 100));
 
                   return (
-                    <div
+                    <label
                       key={product.id}
-                      onClick={() => handleToggleProduct(product.id)}
                       className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
-                        isSelected ? 'bg-yellow-50/80 hover:bg-yellow-100/70' : 'hover:bg-white'
+                        isSelected ? 'bg-orange-50/70 hover:bg-orange-50' : 'hover:bg-white'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                            isSelected
-                              ? 'bg-yellow-400 border-yellow-600 text-gray-900'
-                              : 'border-gray-300 bg-white'
-                          }`}
-                        >
-                          {isSelected && <Check size={12} strokeWidth={3} />}
-                        </div>
+                        <CustomCheckbox
+                          checked={isSelected}
+                          onChange={() => handleToggleProduct(product.id)}
+                        />
                         <img
                           src={product.image}
                           alt={product.name}
@@ -440,7 +435,7 @@ export const AddEditPromoModal: React.FC<AddEditPromoModalProps> = ({
                           </p>
                         )}
                       </div>
-                    </div>
+                    </label>
                   );
                 })
               )}

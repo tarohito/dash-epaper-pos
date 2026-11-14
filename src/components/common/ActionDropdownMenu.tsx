@@ -9,7 +9,7 @@ export interface ActionMenuItem {
   onClick: () => void;
   disabled?: boolean;
   disabledReason?: string;
-  tone?: 'default' | 'primary' | 'danger' | 'warning';
+  tone?: 'default' | 'primary' | 'danger' | 'warning' | 'whatsapp';
   dividerBefore?: boolean;
 }
 
@@ -214,6 +214,8 @@ export const ActionDropdownMenu: React.FC<ActionDropdownMenuProps> = ({
         return 'text-amber-700 hover:bg-amber-50 hover:text-amber-800 cursor-pointer';
       case 'primary':
         return 'text-orange-600 hover:bg-orange-50 hover:text-orange-700 cursor-pointer';
+      case 'whatsapp':
+        return 'text-[#128C7E] hover:bg-[#25D366]/10 hover:text-[#075E54] cursor-pointer';
       default:
         return 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 cursor-pointer';
     }
@@ -266,7 +268,7 @@ export const ActionDropdownMenu: React.FC<ActionDropdownMenuProps> = ({
               zIndex: 2147483647,
               opacity: pos.ready ? 1 : 0,
             }}
-            className={`min-w-[185px] max-w-[250px] bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 text-left transition-opacity duration-75 before:content-[''] before:absolute before:left-0 before:right-0 before:h-2 ${
+            className={`min-w-[190px] max-w-[260px] bg-white rounded-xl border border-gray-200 p-1.5 space-y-0.5 text-left transition-opacity duration-75 before:content-[''] before:absolute before:left-0 before:right-0 before:h-2 ${
               pos.placement === 'top' ? 'before:-bottom-2' : 'before:-top-2'
             }`}
           >
@@ -284,7 +286,7 @@ export const ActionDropdownMenu: React.FC<ActionDropdownMenuProps> = ({
                     closeImmediately();
                     item.onClick();
                   }}
-                  className={`w-full px-3 py-2 text-xs font-semibold flex items-center gap-2.5 text-left transition-colors ${getToneClass(
+                  className={`w-full px-2.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-2.5 text-left transition-colors ${getToneClass(
                     item.tone,
                     item.disabled
                   )}`}

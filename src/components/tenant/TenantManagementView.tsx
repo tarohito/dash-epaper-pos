@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Store,
   Users,
@@ -6,10 +6,9 @@ import {
   CheckCircle2,
   Eye,
   Plus,
+  Loader2,
 } from 'lucide-react';
 import { Tenant } from '../../types';
-import { usePagination } from '../../hooks/usePagination';
-import { PaginationControls } from '../common/PaginationControls';
 import { SearchInput } from '../common/SearchInput';
 import { ActionDropdownMenu } from '../common/ActionDropdownMenu';
 import { KpiCard } from '../common/KpiCard';
@@ -30,6 +29,8 @@ interface TenantManagementViewProps {
 }
 
 type TenantFilterTab = 'all' | 'active' | 'enterprise' | 'pro';
+
+const OUTLET_BATCH_SIZE = 6;
 
 export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
   tenants,
@@ -84,24 +85,43 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
     });
   }, [tenants, searchQuery, filterTab]);
 
-  const {
-    currentPage,
-    pageSize,
-    totalItems,
-    totalPages,
-    paginatedItems,
-    goToPage,
-    setPageSize,
-  } = usePagination(filteredTenants, { initialPageSize: 10 });
+  const [visibleCount, setVisibleCount] = useState(OUTLET_BATCH_SIZE);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const visibleTenants = useMemo(
+    () => filteredTenants.slice(0, visibleCount),
+    [filteredTenants, visibleCount]
+  );
+
+  const hasMoreTenants = visibleCount < filteredTenants.length;
+
+  useEffect(() => {
+    if (!hasMoreTenants) return;
+
+    const el = loadMoreRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => Math.min(prev + OUTLET_BATCH_SIZE, filteredTenants.length));
+        }
+      },
+      { rootMargin: '150px' }
+    );
+
+    observer.observe(el);
+    return () => observer.unobserve(el);
+  }, [hasMoreTenants, visibleCount, filteredTenants.length]);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    goToPage(1);
+    setVisibleCount(OUTLET_BATCH_SIZE);
   };
 
   const handleTabChange = (nextTab: TenantFilterTab) => {
     setFilterTab(nextTab);
-    goToPage(1);
+    setVisibleCount(OUTLET_BATCH_SIZE);
   };
 
   const hasActiveFilter = searchQuery.trim().length > 0 || filterTab !== 'all';
@@ -233,7 +253,7 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
         </div>
 
         {/* Outlet Card Grid or Empty State */}
-        {paginatedItems.length === 0 ? (
+        {visibleTenants.length === 0 ? (
           <div className="border border-gray-200 rounded-lg py-12 px-4 text-center text-gray-400 bg-gray-50/40">
             <Store size={36} className="mx-auto mb-2 text-gray-300" />
             <p className="text-sm font-semibold text-gray-600">Tidak ada outlet ditemukan</p>
@@ -248,7 +268,7 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
                 onClick={() => {
                   setSearchQuery('');
                   setFilterTab('all');
-                  goToPage(1);
+                  setVisibleCount(OUTLET_BATCH_SIZE);
                 }}
                 className="mt-3 px-3.5 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors cursor-pointer"
               >
@@ -267,14 +287,14 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {paginatedItems.map(tenant => {
+            {visibleTenants.map(tenant => {
               const isSelected = activeTenant?.id === tenant.id;
               return (
                 <div
                   key={tenant.id}
                   className={`rounded-xl border p-4 sm:p-5 flex flex-col justify-between transition-all ${
                     isSelected
-                      ? 'bg-orange-50/20 border-orange-500 ring-1 ring-orange-500/20 shadow-xs'
+                      ? 'bg-emerald-600 border-emerald-700 text-white'
                       : 'bg-white border-gray-200 hover:border-gray-300 shadow-[0_1px_2px_rgba(15,23,42,0.03)]'
                   }`}
                 >
@@ -282,12 +302,20 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
                     {/* Top Status & Code Strip */}
                     <div className="flex items-center justify-between gap-2 mb-3.5">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded border border-gray-200/70">
+                        <span
+                          className={`font-mono font-bold text-xs px-2 py-0.5 rounded border ${
+                            isSelected
+                              ? 'bg-white/20 text-white border-white/25'
+                              : 'bg-gray-100 text-gray-800 border-gray-200/70'
+                          }`}
+                        >
                           {tenant.code}
                         </span>
                         <span
                           className={`text-xs font-semibold px-2 py-0.5 rounded border ${
-                            tenant.status === 'Aktif'
+                            isSelected
+                              ? 'bg-white/20 text-white border-white/25'
+                              : tenant.status === 'Aktif'
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : tenant.status === 'Trial'
                               ? 'bg-amber-50 text-amber-800 border-amber-200'
@@ -299,7 +327,7 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
                       </div>
 
                       {isSelected && (
-                        <span className="text-xs font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200 shrink-0">
+                        <span className="text-xs font-bold text-emerald-700 bg-white px-2.5 py-0.5 rounded border border-white shrink-0">
                           Aktif Digunakan
                         </span>
                       )}
@@ -307,24 +335,48 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
 
                     {/* Outlet Identity */}
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-11 h-11 rounded-lg bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                      <div
+                        className={`w-11 h-11 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 ${
+                          isSelected
+                            ? 'bg-white text-emerald-700'
+                            : 'bg-gradient-to-tr from-orange-500 to-amber-500 text-white'
+                        }`}
+                      >
                         {tenant.logoInitial}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-sm sm:text-base font-bold text-gray-900 truncate leading-tight">
+                        <h4
+                          className={`text-sm sm:text-base font-bold truncate leading-tight ${
+                            isSelected ? 'text-white' : 'text-gray-900'
+                          }`}
+                        >
                           {tenant.name}
                         </h4>
-                        <p className="text-xs sm:text-sm text-gray-600 truncate mt-0.5">
+                        <p
+                          className={`text-xs sm:text-sm truncate mt-0.5 ${
+                            isSelected ? 'text-emerald-50' : 'text-gray-600'
+                          }`}
+                        >
                           {tenant.branchName}
                         </p>
-                        <p className="text-xs text-gray-400 font-mono truncate mt-0.5">
+                        <p
+                          className={`text-xs font-mono truncate mt-0.5 ${
+                            isSelected ? 'text-emerald-100/90' : 'text-gray-400'
+                          }`}
+                        >
                           {tenant.slug}
                         </p>
                       </div>
                     </div>
 
                     {/* Operational Info Card */}
-                    <div className="bg-gray-50/80 rounded-lg p-3.5 space-y-2 text-xs border border-gray-100">
+                    <div
+                      className={`rounded-lg p-3.5 space-y-2 text-xs border ${
+                        isSelected
+                          ? 'bg-white border-white'
+                          : 'bg-gray-50/80 border-gray-100'
+                      }`}
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-gray-500 shrink-0">Kota Lokasi</span>
                         <span className="font-semibold text-gray-800 text-right truncate">
@@ -349,7 +401,7 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
                           {tenant.cashierCount} kasir &bull; {tenant.productCount} SKU
                         </span>
                       </div>
-                      <div className="pt-1.5 border-t border-gray-200/60">
+                      <div className="pt-1.5 border-t border-gray-200/70">
                         <span className="text-gray-400 block mb-0.5">Alamat Gerai</span>
                         <p className="text-gray-700 leading-relaxed line-clamp-2" title={tenant.address}>
                           {tenant.address}
@@ -359,12 +411,16 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
                   </div>
 
                   {/* Action Footer */}
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-2">
+                  <div
+                    className={`mt-4 pt-3 border-t flex items-center gap-2 ${
+                      isSelected ? 'border-white/20' : 'border-gray-100'
+                    }`}
+                  >
                     {isSelected ? (
                       <button
                         type="button"
                         onClick={onNavigateToPos}
-                        className="flex-1 h-9 px-3.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer shadow-xs active:scale-[0.98]"
+                        className="flex-1 h-9 px-3.5 bg-white hover:bg-emerald-50 text-emerald-700 font-bold text-xs sm:text-sm rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer active:scale-[0.98]"
                       >
                         Buka Kasir POS
                       </button>
@@ -380,7 +436,11 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
 
                     <ActionDropdownMenu
                       ariaLabel={`Aksi untuk ${tenant.name}`}
-                      buttonClassName="w-9 h-9"
+                      buttonClassName={
+                        isSelected
+                          ? 'w-9 h-9 !bg-white/20 hover:!bg-white/30 !text-white !border-white/25 hover:!border-white/40'
+                          : 'w-9 h-9'
+                      }
                       items={[
                         {
                           id: 'detail',
@@ -409,20 +469,19 @@ export const TenantManagementView: React.FC<TenantManagementViewProps> = ({
                 </div>
               );
             })}
-          </div>
-        )}
 
-        {/* Pagination Controls inside Workspace Card */}
-        {paginatedItems.length > 0 && (
-          <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              onPageChange={goToPage}
-              onPageSizeChange={setPageSize}
-            />
+            {/* Sentinel untuk auto-load batch outlet berikutnya saat di-scroll */}
+            {hasMoreTenants && (
+              <div
+                ref={loadMoreRef}
+                className="col-span-full py-6 flex items-center justify-center text-xs text-gray-400 gap-2"
+              >
+                <Loader2 size={16} className="animate-spin text-orange-500" />
+                <span>
+                  Memuat outlet lainnya ({visibleTenants.length} dari {filteredTenants.length})...
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

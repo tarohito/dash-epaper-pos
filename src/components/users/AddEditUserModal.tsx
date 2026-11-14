@@ -8,6 +8,7 @@ import {
   MODAL_BTN_PRIMARY_CLASS,
 } from '../common/ModalShell';
 import { CustomSelect } from '../common/CustomSelect';
+import { CustomCheckbox } from '../common/CustomCheckbox';
 
 interface AddEditUserModalProps {
   isOpen: boolean;
@@ -364,11 +365,10 @@ export const AddEditUserModal: React.FC<AddEditUserModalProps> = ({
                         : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
                     }`}
                   >
-                    <input
-                      type="checkbox"
+                    <CustomCheckbox
                       checked={checked}
                       onChange={() => handleToggleTenant(t.id)}
-                      className="mt-0.5 w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                      className="mt-0.5"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
@@ -411,12 +411,10 @@ export const AddEditUserModal: React.FC<AddEditUserModalProps> = ({
                 : 'Akun nonaktif langsung ditolak saat login dan sesi aktifnya dicabut.'}
             </p>
           </div>
-          <input
-            type="checkbox"
+          <CustomCheckbox
             disabled={isEditingSelf}
             checked={isActive}
-            onChange={e => setIsActive(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer disabled:cursor-not-allowed"
+            onChange={setIsActive}
           />
         </label>
       </form>

@@ -5,7 +5,7 @@ import {
   Copy,
   Eye,
   Loader2,
-  Megaphone,
+  MessageCircle,
   Package,
   Pencil,
   Percent,
@@ -245,27 +245,24 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
       {/* Top Header Card */}
       <div className="bg-white rounded-xl border border-gray-200/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
-              Manajemen Promo &amp; Diskon
-            </h3>
-            {isLoading && <Loader2 size={14} className="animate-spin text-orange-500" />}
-          </div>
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
+            Manajemen Promo &amp; Diskon
+          </h3>
           <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
             Kelola kampanye diskon perhiasan, periode berlaku, dan status promo aktif di kasir POS.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto shrink-0">
           <button
             type="button"
             onClick={() => {
               setBroadcastPromo(null);
               setIsBroadcastOpen(true);
             }}
-            className="h-9 px-3.5 text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 active:scale-[0.98]"
+            className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1EBE5D] rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-xs active:scale-[0.98]"
           >
-            <Megaphone size={15} />
+            <MessageCircle size={15} />
             <span>Broadcast WA</span>
           </button>
           <button
@@ -287,7 +284,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           icon={<BadgePercent size={16} strokeWidth={2} />}
           value={
             <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
-              {stats.totalPromos} Promo
+              {stats?.totalPromos ?? 0} Promo
             </div>
           }
           footer={
@@ -303,7 +300,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           icon={<CheckCircle2 size={16} strokeWidth={2} />}
           value={
             <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
-              {stats.activeCount} Aktif
+              {stats?.activeCount ?? 0} Aktif
             </div>
           }
           footer={
@@ -319,7 +316,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           icon={<Package size={16} strokeWidth={2} />}
           value={
             <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
-              {stats.totalPromoProducts} SKU
+              {stats?.totalPromoProducts ?? 0} SKU
             </div>
           }
           footer={
@@ -335,7 +332,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           icon={<Percent size={16} strokeWidth={2} />}
           value={
             <div className="text-xl sm:text-2xl font-bold font-mono text-gray-900 group-hover:text-white tracking-tight truncate tabular-nums transition-colors duration-200">
-              {stats.avgDiscount}%
+              {stats?.avgDiscount ?? 0}%
             </div>
           }
           footer={
@@ -356,7 +353,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
           />
 
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
-            <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center">
+            <div className="inline-flex h-9 p-0.5 bg-gray-100 rounded-lg border border-gray-200 items-center overflow-x-auto max-w-full no-scrollbar">
               <button
                 type="button"
                 onClick={() => setStatusFilter('all')}
@@ -366,7 +363,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Semua ({stats.totalPromos})
+                Semua ({stats?.totalPromos ?? 0})
               </button>
               <button
                 type="button"
@@ -377,7 +374,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Aktif ({stats.activeCount})
+                Aktif ({stats?.activeCount ?? 0})
               </button>
               <button
                 type="button"
@@ -388,7 +385,7 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Nonaktif ({Math.max(0, stats.totalPromos - stats.activeCount)})
+                Nonaktif ({Math.max(0, (stats?.totalPromos ?? 0) - (stats?.activeCount ?? 0))})
               </button>
             </div>
           </div>
@@ -403,346 +400,317 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
         )}
 
         <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-2xs">
-          {/* Mobile List Cards */}
-          <div className="md:hidden divide-y divide-gray-100">
-            {isLoading && items.length === 0 ? (
-              <div className="py-12 px-4 flex items-center justify-center gap-2 text-xs text-gray-400">
-                <Loader2 size={18} className="animate-spin text-orange-500" />
-                <span>Memuat daftar promo...</span>
-              </div>
-            ) : items.length === 0 ? (
-              <div className="py-12 px-4 text-center text-gray-400">
-                <BadgePercent size={36} className="mx-auto mb-2 text-gray-300" />
-                <p className="text-sm font-semibold text-gray-600">Tidak ada promo ditemukan</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {searchQuery || statusFilter !== 'all'
-                    ? 'Coba ubah filter status atau kata kunci pencarian.'
-                    : 'Belum ada kampanye promo yang dibuat.'}
-                </p>
-                {!searchQuery && statusFilter === 'all' && (
-                  <button
-                    type="button"
-                    onClick={handleOpenAddModal}
-                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200"
-                  >
-                    <Plus size={14} />
-                    <span>Buat Promo Baru</span>
-                  </button>
-                )}
-              </div>
-            ) : (
-              items.map(promo => (
-                <div
-                  key={promo.id}
-                  className={`p-4 flex flex-col gap-3 transition-colors ${
-                    promo.isActive ? 'hover:bg-orange-50/25' : 'bg-gray-50/60 opacity-80'
-                  }`}
+          {isLoading && items.length === 0 ? (
+            <div className="py-12 px-4 flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-400">
+              <Loader2 size={18} className="animate-spin text-orange-500" />
+              <span>Memuat daftar promo...</span>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="py-12 px-4 text-center text-gray-400">
+              <BadgePercent size={36} className="mx-auto mb-2 text-gray-300" />
+              <p className="text-sm font-semibold text-gray-600">Tidak ada promo ditemukan</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {searchQuery || statusFilter !== 'all'
+                  ? 'Coba ubah filter status atau kata kunci pencarian.'
+                  : 'Belum ada kampanye promo yang dibuat.'}
+              </p>
+              {!searchQuery && statusFilter === 'all' && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddModal}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                        <span className="px-2 py-0.5 text-xs font-bold font-mono rounded bg-amber-50 text-amber-800 border border-amber-200">
-                          -{promo.discountPercent}%
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyCode(promo.code)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-mono font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-200 cursor-pointer"
-                        >
-                          <span>{promo.code}</span>
-                          <Copy size={11} className="text-gray-400" />
-                        </button>
-                      </div>
-                      <h4 className="text-sm sm:text-base font-bold text-gray-900">{promo.name}</h4>
-                      {(() => {
-                        const days = getPromoDurationDays(promo.startDate, promo.endDate);
-                        return (
-                          <div className="mt-1">
-                            {days !== null && (
-                              <span className="text-xs font-mono font-bold text-gray-900 block tabular-nums">
-                                {days} Hari
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-500 block tabular-nums">
-                              {formatPromoDate(promo.startDate)} s/d {formatPromoDate(promo.endDate)}
-                            </span>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <Tooltip
-                      content={promo.isActive ? 'Aktif — klik untuk nonaktifkan' : 'Nonaktif — klik untuk aktifkan'}
-                      side="top"
-                    >
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={promo.isActive}
-                        disabled={togglingId === promo.id}
-                        onClick={() => void handleToggleStatus(promo)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
-                          promo.isActive ? 'bg-emerald-500' : 'bg-gray-300'
-                        }`}
-                        aria-label="Toggle Status Promo"
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-2xs transition-transform ${
-                            promo.isActive ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </Tooltip>
-                  </div>
-
-                  <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-gray-600">
-                      {promo.productIds.length} SKU Terdampak
-                    </span>
-                    <ActionDropdownMenu
-                      ariaLabel={`Aksi untuk ${promo.name}`}
-                      items={[
-                        {
-                          id: 'detail',
-                          label: 'Lihat Detail',
-                          icon: <Eye size={14} />,
-                          onClick: () => setDetailPromo(promo),
-                        },
-                        {
-                          id: 'broadcast',
-                          label: 'Broadcast WA',
-                          icon: <Megaphone size={14} />,
-                          onClick: () => {
-                            setBroadcastPromo(promo);
-                            setIsBroadcastOpen(true);
-                          },
-                        },
-                        {
-                          id: 'edit',
-                          label: 'Edit Promo',
-                          icon: <Pencil size={14} />,
-                          onClick: () => handleOpenEditModal(promo),
-                        },
-                        {
-                          id: 'delete',
-                          label: 'Hapus Promo',
-                          icon: <Trash2 size={14} />,
-                          tone: 'danger',
-                          dividerBefore: true,
-                          onClick: () => setDeletingPromo(promo),
-                        },
-                      ]}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-xs sm:text-sm text-left border-collapse">
-              <thead className="bg-gray-50/80 text-gray-500 uppercase font-semibold text-xs border-b border-gray-200 tracking-wider">
-                <tr>
-                  <SortableTh
-                    label="Promo & Kode"
-                    sortKey="name"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'asc')}
-                    className="py-3 px-3.5 sm:px-4"
-                  />
-                  <SortableTh
-                    label="Diskon"
-                    sortKey="discountPercent"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'desc')}
-                    align="center"
-                    className="py-3 px-3 sm:px-4"
-                  />
-                  <SortableTh
-                    label="Periode Berlaku"
-                    sortKey="endDate"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'desc')}
-                    className="py-3 px-3 sm:px-4"
-                  />
-                  <th className="py-3 px-3 sm:px-4 text-center">Produk</th>
-                  <SortableTh
-                    label="Status"
-                    sortKey="isActive"
-                    currentSortBy={sortBy}
-                    currentSortDir={sortDir}
-                    onSort={key => handleHeaderSort(key, 'desc')}
-                    align="center"
-                    className="py-3 px-3 sm:px-4"
-                  />
-                  <th className="py-3 px-3 sm:px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                {isLoading && items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-gray-400">
-                      <div className="inline-flex items-center gap-2">
-                        <Loader2 size={18} className="animate-spin text-orange-500" />
-                        <span>Memuat daftar promo...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-gray-400">
-                      <BadgePercent size={36} className="mx-auto mb-2 text-gray-300" />
-                      <p className="text-sm font-semibold text-gray-600">Tidak ada promo ditemukan</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {searchQuery || statusFilter !== 'all'
-                          ? 'Coba ubah filter status atau kata kunci pencarian.'
-                          : 'Belum ada kampanye promo yang dibuat.'}
-                      </p>
-                      {!searchQuery && statusFilter === 'all' && (
-                        <button
-                          type="button"
-                          onClick={handleOpenAddModal}
-                          className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200"
-                        >
-                          <Plus size={14} />
-                          <span>Buat Promo Baru</span>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ) : (
-                  items.map(promo => (
-                    <tr
-                      key={promo.id}
-                      className={`transition-colors ${
-                        promo.isActive ? 'hover:bg-orange-50/25' : 'bg-gray-50/50 opacity-80'
-                      }`}
-                    >
-                      <td className="py-3.5 px-3.5 sm:px-4 min-w-[200px]">
-                        <span className="font-bold text-gray-900 text-xs sm:text-sm block truncate">
-                          {promo.name}
-                        </span>
-                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          <Tooltip content="Klik untuk salin kode promo" side="top">
-                            <button
-                              type="button"
-                              onClick={() => handleCopyCode(promo.code)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-mono font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-200 transition-colors cursor-pointer"
-                            >
-                              <span>{promo.code}</span>
-                              <Copy size={11} className="text-gray-400" />
-                            </button>
-                          </Tooltip>
-                          {copiedCode === promo.code && (
-                            <span className="text-xs font-semibold text-emerald-600">Tersalin</span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-mono font-bold text-xs">
-                          -{promo.discountPercent}%
-                        </span>
-                        {promo.label && (
-                          <span className="block text-xs text-gray-400 mt-0.5 truncate max-w-[130px] mx-auto">
-                            {promo.label}
+                  <Plus size={14} />
+                  <span>Buat Promo Baru</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* MOBILE CARDS (md:hidden) */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {items.map(promo => (
+                  <div
+                    key={promo.id}
+                    className={`p-4 space-y-2.5 transition-colors ${
+                      promo.isActive ? 'hover:bg-orange-50/25' : 'bg-gray-50/60 opacity-80'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          <span className="px-2 py-0.5 text-xs font-bold font-mono rounded bg-amber-50 text-amber-800 border border-amber-200">
+                            -{promo.discountPercent}%
                           </span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-3 sm:px-4 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyCode(promo.code)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-mono font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-200 cursor-pointer"
+                          >
+                            <span>{promo.code}</span>
+                            <Copy size={11} className="text-gray-400" />
+                          </button>
+                        </div>
+                        <h4 className="text-sm font-bold text-gray-900">{promo.name}</h4>
                         {(() => {
                           const days = getPromoDurationDays(promo.startDate, promo.endDate);
                           return (
-                            <div>
-                              <span className="font-mono font-bold text-gray-900 text-xs sm:text-sm block tabular-nums">
-                                {days !== null ? `${days} Hari` : '-'}
-                              </span>
-                              <span className="text-xs text-gray-500 block mt-0.5 tabular-nums">
+                            <div className="mt-1">
+                              {days !== null && (
+                                <span className="text-xs font-mono font-bold text-gray-900 block tabular-nums">
+                                  {days} Hari
+                                </span>
+                              )}
+                              <span className="text-xs text-gray-500 block tabular-nums">
                                 {formatPromoDate(promo.startDate)} s/d {formatPromoDate(promo.endDate)}
                               </span>
                             </div>
                           );
                         })()}
-                      </td>
+                      </div>
 
-                      <td className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 font-mono text-xs font-bold tabular-nums">
-                          {promo.productIds.length} SKU
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">
-                        <Tooltip
-                          content={promo.isActive ? 'Aktif — klik untuk nonaktifkan' : 'Nonaktif — klik untuk aktifkan'}
-                          side="top"
+                      <Tooltip
+                        content={promo.isActive ? 'Aktif — klik untuk nonaktifkan' : 'Nonaktif — klik untuk aktifkan'}
+                        side="top"
+                      >
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={promo.isActive}
+                          disabled={togglingId === promo.id}
+                          onClick={() => void handleToggleStatus(promo)}
+                          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
+                            promo.isActive ? 'bg-emerald-500' : 'bg-gray-300'
+                          }`}
+                          aria-label="Toggle Status Promo"
                         >
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={promo.isActive}
-                            disabled={togglingId === promo.id}
-                            onClick={() => void handleToggleStatus(promo)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
-                              promo.isActive ? 'bg-emerald-500' : 'bg-gray-300'
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-2xs transition-transform ${
+                              promo.isActive ? 'translate-x-6' : 'translate-x-1'
                             }`}
-                            aria-label="Toggle Status Promo"
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-2xs transition-transform ${
-                                promo.isActive ? 'translate-x-6' : 'translate-x-1'
-                              }`}
-                            />
-                          </button>
-                        </Tooltip>
-                      </td>
+                          />
+                        </button>
+                      </Tooltip>
+                    </div>
 
-                      <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">
-                        <ActionDropdownMenu
-                          ariaLabel={`Aksi untuk ${promo.name}`}
-                          items={[
-                            {
-                              id: 'detail',
-                              label: 'Lihat Detail',
-                              icon: <Eye size={14} />,
-                              onClick: () => setDetailPromo(promo),
+                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                      <span className="text-xs font-mono font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                        {promo.productIds.length} SKU Terdampak
+                      </span>
+                      <ActionDropdownMenu
+                        ariaLabel={`Aksi untuk ${promo.name}`}
+                        items={[
+                          {
+                            id: 'detail',
+                            label: 'Lihat Detail',
+                            icon: <Eye size={14} />,
+                            onClick: () => setDetailPromo(promo),
+                          },
+                          {
+                            id: 'broadcast',
+                            label: 'Broadcast WA',
+                            icon: <MessageCircle size={14} />,
+                            tone: 'whatsapp',
+                            onClick: () => {
+                              setBroadcastPromo(promo);
+                              setIsBroadcastOpen(true);
                             },
-                            {
-                              id: 'broadcast',
-                              label: 'Broadcast WA',
-                              icon: <Megaphone size={14} />,
-                              onClick: () => {
-                                setBroadcastPromo(promo);
-                                setIsBroadcastOpen(true);
-                              },
-                            },
-                            {
-                              id: 'edit',
-                              label: 'Edit Promo',
-                              icon: <Pencil size={14} />,
-                              onClick: () => handleOpenEditModal(promo),
-                            },
-                            {
-                              id: 'delete',
-                              label: 'Hapus Promo',
-                              icon: <Trash2 size={14} />,
-                              tone: 'danger',
-                              dividerBefore: true,
-                              onClick: () => setDeletingPromo(promo),
-                            },
-                          ]}
-                        />
-                      </td>
+                          },
+                          {
+                            id: 'edit',
+                            label: 'Edit Promo',
+                            icon: <Pencil size={14} />,
+                            onClick: () => handleOpenEditModal(promo),
+                          },
+                          {
+                            id: 'delete',
+                            label: 'Hapus Promo',
+                            icon: <Trash2 size={14} />,
+                            tone: 'danger',
+                            dividerBefore: true,
+                            onClick: () => setDeletingPromo(promo),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* DESKTOP TABLE (hidden md:block) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-xs sm:text-sm text-left border-collapse">
+                  <thead className="bg-gray-50/80 text-gray-500 uppercase font-semibold text-xs border-b border-gray-200 tracking-wider">
+                    <tr>
+                      <SortableTh
+                        label="Promo & Kode"
+                        sortKey="name"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'asc')}
+                        className="py-3 px-4 min-w-[210px]"
+                      />
+                      <SortableTh
+                        label="Diskon"
+                        sortKey="discountPercent"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'desc')}
+                        align="center"
+                        className="py-3 px-4 w-[140px]"
+                      />
+                      <SortableTh
+                        label="Periode Berlaku"
+                        sortKey="endDate"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'desc')}
+                        className="py-3 px-4 min-w-[180px]"
+                      />
+                      <th className="py-3 px-4 text-center w-[110px]">Produk</th>
+                      <SortableTh
+                        label="Status"
+                        sortKey="isActive"
+                        currentSortBy={sortBy}
+                        currentSortDir={sortDir}
+                        onSort={key => handleHeaderSort(key, 'desc')}
+                        align="center"
+                        className="py-3 px-4 w-[100px]"
+                      />
+                      <th className="py-3 px-3 text-center w-[72px]">Aksi</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                    {items.map(promo => (
+                      <tr
+                        key={promo.id}
+                        className={`transition-colors ${
+                          promo.isActive ? 'hover:bg-orange-50/30' : 'bg-gray-50/60 opacity-80'
+                        }`}
+                      >
+                        <td className="py-3.5 px-4 align-middle max-w-[260px]">
+                          <span className="font-bold text-gray-900 text-xs sm:text-sm block truncate">
+                            {promo.name}
+                          </span>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <Tooltip content="Klik untuk salin kode promo" side="top">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyCode(promo.code)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-mono font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded border border-gray-200 transition-colors cursor-pointer"
+                              >
+                                <span>{promo.code}</span>
+                                <Copy size={11} className="text-gray-400" />
+                              </button>
+                            </Tooltip>
+                            {copiedCode === promo.code && (
+                              <span className="text-xs font-semibold text-emerald-600">Tersalin</span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap align-middle">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-mono font-bold text-xs">
+                            -{promo.discountPercent}%
+                          </span>
+                          {promo.label && (
+                            <span className="block text-xs text-gray-400 mt-0.5 truncate max-w-[130px] mx-auto">
+                              {promo.label}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 whitespace-nowrap align-middle">
+                          {(() => {
+                            const days = getPromoDurationDays(promo.startDate, promo.endDate);
+                            return (
+                              <div>
+                                <span className="font-mono font-bold text-gray-900 text-xs sm:text-sm block tabular-nums">
+                                  {days !== null ? `${days} Hari` : '-'}
+                                </span>
+                                <span className="text-xs text-gray-500 block mt-0.5 tabular-nums">
+                                  {formatPromoDate(promo.startDate)} s/d {formatPromoDate(promo.endDate)}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap align-middle">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 font-mono text-xs font-bold tabular-nums">
+                            {promo.productIds.length} SKU
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap align-middle">
+                          <Tooltip
+                            content={promo.isActive ? 'Aktif — klik untuk nonaktifkan' : 'Nonaktif — klik untuk aktifkan'}
+                            side="top"
+                          >
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={promo.isActive}
+                              disabled={togglingId === promo.id}
+                              onClick={() => void handleToggleStatus(promo)}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
+                                promo.isActive ? 'bg-emerald-500' : 'bg-gray-300'
+                              }`}
+                              aria-label="Toggle Status Promo"
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-2xs transition-transform ${
+                                  promo.isActive ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </Tooltip>
+                        </td>
+
+                        <td className="py-3.5 px-3 text-center whitespace-nowrap align-middle">
+                          <ActionDropdownMenu
+                            ariaLabel={`Aksi untuk ${promo.name}`}
+                            items={[
+                              {
+                                id: 'detail',
+                                label: 'Lihat Detail',
+                                icon: <Eye size={14} />,
+                                onClick: () => setDetailPromo(promo),
+                              },
+                              {
+                                id: 'broadcast',
+                                label: 'Broadcast WA',
+                                icon: <MessageCircle size={14} />,
+                                tone: 'whatsapp',
+                                onClick: () => {
+                                  setBroadcastPromo(promo);
+                                  setIsBroadcastOpen(true);
+                                },
+                              },
+                              {
+                                id: 'edit',
+                                label: 'Edit Promo',
+                                icon: <Pencil size={14} />,
+                                onClick: () => handleOpenEditModal(promo),
+                              },
+                              {
+                                id: 'delete',
+                                label: 'Hapus Promo',
+                                icon: <Trash2 size={14} />,
+                                tone: 'danger',
+                                dividerBefore: true,
+                                onClick: () => setDeletingPromo(promo),
+                              },
+                            ]}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <PaginationControls
             currentPage={currentPage}
@@ -781,9 +749,9 @@ export const PromoManagementView: React.FC<PromoManagementViewProps> = ({
                   setBroadcastPromo(target);
                   setIsBroadcastOpen(true);
                 }}
-                className="h-9 px-4 text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
+                className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1EBE5D] rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap shadow-xs active:scale-[0.98]"
               >
-                <Megaphone size={15} className="shrink-0" />
+                <MessageCircle size={15} className="shrink-0" />
                 <span>Broadcast WA</span>
               </button>
               <button

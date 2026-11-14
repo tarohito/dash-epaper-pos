@@ -8,7 +8,6 @@ import {
   ExternalLink,
   History,
   Loader2,
-  Megaphone,
   MessageCircle,
   Search,
   Send,
@@ -32,8 +31,8 @@ import { posApi } from '../../services/api';
 import { useToast } from '../../contexts/ToastContext';
 import { formatIDR } from '../../utils/formatters';
 import { CustomSelect } from '../common/CustomSelect';
+import { CustomCheckbox } from '../common/CustomCheckbox';
 import {
-  MODAL_BTN_PRIMARY_CLASS,
   MODAL_BTN_SECONDARY_CLASS,
   MODAL_FOOTER_END_CLASS,
   ModalShell,
@@ -500,7 +499,7 @@ export const PromoBroadcastModal: React.FC<PromoBroadcastModalProps> = ({
                 isGatewayBlockedBySafeLimit
               }
               onClick={() => void handleCreateBroadcast()}
-              className={MODAL_BTN_PRIMARY_CLASS}
+              className="h-9 px-4 text-xs sm:text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1EBE5D] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap shadow-xs active:scale-[0.98]"
             >
               {isSending ? (
                 <>
@@ -536,7 +535,7 @@ export const PromoBroadcastModal: React.FC<PromoBroadcastModalProps> = ({
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <Megaphone size={14} />
+              <MessageCircle size={14} />
               <span>Buat Broadcast</span>
             </button>
 
@@ -695,11 +694,9 @@ export const PromoBroadcastModal: React.FC<PromoBroadcastModalProps> = ({
                   Target Pelanggan WhatsApp <span className="text-red-500">*</span>
                 </label>
                 <label className="inline-flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
+                  <CustomCheckbox
                     checked={activeBuyersOnly}
-                    onChange={e => setActiveBuyersOnly(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                    onChange={setActiveBuyersOnly}
                   />
                   <span>
                     Hanya pelanggan aktif ({segmentCounts.activeBuyers}/{segmentCounts.allContacts})
@@ -838,11 +835,9 @@ export const PromoBroadcastModal: React.FC<PromoBroadcastModalProps> = ({
                             }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <input
-                                type="checkbox"
+                              <CustomCheckbox
                                 checked={checked}
                                 onChange={() => handleToggleCustomer(cust.id)}
-                                className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer shrink-0"
                               />
                               <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
                                 <span className="font-semibold text-gray-900 truncate">{cust.name}</span>
@@ -1109,14 +1104,12 @@ export const PromoBroadcastModal: React.FC<PromoBroadcastModalProps> = ({
             {activeBatch.deliveryMode === 'wa_me' && (
               <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                 <label className="inline-flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
+                  <CustomCheckbox
                     checked={safeWaCooldownEnabled}
-                    onChange={e => {
-                      setSafeWaCooldownEnabled(e.target.checked);
-                      if (!e.target.checked) setCooldownRemaining(0);
+                    onChange={val => {
+                      setSafeWaCooldownEnabled(val);
+                      if (!val) setCooldownRemaining(0);
                     }}
-                    className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
                   />
                   <span>Jeda aman 5 detik antar klik Kirim WA</span>
                 </label>
@@ -1233,8 +1226,8 @@ export const PromoBroadcastModal: React.FC<PromoBroadcastModalProps> = ({
                             safeWaCooldownEnabled && cooldownRemaining > 0 && rec.status !== 'sent'
                               ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                               : rec.status === 'sent'
-                              ? 'bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50 cursor-pointer'
-                              : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                              ? 'bg-white text-[#128C7E] border border-[#25D366] hover:bg-[#25D366]/10 cursor-pointer'
+                              : 'bg-[#25D366] hover:bg-[#1EBE5D] text-white cursor-pointer'
                           }`}
                         >
                           <MessageCircle size={13} />
@@ -1261,7 +1254,7 @@ export const PromoBroadcastModal: React.FC<PromoBroadcastModalProps> = ({
           <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 max-h-[420px] overflow-y-auto bg-white">
             {broadcastHistory.length === 0 ? (
               <div className="py-12 px-4 text-center text-gray-400">
-                <Megaphone size={32} className="mx-auto mb-2 text-gray-300" />
+                <MessageCircle size={32} className="mx-auto mb-2 text-gray-300" />
                 <p className="text-sm font-semibold text-gray-600">Belum ada riwayat broadcast</p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   Buat broadcast pertama untuk mengirim promo ke pelanggan via WhatsApp.

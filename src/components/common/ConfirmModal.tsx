@@ -6,6 +6,7 @@ import {
   MODAL_FOOTER_END_CLASS,
   MODAL_BTN_SECONDARY_CLASS,
 } from './ModalShell';
+import { CustomCheckbox } from './CustomCheckbox';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -133,11 +134,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
         {checkboxLabel && (
           <label className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50/70 border border-amber-200 cursor-pointer">
-            <input
-              type="checkbox"
+            <CustomCheckbox
               checked={checked}
-              onChange={e => setChecked(e.target.checked)}
-              className="mt-0.5 w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer shrink-0"
+              onChange={setChecked}
+              className="mt-0.5"
             />
             <span className="text-xs font-semibold text-gray-800 select-none">{checkboxLabel}</span>
           </label>

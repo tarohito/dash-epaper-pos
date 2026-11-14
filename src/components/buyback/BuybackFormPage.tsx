@@ -17,6 +17,7 @@ import { BuybackCreatePayload, BuybackGoldItem, BuybackItem } from '../../types'
 import { formatIDR } from '../../utils/formatters';
 import { KADAR_PRESETS } from '../../constants/kadar';
 import { CustomSelect } from '../common/CustomSelect';
+import { CustomCheckbox } from '../common/CustomCheckbox';
 import { NumericInput } from '../common/NumericInput';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { useToast } from '../../contexts/ToastContext';
@@ -661,11 +662,10 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
           {!selectedCustomer && !editingItem && (
             <div className="mt-4 pt-3.5 border-t border-gray-100">
               <label className="inline-flex items-start gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
+                <CustomCheckbox
                   checked={saveToCustomerMaster}
-                  onChange={e => setSaveToCustomerMaster(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer shrink-0"
+                  onChange={setSaveToCustomerMaster}
+                  className="mt-0.5"
                 />
                 <span className="text-xs text-gray-700 leading-relaxed">
                   <strong className="font-semibold text-gray-900">
@@ -1220,12 +1220,10 @@ export const BuybackFormPage: React.FC<BuybackFormPageProps> = ({
           {/* Pernyataan Sah Checkbox */}
           <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-xl mb-4">
             <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                required
+              <CustomCheckbox
                 checked={isAgreedLegal}
-                onChange={e => setIsAgreedLegal(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer shrink-0"
+                onChange={setIsAgreedLegal}
+                className="mt-0.5"
               />
               <span className="text-xs sm:text-sm text-gray-800 font-medium leading-relaxed select-none">
                 <strong>Pernyataan Nasabah:</strong> &quot;Saya menyatakan bahwa emas yang dijual adalah milik pribadi yang sah dan bukan berasal dari tindak pidana.&quot;

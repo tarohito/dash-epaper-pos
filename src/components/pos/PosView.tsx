@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Barcode, X, Filter, ChevronDown, Loader2 } from 'lucide-react';
+import { Barcode, X, Filter, ChevronDown, Loader2, Check } from 'lucide-react';
 import { Product, CartItem } from '../../types';
 import { ProductCard } from './ProductCard';
 import { PromoCard } from './PromoCard';
@@ -233,10 +233,14 @@ export const PosView: React.FC<PosViewProps> = ({
             <button
               type="button"
               onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+              aria-haspopup="listbox"
+              aria-expanded={isCategoryDropdownOpen}
               className={`h-9 px-3 rounded-lg border text-xs sm:text-sm font-semibold inline-flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                selectedCategory !== 'Semua'
+                isCategoryDropdownOpen
+                  ? 'bg-orange-50/50 border-orange-500 text-orange-600'
+                  : selectedCategory !== 'Semua'
                   ? 'bg-orange-50 border-orange-300 text-orange-600'
-                  : 'bg-white border-gray-200 text-gray-700 hover:border-orange-400 hover:text-orange-600'
+                  : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:text-orange-600'
               }`}
               title="Filter Kategori Perhiasan"
             >
@@ -244,13 +248,21 @@ export const PosView: React.FC<PosViewProps> = ({
               <span className="max-w-[70px] sm:max-w-[110px] truncate">
                 {selectedCategory === 'Semua' ? 'Kategori' : selectedCategory}
               </span>
-              <ChevronDown size={13} className="ml-1 shrink-0 opacity-60" />
+              <ChevronDown
+                size={14}
+                className={`ml-1.5 shrink-0 transition-transform duration-200 ${
+                  isCategoryDropdownOpen ? 'rotate-180 text-orange-500' : 'text-gray-400'
+                }`}
+              />
             </button>
 
             {/* Dropdown Menu Kategori */}
             {isCategoryDropdownOpen && (
-              <div className="absolute left-0 mt-1.5 w-48 bg-white rounded-lg border border-gray-200 py-1 z-40 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 flex items-center justify-between">
+              <div
+                role="listbox"
+                className="absolute left-0 mt-1.5 w-56 bg-white rounded-xl border border-gray-200 p-1.5 z-40 animate-in fade-in zoom-in-95 duration-100"
+              >
+                <div className="px-2.5 py-1.5 mb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 flex items-center justify-between">
                   <span>Pilih Kategori</span>
                   {selectedCategory !== 'Semua' && (
                     <button
@@ -259,13 +271,13 @@ export const PosView: React.FC<PosViewProps> = ({
                         setSelectedCategory('Semua');
                         setIsCategoryDropdownOpen(false);
                       }}
-                      className="text-xs font-bold text-orange-600 hover:underline cursor-pointer"
+                      className="text-xs font-bold text-orange-600 hover:underline cursor-pointer normal-case"
                     >
                       Reset
                     </button>
                   )}
                 </div>
-                <div className="max-h-56 overflow-y-auto py-1">
+                <div className="max-h-56 overflow-y-auto space-y-0.5">
                   {availableCategories.map(cat => {
                     const count = categoryCounts[cat] ?? 0;
                     const isSelected = selectedCategory === cat;
@@ -274,26 +286,31 @@ export const PosView: React.FC<PosViewProps> = ({
                       <button
                         key={cat}
                         type="button"
+                        role="option"
+                        aria-selected={isSelected}
                         onClick={() => {
                           setSelectedCategory(cat);
                           setIsCategoryDropdownOpen(false);
                         }}
-                        className={`w-full px-3 py-2 text-xs sm:text-sm flex items-center justify-between text-left transition-colors cursor-pointer ${
+                        className={`w-full px-2.5 py-2 rounded-lg text-xs sm:text-sm flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${
                           isSelected
-                            ? 'bg-orange-50 text-orange-600 font-bold'
-                            : 'text-gray-700 hover:bg-gray-50'
+                            ? 'bg-orange-50 text-orange-700 font-bold'
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium'
                         }`}
                       >
                         <span className="truncate">{cat === 'Semua' ? 'Semua Kategori' : cat}</span>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                            isSelected
-                              ? 'bg-orange-200/80 text-orange-800'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {count}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`text-xs px-1.5 py-0.5 rounded font-mono font-semibold ${
+                              isSelected
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {count}
+                          </span>
+                          {isSelected && <Check size={14} className="text-orange-600 shrink-0" />}
+                        </div>
                       </button>
                     );
                   })}

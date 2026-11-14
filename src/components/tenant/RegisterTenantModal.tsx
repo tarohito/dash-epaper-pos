@@ -330,7 +330,7 @@ export const RegisterTenantModal: React.FC<RegisterTenantModalProps> = ({
                         name="plan"
                         checked={plan === item.id}
                         onChange={() => setPlan(item.id)}
-                        className="text-orange-600 focus:ring-orange-500"
+                        className="w-4 h-4 accent-orange-500 cursor-pointer"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1 font-normal leading-relaxed">{item.desc}</p>

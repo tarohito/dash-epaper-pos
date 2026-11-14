@@ -22,6 +22,7 @@ import {
 import { posApi } from '../../services/api';
 import { formatIDR } from '../../utils/formatters';
 import { CustomSelect } from '../common/CustomSelect';
+import { CustomCheckbox } from '../common/CustomCheckbox';
 import { NumericInput } from '../common/NumericInput';
 import { ErrorBanner } from '../common/ErrorBanner';
 import { useToast } from '../../contexts/ToastContext';
@@ -540,11 +541,10 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
 
             <div className="border-t border-gray-100 pt-4 space-y-3">
               <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
+                <CustomCheckbox
                   checked={requireCustomerOnSale}
-                  onChange={e => setRequireCustomerOnSale(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-orange-500 rounded cursor-pointer"
+                  onChange={setRequireCustomerOnSale}
+                  className="mt-0.5"
                 />
                 <div>
                   <span className="text-sm font-semibold text-gray-800 block">
@@ -557,11 +557,10 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
               </label>
 
               <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
+                <CustomCheckbox
                   checked={autoPrintReceipt}
-                  onChange={e => setAutoPrintReceipt(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-orange-500 rounded cursor-pointer"
+                  onChange={setAutoPrintReceipt}
+                  className="mt-0.5"
                 />
                 <div>
                   <span className="text-sm font-semibold text-gray-800 block">

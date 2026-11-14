@@ -70,13 +70,13 @@ export const Header: React.FC<HeaderProps> = ({
   const firstName = currentUser.fullName.split(' ')[0] || currentUser.username;
 
   return (
-    <header className="h-12 sm:h-14 flex items-center justify-between px-3 sm:px-6 bg-white border-b border-gray-200 z-30 shrink-0 relative">
-      {/* 1. LOGO & SIDEBAR TOGGLE (Left - Aligned left) */}
-      <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3 shrink-0">
+    <header className="h-14 flex items-center justify-between gap-3 px-3 sm:px-5 bg-white border-b border-gray-200 z-30 shrink-0 relative">
+      {/* 1. LOGO & SIDEBAR TOGGLE (Left) */}
+      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="p-1 -ml-1 text-gray-500 hover:text-orange-600 transition-colors flex items-center justify-center cursor-pointer shrink-0 outline-none focus:outline-none"
+          className="w-9 h-9 rounded-lg text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors flex items-center justify-center cursor-pointer shrink-0 outline-none focus:outline-none"
           title={isSidebarCollapsed ? 'Buka Menu' : 'Sembunyikan Menu'}
           aria-label="Toggle Sidebar"
         >
@@ -105,50 +105,57 @@ export const Header: React.FC<HeaderProps> = ({
           </svg>
         </button>
 
-        <div
-          className="flex items-center gap-2 cursor-pointer select-none"
+        <button
+          type="button"
           onClick={() => onSelectMenu('Kasir POS (Penjualan)')}
+          className="flex items-center gap-2 cursor-pointer select-none rounded-lg px-1 py-1 hover:opacity-90 transition-opacity"
         >
           <span className="text-xl sm:text-2xl font-bold tracking-tight text-gradient-brand whitespace-nowrap leading-none flex items-center">
             e.paper
           </span>
-        </div>
+        </button>
       </div>
 
-      {/* 2. RIGHT ICONS (Notification & User Profile - Aligned right) */}
-      <div className="flex-1 flex items-center justify-end gap-1 sm:gap-2 shrink-0">
+      {/* 2. RIGHT CONTROLS (Notification & User Profile) */}
+      <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
         <Tooltip content={hasNotification ? 'Ada notifikasi baru' : 'Tidak ada notifikasi'} side="bottom" sideOffset={6}>
           <button
             type="button"
             onClick={onToggleNotification}
-            className="relative p-2 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-md transition-colors flex items-center justify-center cursor-pointer min-w-[40px] min-h-[40px] outline-none focus:outline-none"
+            className="relative w-9 h-9 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors flex items-center justify-center cursor-pointer outline-none focus:outline-none"
             aria-label="Notifikasi"
           >
-            <Bell size={19} />
+            <Bell size={18} />
             {hasNotification && (
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
             )}
           </button>
         </Tooltip>
+
+        <div className="h-5 w-px bg-gray-200 mx-0.5 hidden sm:block" aria-hidden="true" />
 
         {/* USER PROFILE DROPDOWN */}
         <div className="relative" ref={adminDropdownRef}>
           <button
             type="button"
             onClick={onToggleAdminMenu}
-            className="flex items-center justify-center gap-1.5 sm:gap-2 text-sm font-semibold text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-md transition-colors cursor-pointer p-1.5 sm:p-2 min-h-[40px] outline-none focus:outline-none"
+            className={`h-9 flex items-center justify-center gap-2 text-sm font-semibold rounded-lg transition-colors cursor-pointer px-1.5 sm:px-2.5 outline-none focus:outline-none ${
+              isAdminMenuOpen
+                ? 'bg-orange-50 text-orange-600'
+                : 'text-gray-700 hover:text-orange-600 hover:bg-orange-50'
+            }`}
             aria-expanded={isAdminMenuOpen}
           >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white flex items-center justify-center font-bold text-xs sm:text-sm shrink-0">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
               {initials}
             </div>
             <div className="hidden sm:flex flex-col items-start text-left leading-tight">
-              <span className="font-bold text-xs sm:text-sm text-gray-800 max-w-[120px] truncate">{firstName}</span>
-              <span className="text-xs font-medium text-gray-400">{ROLE_LABELS[currentUser.role]}</span>
+              <span className="font-bold text-xs sm:text-sm text-gray-800 max-w-[130px] truncate">{firstName}</span>
+              <span className="text-[11px] font-medium text-gray-500 leading-none mt-0.5">{ROLE_LABELS[currentUser.role]}</span>
             </div>
             <ChevronDown
               size={14}
-              className={`text-gray-400 transition-transform duration-200 hidden sm:inline ${
+              className={`text-gray-400 transition-transform duration-200 hidden sm:inline shrink-0 ${
                 isAdminMenuOpen ? 'rotate-180 text-orange-500' : ''
               }`}
             />
@@ -192,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onSelectMenu('Manajemen User');
                       onCloseAdminMenu();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors text-left cursor-pointer"
                   >
                     <UserCog size={15} className="text-gray-400 shrink-0" />
                     <span>Manajemen User &amp; Akses</span>
@@ -206,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onSelectMenu('Pengaturan');
                       onCloseAdminMenu();
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors text-left cursor-pointer"
                   >
                     <Settings size={15} className="text-gray-400 shrink-0" />
                     <span>Pengaturan Toko</span>
@@ -219,7 +226,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onSelectMenu('Rekap Shift');
                     onCloseAdminMenu();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <FileSpreadsheet size={15} className="text-gray-400 shrink-0" />
                   <span>Laporan Tutup Kasir</span>
@@ -233,7 +240,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onCloseAdminMenu();
                     onLogout();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-md transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <LogOut size={15} className="text-red-500 shrink-0" />
                   <span>Keluar (Logout)</span>
